@@ -23,3 +23,22 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet.
 
 **Issues fixed:** none.
+
+## 2 -- Restyle to match the web app
+
+**Status:** Written, not yet built (no Swift toolchain here); the first check is the Build and test workflow, then a screenshot from a Mac.
+
+**Context:** Stage 1 was a plain skeleton. Before adding details and playback, the screens are restyled after the web app so everything built later starts out looking right.
+
+**Changes:**
+- Design tokens from the web app's `tokens.css` (near-black surfaces, the cyan/blue/violet brand gradient, text greys), the real Arc TV logo embedded in the app, brand-gradient and translucent pill buttons.
+- Top bar like the web app's: logo, a translucent pill with Home, Movies, TV Shows, Search and My List, and the account (gear and name) on the right.
+- Home: a banner for the first title with its artwork (logo or title, year, rating, genres, description), a Play and More info button (shown disabled: playback is not built yet), then the rows with poster cards that lift and get an outline when the pointer is over them.
+- Movies and TV Shows tabs show that kind of title; Search and My List are "coming soon" placeholders; a simple Settings (who is signed in, server, version, refresh, sign out).
+- Sign-in screen on a card with the logo and soft corner glows.
+
+**Tests performed:** none yet (see Status). The existing unit tests do not cover the screens.
+
+**Issues discovered:** none.
+
+**Issues fixed:** none.

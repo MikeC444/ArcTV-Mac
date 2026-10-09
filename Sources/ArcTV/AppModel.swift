@@ -2,6 +2,18 @@ import ArcTVCore
 import Foundation
 import SwiftUI
 
+/// The places in the top bar, in the web app's order.
+enum NavItem: String, CaseIterable, Identifiable {
+    case home = "Home"
+    case movies = "Movies"
+    case tv = "TV Shows"
+    case search = "Search"
+    case myList = "My List"
+    case settings = "Settings"
+
+    var id: String { rawValue }
+}
+
 /// What the whole app knows: who is signed in, which server it talks to, and what Home shows.
 @MainActor
 final class AppModel: ObservableObject {
@@ -13,6 +25,7 @@ final class AppModel: ObservableObject {
     }
 
     @Published var session: Session?
+    @Published var selected: NavItem = .home
     @Published var home: HomeState = .idle
     @Published var signInError: String?
     @Published var signingIn = false
@@ -60,6 +73,7 @@ final class AppModel: ObservableObject {
         store.clear()
         session = nil
         home = .idle
+        selected = .home
     }
 
     func loadHome() async {

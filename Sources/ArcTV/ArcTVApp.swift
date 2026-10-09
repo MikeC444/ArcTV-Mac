@@ -16,7 +16,7 @@ struct ArcTVApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(model)
-                .frame(minWidth: 960, minHeight: 640)
+                .frame(minWidth: 1000, minHeight: 680)
                 .preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)
@@ -32,8 +32,31 @@ struct RootView: View {
             if model.session == nil {
                 SignInView()
             } else {
-                HomeView()
+                MainView()
             }
+        }
+    }
+}
+
+/// The signed-in app: the top bar over whichever place is selected.
+struct MainView: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Group {
+                switch model.selected {
+                case .home: HomeView()
+                case .movies: BrowseView(title: "Movies", type: "movie")
+                case .tv: BrowseView(title: "TV Shows", type: "series")
+                case .search: ComingSoonView(title: "Search", note: "Search is coming in a later update.")
+                case .myList: ComingSoonView(title: "My List", note: "Your saved titles are coming in a later update.")
+                case .settings: SettingsView()
+                }
+            }
+            .task { await model.loadHome() }
+
+            TopNavBar()
         }
     }
 }
