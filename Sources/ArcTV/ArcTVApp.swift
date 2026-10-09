@@ -49,8 +49,8 @@ struct MainView: View {
                 case .home: HomeView()
                 case .movies: BrowseView(title: "Movies", type: "movie")
                 case .tv: BrowseView(title: "TV Shows", type: "series")
-                case .search: ComingSoonView(title: "Search", note: "Search is coming in a later update.")
-                case .myList: ComingSoonView(title: "My List", note: "Your saved titles are coming in a later update.")
+                case .search: SearchView()
+                case .myList: MyListView()
                 case .settings: SettingsView()
                 }
             }

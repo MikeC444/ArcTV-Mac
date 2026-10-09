@@ -22,4 +22,21 @@ public struct AddonClient: Sendable {
             throw APIError.unreadable
         }
     }
+
+    /// One page of a type's Popular catalogue, optionally for a genre; [skip] is how many titles are already loaded (Stremio's paging).
+    public func browse(manifestURL: String, type: String, genre: String?, skip: Int) async throws -> [MetaPreview] {
+        var extra: [String: String] = [:]
+        if let genre, !genre.isEmpty { extra["genre"] = genre }
+        if skip > 0 { extra["skip"] = String(skip) }
+        return try await fetchCatalog(manifestURL: manifestURL, type: type, catalogId: "top", extra: extra)
+    }
+
+    /// Movies and shows matching [query], taking turns.
+    public func search(manifestURL: String, query: String) async -> [MetaPreview] {
+        async let movies = try? fetchCatalog(manifestURL: manifestURL, type: "movie", catalogId: "top", extra: ["search": query])
+        async let shows = try? fetchCatalog(manifestURL: manifestURL, type: "series", catalogId: "top", extra: ["search": query])
+        let foundMovies = await movies ?? []
+        let foundShows = await shows ?? []
+        return distinctByID(interleave(foundMovies, foundShows))
+    }
 }

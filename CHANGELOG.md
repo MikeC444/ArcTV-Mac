@@ -56,3 +56,23 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none.
 
 **Issues fixed:** none.
+
+## 4 -- Layouts after the web app: Movies and TV Shows grids, Search, My List, Settings; Home banner fix
+
+**Status:** Written; checked by the Build and test workflow (see the run for this commit), not looked at on a screen yet.
+
+**Context:** A screenshot of the restyled app showed the Home banner losing its description and buttons, the window not resizing cleanly, Movies / TV Shows not laid out like the web app, Search and My List placeholders, and Settings unlike the other apps.
+
+**Changes:**
+- Home banner is sized to the window with a layout reader (the picture used to set its size, which pushed the text below the cut-off and made resizing break).
+- Movies and TV Shows: a title, Featured / Highest Rated / Newest pills, a genre menu, and a poster grid that fills the window's width and keeps loading as you scroll (Stremio `skip` paging), like the web app.
+- Search: a search box (searches as you type after a short pause, never one letter) and a grid of matching movies and shows.
+- My List: the account's saved titles (`GET /user/watchlist`), read-only for now; a token that has run out is refreshed and the call retried.
+- Settings: grouped places on the left (You, Content, Playback & sound, App) and the chosen one on the right; Account and Updates (version) work, the rest say they are coming.
+- Poster cards fill their column in grids and keep a fixed width in rows.
+
+**Tests performed:** unit tests for the sorting, year reading, interleaving and the watchlist answer; the workflow builds and runs them. Not seen on a screen.
+
+**Issues discovered:** none.
+
+**Issues fixed:** the banner and resizing problems above (unverified until looked at on a Mac).
