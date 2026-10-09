@@ -79,6 +79,8 @@ public struct AuthClient: Sendable {
         guard let url = URL(string: baseURL + path) else { throw APIError.badURL(baseURL + path) }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        // A server on a free hosting plan can take a minute to wake up on the first request after a quiet spell.
+        request.timeoutInterval = 60
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let accessToken { request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization") }
         request.setValue(AppInfo.version, forHTTPHeaderField: "X-ArcTV-App-Version")

@@ -46,4 +46,10 @@ final class ModelTests: XCTestCase {
     func testAuthClientTrimsTheServerAddress() {
         XCTAssertEqual(AuthClient(baseURL: " https://api.example.com// ").baseURL, "https://api.example.com")
     }
+
+    func testServerAddressFallsBackToTheDefault() {
+        XCTAssertEqual(AppInfo.resolveAPIBaseURL(saved: nil, bundled: ""), AppInfo.defaultAPIBaseURL)
+        XCTAssertEqual(AppInfo.resolveAPIBaseURL(saved: "  ", bundled: "https://b.example"), "https://b.example")
+        XCTAssertEqual(AppInfo.resolveAPIBaseURL(saved: "https://mine.example", bundled: "https://b.example"), "https://mine.example")
+    }
 }

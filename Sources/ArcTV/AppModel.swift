@@ -30,7 +30,7 @@ final class AppModel: ObservableObject {
     @Published var signInError: String?
     @Published var signingIn = false
 
-    /// The backend address: what the person typed on the sign-in screen last time, else the one baked into this build.
+    /// The backend address: what the person typed on the sign-in screen last time, else the one baked into this build, else the default.
     @Published var serverURL: String {
         didSet { UserDefaults.standard.set(serverURL, forKey: Self.serverKey) }
     }
@@ -39,7 +39,7 @@ final class AppModel: ObservableObject {
     private let store = SessionStore()
 
     init() {
-        serverURL = UserDefaults.standard.string(forKey: Self.serverKey) ?? AppInfo.bundledAPIBaseURL
+        serverURL = AppInfo.resolveAPIBaseURL(saved: UserDefaults.standard.string(forKey: Self.serverKey), bundled: AppInfo.bundledAPIBaseURL)
         session = store.load()
     }
 
