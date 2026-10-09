@@ -1,0 +1,30 @@
+name: Build and test (Arc TV Mac)
+
+# Runs on every push and pull request: compiles the app, runs the tests, and keeps the unsigned DMG as a downloadable build artifact so a
+# change can be tried without cutting a release. (Nothing ships to users from here: see release.yml.)
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Test
+        run: swift test
+
+      - name: Package the app and DMG
+        run: scripts/package-app.sh "0.0.0-ci.${{ github.run_number }}"
+
+      - name: Keep the DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArcTV-dmg
+          path: build/ArcTV-*.dmg
+          retention-days: 14

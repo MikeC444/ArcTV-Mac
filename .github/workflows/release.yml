@@ -1,0 +1,106 @@
+name: Build and publish release DMG (Arc TV Mac)
+
+# Fires only on a pushed version tag (v0.1.0, ...), or manually via workflow_dispatch -- never on an ordinary push, so nothing ships until a
+# release is cut on purpose. The DMG is unsigned (ad-hoc signed only): see README.md.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.1.0) -- only used for a manual run; a tag push derives this from the tag itself"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            RAW="${{ github.ref_name }}"
+          else
+            RAW="${{ github.event.inputs.version }}"
+          fi
+          NAME="${RAW#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$NAME"
+          if [ -z "$MAJOR" ] || [ -z "$MINOR" ] || [ -z "$PATCH" ]; then
+            echo "Version '$NAME' isn't in major.minor.patch form" >&2
+            exit 1
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Extract release notes for this version
+        run: |
+          # RELEASE_NOTES.md is what becomes this release's notes (and what the app's update pop-up shows). They come from, in order: a
+          # "## <version>" section, the "## Unreleased" section (the normal case), or a plain fallback line.
+          VER="${{ steps.version.outputs.name }}"
+          section() {
+            awk -v head="## $1" '
+              $0 == head { found=1; next }
+              /^## / { if (found) exit }
+              found { print }
+            ' RELEASE_NOTES.md
+          }
+          has_text() { grep -q '[^[:space:]]' "$1"; }
+          section "$VER" > "$RUNNER_TEMP/release_notes.md"
+          if ! has_text "$RUNNER_TEMP/release_notes.md"; then
+            section "Unreleased" > "$RUNNER_TEMP/release_notes.md"
+          fi
+          if ! has_text "$RUNNER_TEMP/release_notes.md"; then
+            echo "Bug fixes and improvements." > "$RUNNER_TEMP/release_notes.md"
+          fi
+
+      - name: Test
+        run: swift test
+
+      - name: Package the app and DMG
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: scripts/package-app.sh "${{ steps.version.outputs.name }}"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: ${{ runner.temp }}/release_notes.md
+          files: build/ArcTV-${{ steps.version.outputs.name }}.dmg
+
+      # The notes that shipped are filed under this version in RELEASE_NOTES.md and a fresh, empty "## Unreleased" is left above it, but
+      # only if Unreleased on main is still exactly what shipped (so nothing added meanwhile is lost).
+      - name: File the shipped notes under this version
+        run: |
+          set -e
+          VER="${{ steps.version.outputs.name }}"
+          git fetch origin main
+          git checkout -B main origin/main
+          awk '
+            $0 == "## Unreleased" { found=1; next }
+            /^## / { if (found) exit }
+            found { print }
+          ' RELEASE_NOTES.md > "$RUNNER_TEMP/main_unreleased.md"
+          if ! diff -q <(sed -e 's/[[:space:]]*$//' "$RUNNER_TEMP/main_unreleased.md") <(sed -e 's/[[:space:]]*$//' "$RUNNER_TEMP/release_notes.md") >/dev/null; then
+            echo "Unreleased on main changed since this release was built; leaving RELEASE_NOTES.md alone"
+            exit 0
+          fi
+          awk -v ver="$VER" '
+            $0 == "## Unreleased" && !done { print; print ""; print "## " ver; done=1; skip=1; next }
+            skip && /^## / { skip=0 }
+            { print }
+          ' RELEASE_NOTES.md > "$RUNNER_TEMP/notes_new.md"
+          cp "$RUNNER_TEMP/notes_new.md" RELEASE_NOTES.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add RELEASE_NOTES.md
+          git commit -m "Release notes: the notes under Unreleased shipped as $VER" || exit 0
+          git push origin main
