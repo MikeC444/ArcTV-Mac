@@ -19,6 +19,9 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Greyed out and not clickable without Arc TV Plus.
+    var plusOnly: Bool { self == .plusSettings || self == .recommendations || self == .stats }
+
     var subtitle: String {
         switch self {
         case .account: return "Manage your Arc TV account"
@@ -89,7 +92,7 @@ struct SettingsView: View {
                         .padding(.top, group.0 == "You" ? 0 : 14)
                         .padding(.bottom, 2)
                     ForEach(group.1) { item in
-                        SidebarRow(tab: item, selected: tab == item) { model.settingsTab = item }
+                        SidebarRow(tab: item, selected: tab == item, locked: item.plusOnly && !model.plus.active) { model.settingsTab = item }
                     }
                 }
             }
@@ -111,6 +114,9 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.textPrimary)
                 switch tab {
                 case .account: account
+                case .plus: PlusPane()
+                case .plusSettings: PlusSettingsPane()
+                case .stats: StatsPane()
                 case .recommendations: RecommendationsPane()
                 case .addons: AddonsPane()
                 case .blockedGenres: BlockedGenresPane()
@@ -199,6 +205,7 @@ struct SettingsView: View {
 private struct SidebarRow: View {
     let tab: SettingsTab
     let selected: Bool
+    var locked = false
     let action: () -> Void
     @State private var hovering = false
 
@@ -220,12 +227,22 @@ private struct SidebarRow: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
+                if locked {
+                    Text("Plus")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.cyan)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .overlay(Capsule().stroke(Theme.cyan.opacity(0.5), lineWidth: 1))
+                }
             }
+            .opacity(locked ? 0.55 : 1)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(selected ? 0.1 : (hovering ? 0.05 : 0))))
         }
         .buttonStyle(.plain)
+        .disabled(locked)
         .onHover { hovering = $0 }
     }
 }

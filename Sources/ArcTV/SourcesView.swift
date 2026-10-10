@@ -114,6 +114,9 @@ struct SourcesView: View {
            let last = LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode),
            let match = last.match(in: result.items) {
             choose(match)
+        } else if !target.chooseSource, model.plus.active, model.smartPicking, let best = result.items.first(where: \.isPlayable) {
+            // Smart source picking (Plus): the best source that plays here, without asking.
+            choose(best)
         }
         loading = false
     }

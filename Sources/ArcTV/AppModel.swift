@@ -1,4 +1,5 @@
 import ArcTVCore
+import AppKit
 import Foundation
 import Network
 import SwiftUI
@@ -226,6 +227,9 @@ final class AppModel: ObservableObject {
         profilePickerOpen = false
         profileChosen = false
         bootstrapped = false
+        stats = nil
+        plusPopup = nil
+        popupShownThisLaunch = false
         ratings = [:]
         pickedResult = nil
         pickedKey = ""
@@ -802,6 +806,95 @@ final class AppModel: ObservableObject {
     func deleteProfile(_ profile: Profile, currentPin: String?) async throws {
         try await authorized { client, token in try await client.deleteProfile(accessToken: token, id: profile.id, currentPin: currentPin) }
         await loadProfiles()
+    }
+
+    // MARK: Arc TV Plus: plans, stats, switches and popups
+
+    /// Smart source picking (Plus): start the best source without asking. Kept on this Mac, like the other player choices.
+    @Published var smartPicking: Bool = UserDefaults.standard.bool(forKey: "ArcTVSmartPicking") {
+        didSet { UserDefaults.standard.set(smartPicking, forKey: "ArcTVSmartPicking") }
+    }
+
+    /// Watch statistics for the profile in use (nil while loading).
+    @Published var stats: WatchStats?
+    @Published var statsFailed = false
+    @Published var statsTruncated = false
+
+    /// Which Plus popup is on screen.
+    enum PlusPopup: Equatable { case welcome, invitation }
+    @Published var plusPopup: PlusPopup?
+    private var popupShownThisLaunch = false
+    private var purchaseWatch: Task<Void, Never>?
+
+    private func popupKey(_ name: String) -> String { "ArcTVPlus\(name)-\(session?.user.id ?? "")" }
+
+    func loadStats() async {
+        statsFailed = false
+        do {
+            let found = try await authorized { client, token in try await client.history(accessToken: token) }
+            stats = WatchStats.compute(found.items)
+            statsTruncated = found.truncated
+        } catch {
+            statsFailed = true
+        }
+    }
+
+    /// Opens Stripe's checkout for a plan in the browser, then asks every few seconds until Plus is on (or ten minutes pass).
+    func startCheckout(_ plan: String) async throws {
+        let link = try await authorized { client, token in try await client.startCheckout(accessToken: token, plan: plan) }
+        guard let url = URL(string: link.url), url.scheme?.lowercased() == "https" else { throw APIError.unreadable }
+        NSWorkspace.shared.open(url)
+        watchForPurchase()
+    }
+
+    func watchForPurchase() {
+        purchaseWatch?.cancel()
+        purchaseWatch = Task { [weak self] in
+            let until = Date().addingTimeInterval(10 * 60)
+            while !Task.isCancelled, Date() < until {
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                guard let model = self else { return }
+                await model.loadPlus()
+                if model.plus.active { return }
+            }
+        }
+    }
+
+    func cancelSubscription() async throws {
+        plus = try await authorized { client, token in try await client.cancelSubscription(accessToken: token) }
+    }
+
+    /// The welcome tour (Plus members, once ever) or the invitation (everyone else once Plus is paid, again five days after it was closed, never
+    /// after "Don't show me again"). Not on a kids profile, and never twice in one launch.
+    func showPlusPopupIfDue() {
+        guard session != nil, !isKids, !popupShownThisLaunch, plusPopup == nil, detail == nil, sourcesFor == nil, playing == nil, !profilePickerOpen, selected == .home else { return }
+        let defaults = UserDefaults.standard
+        if plus.active {
+            if PlusPopups.welcomeDue(seen: defaults.string(forKey: popupKey("WelcomeSeen")), shownThisLaunch: false) { plusPopup = .welcome }
+        } else if plus.paywall {
+            let snoozed = defaults.object(forKey: popupKey("InvitationSnoozedUntil")) as? Double
+            if PlusPopups.invitationDue(never: defaults.bool(forKey: popupKey("InvitationNever")), snoozedUntil: snoozed.map { Date(timeIntervalSince1970: $0) }, shownThisLaunch: false) {
+                plusPopup = .invitation
+            }
+        }
+        if plusPopup != nil { popupShownThisLaunch = true }
+    }
+
+    /// Close or the main button: the welcome is never shown again; the invitation waits five days.
+    func closePlusPopup(openSettings tab: SettingsTab? = nil) {
+        let defaults = UserDefaults.standard
+        switch plusPopup {
+        case .welcome: defaults.set(PlusPopups.welcomeID, forKey: popupKey("WelcomeSeen"))
+        case .invitation: defaults.set(Date().addingTimeInterval(PlusPopups.snooze).timeIntervalSince1970, forKey: popupKey("InvitationSnoozedUntil"))
+        case nil: break
+        }
+        plusPopup = nil
+        if let tab { openSettings(tab) }
+    }
+
+    func dismissInvitationForever() {
+        UserDefaults.standard.set(true, forKey: popupKey("InvitationNever"))
+        plusPopup = nil
     }
 }
 

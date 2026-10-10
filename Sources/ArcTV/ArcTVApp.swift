@@ -83,6 +83,10 @@ struct MainView: View {
                 }
                 .transition(.opacity)
             }
+            if let popup = model.plusPopup {
+                PlusPopupView(popup: popup)
+                    .transition(.opacity)
+            }
             if model.profilePickerOpen {
                 ProfilePickerView()
                     .transition(.opacity)
@@ -96,6 +100,12 @@ struct MainView: View {
                 CardMenuView(target: menu)
                     .transition(.opacity)
             }
+        }
+        .task(id: "\(model.selected.rawValue)|\(model.home == .loaded)|\(model.plus.active)|\(model.plus.paywall)") {
+            guard model.selected == .home, model.home == .loaded else { return }
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            model.showPlusPopupIfDue()
         }
         .animation(.easeOut(duration: 0.15), value: model.cardMenu)
         .animation(.easeOut(duration: 0.18), value: model.detail?.id)

@@ -279,13 +279,13 @@ final class PlusAndStatsTests: XCTestCase {
             HistoryItem(contentId: "m1", contentType: "MOVIE", positionMs: 2 * hour, durationMs: 2 * hour, completed: true, watchedAt: "2026-10-14T09:00:00.000Z"),
             HistoryItem(contentId: "s1e1", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 1, positionMs: hour, durationMs: hour, completed: true, watchedAt: "2026-10-13T20:00:00.000Z"),
             HistoryItem(contentId: "s1e2", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 2, positionMs: hour / 2, durationMs: hour, completed: false, watchedAt: "2026-10-12T20:00:00.000Z"),
-            HistoryItem(contentId: "m2", contentType: "MOVIE", positionMs: hour, durationMs: 2 * hour, completed: false, watchedAt: "2026-09-01T20:00:00.000Z")
+            HistoryItem(contentId: "m2", contentType: "MOVIE", positionMs: hour / 2, durationMs: 2 * hour, completed: false, watchedAt: "2026-09-01T20:00:00.000Z")
         ]
         let stats = WatchStats.compute(items, now: now, calendar: utc)
         XCTAssertFalse(stats.isEmpty)
-        XCTAssertEqual(stats.totalMs, 2 * hour + hour + hour / 2 + hour)
+        XCTAssertEqual(stats.totalMs, 2 * hour + hour + hour / 2 + hour / 2)
         XCTAssertEqual(stats.last7DaysMs, 2 * hour + hour + hour / 2)
-        XCTAssertEqual(stats.movieMs, 3 * hour)
+        XCTAssertEqual(stats.movieMs, 2 * hour + hour / 2)
         XCTAssertEqual(stats.showMs, hour + hour / 2)
         XCTAssertEqual(stats.moviesFinished, 1)
         XCTAssertEqual(stats.episodesWatched, 1)
@@ -308,7 +308,6 @@ final class PlusAndStatsTests: XCTestCase {
         XCTAssertEqual(cells.count - blanks, WatchStats.heatDays)
         XCTAssertEqual(cells.last?.level, 4)
         XCTAssertEqual(cells[cells.count - 2].level, 1)
-        XCTAssertEqual(cells.count % 7, 0 == cells.count % 7 ? 0 : cells.count % 7)
         // 2026-10-14 minus 90 days is 2026-07-16, a Thursday: three blank cells (Mon, Tue, Wed) come first.
         XCTAssertEqual(blanks, 3)
     }
