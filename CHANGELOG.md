@@ -463,3 +463,17 @@ app's look, and talks to the same backend and Stremio addons.
 **Follow-up to 21 (full screen):** going full screen while a video was playing left the picture at its old, smaller size with black all around it. The picture was sized from OpenGL's last viewport, which does not change when the window does. It is now sized from the view itself on every draw, the OpenGL surface is told when the view is resized (`reshape`), and a new picture is drawn after a resize. Not seen on screen.
 
 **Follow-up to 22 (app icon):** the icon did not show on the app. The packaged app has the icon file and names it in its Info file (checked in the script), so the likely case is a run from Xcode or `swift run`, where there is no app bundle to carry an icon. The icon is now also embedded in the program (512 pixels) and set as the Dock icon when the app starts, so it shows either way. Not seen in the Dock; if it still doesn't show on the packaged app from the DMG, macOS may be holding an old icon: moving the app out of Applications and back, or `killall Dock Finder`, refreshes it.
+
+## 24 -- The three-dots animation and the logo on the profile picker
+
+**Status:** Written; see the build result below. Nothing was seen on screen.
+
+**Changes:**
+- Who's watching: the Arc TV logo (48 points) now sits centred above the heading, in the same column as the profiles, so it shows with them at any window size. (It was in the top left corner before, apart from them.)
+- The three dots on a title's page: the dots turn a quarter turn and swell with a bounce; a ring spreads from them and fades; the buttons (Watched, My List, and for Plus Like and Not for me) then fly out one after another from the dots' side, each growing from a small spot with a spring and a 0.065 second step between them. Closing them is quicker, in the reverse order.
+
+**Tests performed:** none (animation). The Mac code could not be compiled or run here; the Build and test workflow is the check. The animation was not seen.
+
+**Issues discovered:** none yet.
+
+**Issues fixed:** none.

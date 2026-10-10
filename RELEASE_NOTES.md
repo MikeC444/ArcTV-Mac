@@ -12,6 +12,7 @@ them under its version automatically.
 - A built-in player that plays 4K, HDR and Dolby Vision files, with audio and subtitle choices.
 - A new player layout like the Fire TV app, with a full-screen button, and a loading spinner in the middle whenever the video is loading or you jump to a new spot.
 - Smoother playback: the player does far less work per frame, so it should feel lighter and less laggy.
+- The three dots on a title's page now burst open with a springy, one-after-another pop, and the Who's watching screen shows the Arc TV logo.
 - The player's Audio, Subtitles, Speed, Episodes and Player menus are now clean dark cards with a tick on what is chosen.
 - Next episode: a button in the last minute, and the next episode starts by itself when one ends (switch it off in Settings > Player).
 - Choose how big the torrent buffer is and how much disk a torrent may use, in Settings > Player.

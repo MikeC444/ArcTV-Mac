@@ -108,6 +108,7 @@ struct LightButtonStyle: ButtonStyle {
 struct RoundIconButton: View {
     let icon: String
     var on = false
+    var rotation: Double = 0
     let help: String
     let action: () -> Void
 
@@ -116,6 +117,8 @@ struct RoundIconButton: View {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(on ? Theme.cyan : Theme.textPrimary)
+                .rotationEffect(.degrees(rotation))
+                .animation(.spring(response: 0.42, dampingFraction: 0.55), value: rotation)
                 .frame(width: 48, height: 48)
                 .background(Circle().fill(on ? Theme.cyan.opacity(0.2) : Color.white.opacity(0.14)))
                 .overlay(Circle().stroke(on ? Theme.cyan : .clear, lineWidth: 1))

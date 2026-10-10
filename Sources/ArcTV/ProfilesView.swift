@@ -46,7 +46,6 @@ struct ProfilePickerView: View {
             Theme.background.ignoresSafeArea()
             VStack(spacing: 0) {
                 HStack {
-                    LogoView(height: 32)
                     Spacer()
                     Button("Switch account") { Task { await model.signOut() } }
                         .buttonStyle(.plain)
@@ -57,6 +56,8 @@ struct ProfilePickerView: View {
                 .padding(.top, 28)
 
                 Spacer(minLength: 20)
+                // The logo sits right above the heading, so it is always in view with the profiles whatever the window size.
+                LogoView(height: 48).padding(.bottom, 26)
                 VStack(spacing: 10) {
                     Text(managing ? "Manage profiles." : "Welcome back to ArcTV.")
                         .font(.system(size: 36, weight: .heavy))
