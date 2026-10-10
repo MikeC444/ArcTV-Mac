@@ -62,7 +62,20 @@ private struct NavPill: View {
                 .fixedSize()
                 .padding(.horizontal, padding)
                 .padding(.vertical, 7)
-                .background(Capsule().fill(Color.white.opacity(selected ? 0.18 : (hovering ? 0.09 : 0))))
+                .background(Capsule().fill(Color.white.opacity(selected ? 0.14 : (hovering ? 0.09 : 0))))
+                .overlay(alignment: .bottom) {
+                    // The line under the place you are on: the logo's blue-to-purple, as on the web app.
+                    if selected {
+                        GeometryReader { geo in
+                            Capsule()
+                                .fill(Theme.brandGradient)
+                                .frame(width: geo.size.width * 0.44, height: 2)
+                                .frame(width: geo.size.width, alignment: .center)
+                        }
+                        .frame(height: 2)
+                        .padding(.bottom, 4)
+                    }
+                }
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

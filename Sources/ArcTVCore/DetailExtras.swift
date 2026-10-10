@@ -26,8 +26,8 @@ public extension String {
 
 /// Times and dates the way the web app writes them.
 public enum Format {
-    /// "2h 17m"
-    public static func runtime(minutes: Int) -> String { "\(minutes / 60)h \(minutes % 60)m" }
+    /// "2h 17m" ("49m" under an hour: the web app writes "0h 49m", which reads like a mistake).
+    public static func runtime(minutes: Int) -> String { minutes < 60 ? "\(minutes)m" : "\(minutes / 60)h \(minutes % 60)m" }
 
     /// "142 min" -> 142, "2h 22min" -> 142.
     public static func runtimeMinutes(_ text: String?) -> Int? {

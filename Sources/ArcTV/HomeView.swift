@@ -14,12 +14,13 @@ struct HomeView: View {
             ComingSoonView(title: "Nothing to show yet", note: "Home couldn't load its rows. Check your connection and your addons in Settings, then try again.")
         case .loaded:
             let rows = model.homeSections
+            GeometryReader { geo in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if model.heroTitles.isEmpty {
                         Spacer().frame(height: 90)
                     } else {
-                        HeroCarousel(items: model.heroTitles)
+                        HeroCarousel(items: model.heroTitles, height: max(geo.size.height * 0.74, 620))
                     }
                     if !model.continueItems.isEmpty {
                         ContinueRowView(items: model.continueItems)
@@ -37,6 +38,7 @@ struct HomeView: View {
                     .padding(.bottom, 40)
                 }
             }
+            }
         }
     }
 }
@@ -46,11 +48,11 @@ struct HomeView: View {
 struct HeroCarousel: View {
     @EnvironmentObject private var model: AppModel
     let items: [MetaPreview]
+    let height: CGFloat
     @State private var index = 0
     @State private var paused = false
     @State private var hovering = false
     @State private var forward = true
-    private let height: CGFloat = 520
     private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -118,7 +120,7 @@ private struct HeroSlide: View {
 
     var body: some View {
         GeometryReader { geo in
-            ZStack(alignment: .bottomLeading) {
+            ZStack(alignment: .leading) {
                 Theme.surface
                 if let background = item.background, let url = URL(string: background) {
                     CachedImage(url: url)
@@ -131,7 +133,7 @@ private struct HeroSlide: View {
 
                 details
                     .padding(.horizontal, 44)
-                    .padding(.bottom, 56)
+                    .padding(.top, 50)
             }
             .frame(width: geo.size.width, height: height)
         }

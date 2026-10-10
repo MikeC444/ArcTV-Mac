@@ -82,6 +82,8 @@ final class HomeSectionsTests: XCTestCase {
 final class DetailExtrasTests: XCTestCase {
     func testRuntimesAndDatesReadTheWayTheWebAppWritesThem() {
         XCTAssertEqual(Format.runtime(minutes: 137), "2h 17m")
+        XCTAssertEqual(Format.runtime(minutes: 49), "49m")
+        XCTAssertEqual(Format.runtime(minutes: 60), "1h 0m")
         XCTAssertEqual(Format.runtimeMinutes("142 min"), 142)
         XCTAssertEqual(Format.runtimeMinutes("2h 22min"), 142)
         XCTAssertNil(Format.runtimeMinutes(nil))

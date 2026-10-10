@@ -30,7 +30,7 @@ struct DetailView: View {
                 backdrop(size: geo.size)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        hero(minHeight: isShow ? max(520, geo.size.height * 0.82) : max(380, geo.size.height - 176))
+                        hero(minHeight: max(geo.size.height * 0.74, 620))
                         below
                     }
                     .frame(width: geo.size.width, alignment: .leading)
@@ -66,8 +66,10 @@ struct DetailView: View {
 
     // MARK: Hero
 
+    /// As on the web app: the hero is at least three quarters of the window (620 at least) and its text sits in the middle of it, with the IMDb
+    /// rating in the bottom corner.
     private func hero(minHeight: CGFloat) -> some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack(alignment: .topLeading) {
             Color.clear.frame(height: minHeight)
             VStack(alignment: .leading, spacing: 0) {
                 logoOrTitle
@@ -98,7 +100,8 @@ struct DetailView: View {
             }
             .frame(maxWidth: 800, alignment: .leading)
             .padding(.horizontal, 44)
-            .padding(.bottom, isShow ? 48 : 28)
+            .frame(maxHeight: .infinity, alignment: .center)
+            .padding(.top, 60)
 
             if let rating = detail.imdbRating, !rating.isEmpty {
                 HStack(spacing: 8) {
@@ -112,11 +115,11 @@ struct DetailView: View {
                 .padding(.vertical, 12)
                 .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.45)))
                 .padding(.trailing, 44)
-                .padding(.bottom, isShow ? 48 : 28)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.bottom, 32)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .bottomLeading)
+        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
     }
 
     @ViewBuilder
