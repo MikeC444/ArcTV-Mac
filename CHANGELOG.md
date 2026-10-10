@@ -274,3 +274,5 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Build, again:** one run failed to link five times in a row, so a retry in the same job does not help (a retry from a clean build folder did not either, once). When it fails, the retry now also deletes the downloaded libraries (SwiftPM's cache) so they are fetched again, in case one of them is bad on that machine. This is a guess: runs on a new machine have always gone through.
 
+**Follow-up to 14 (second look):** the poster outline only showed while scrolling, which means the pointer's movement was not being reported. The likely cause is the top bar having told the window to deliver every mouse movement (to bring the bar back when the pointer reaches the top); that is gone. The bar now comes back through an invisible strip along the top that only exists while the bar is hidden, and scrolling still hides it. The top bar is bigger too (logo 42 points, pills at 17 points, a 46 point profile picture) and shrinks only when the window is narrow.
+

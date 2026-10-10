@@ -11,23 +11,26 @@ struct TopNavBar: View {
     @State private var monitor: Any?
 
     var body: some View {
-        // Roomy first; as the window narrows the logo goes, then the pills tighten, so a name never wraps onto two lines.
-        ViewThatFits(in: .horizontal) {
-            bar(logo: true, fontSize: 14, padding: 16)
-            bar(logo: false, fontSize: 14, padding: 16)
-            bar(logo: false, fontSize: 13, padding: 10)
-            bar(logo: false, fontSize: 12, padding: 6)
+        ZStack(alignment: .top) {
+            bars
+                .padding(.horizontal, 36)
+                .padding(.top, 14)
+                .padding(.bottom, 30)
+                .background(
+                    LinearGradient(colors: [Theme.background.opacity(0.9), Theme.background.opacity(0)], startPoint: .top, endPoint: .bottom)
+                )
+                .offset(y: hidden ? -120 : 0)
+                .opacity(hidden ? 0 : 1)
+                .allowsHitTesting(!hidden)
+                .animation(.easeOut(duration: 0.3), value: hidden)
+
+            // While the bar is away, moving the pointer to the top of the window brings it back.
+            Color.clear
+                .frame(height: 64)
+                .contentShape(Rectangle())
+                .onHover { inside in if inside { hidden = false } }
+                .allowsHitTesting(hidden)
         }
-        .padding(.horizontal, 36)
-        .padding(.top, 14)
-        .padding(.bottom, 26)
-        .background(
-            LinearGradient(colors: [Theme.background.opacity(0.9), Theme.background.opacity(0)], startPoint: .top, endPoint: .bottom)
-        )
-        .offset(y: hidden ? -100 : 0)
-        .opacity(hidden ? 0 : 1)
-        .allowsHitTesting(!hidden)
-        .animation(.easeOut(duration: 0.3), value: hidden)
         .onChange(of: model.selected) { _ in
             scrolled = 0
             hidden = false
@@ -39,38 +42,52 @@ struct TopNavBar: View {
         }
     }
 
+    /// Roomy first; as the window narrows the logo goes, then everything tightens, so a name never wraps onto two lines.
+    private var bars: some View {
+        ViewThatFits(in: .horizontal) {
+            bar(logo: true, size: .large)
+            bar(logo: false, size: .large)
+            bar(logo: false, size: .medium)
+            bar(logo: false, size: .small)
+        }
+    }
+
+    fileprivate enum BarSize {
+        case large, medium, small
+
+        var font: CGFloat { self == .large ? 17 : (self == .medium ? 15 : 13) }
+        var pillPadding: CGFloat { self == .large ? 22 : (self == .medium ? 14 : 8) }
+        var pillHeight: CGFloat { self == .large ? 11 : 8 }
+        var logo: CGFloat { 42 }
+        var avatar: CGFloat { 46 }
+    }
+
     private func watchScrolling() {
         guard monitor == nil else { return }
-        NSApp.keyWindow?.acceptsMouseMovedEvents = true
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .mouseMoved]) { event in
-            let type = event.type
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel]) { event in
             let delta = event.scrollingDeltaY
-            let fromTop = (event.window?.contentView?.bounds.height ?? 0) - event.locationInWindow.y
             DispatchQueue.main.async {
-                if type == .mouseMoved {
-                    if fromTop <= 60 { hidden = false }
-                } else if abs(delta) > 1 {
-                    // Going down a page makes the content move up (a negative change).
-                    scrolled = max(0, scrolled - delta)
-                    if delta < 0, scrolled > 80 { hidden = true } else if delta > 0 || scrolled <= 20 { hidden = false }
-                }
+                guard abs(delta) > 1 else { return }
+                // Going down a page makes the content move up (a negative change).
+                scrolled = max(0, scrolled - delta)
+                if delta < 0, scrolled > 80 { hidden = true } else if delta > 0 || scrolled <= 20 { hidden = false }
             }
             return event
         }
     }
 
-    private func bar(logo: Bool, fontSize: CGFloat, padding: CGFloat) -> some View {
+    private func bar(logo: Bool, size: BarSize) -> some View {
         HStack(alignment: .center) {
             if logo {
-                LogoView(height: 30)
+                LogoView(height: size.logo)
                     .fixedSize()
-                    .frame(minWidth: 130, maxWidth: .infinity, alignment: .leading)
+                    .frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
                     .onTapGesture { model.selected = .home }
             }
 
             HStack(spacing: 2) {
                 ForEach(NavItem.allCases.filter { !(model.isKids && $0 == .settings) }) { item in
-                    NavPill(item: item, selected: model.selected == item, fontSize: fontSize, padding: padding) { model.selected = item }
+                    NavPill(item: item, selected: model.selected == item, size: size) { model.selected = item }
                 }
             }
             .padding(4)
@@ -82,9 +99,9 @@ struct TopNavBar: View {
             if logo {
                 HStack {
                     Spacer(minLength: 0)
-                    if let profile = model.activeProfile, model.plus.active { ProfileButton(profile: profile) { model.profilePickerOpen = true } }
+                    if let profile = model.activeProfile, model.plus.active { ProfileButton(profile: profile, size: size) { model.profilePickerOpen = true } }
                 }
-                .frame(minWidth: 130, maxWidth: .infinity)
+                .frame(minWidth: 180, maxWidth: .infinity)
             }
         }
     }
@@ -93,20 +110,19 @@ struct TopNavBar: View {
 private struct NavPill: View {
     let item: NavItem
     let selected: Bool
-    var fontSize: CGFloat = 14
-    var padding: CGFloat = 16
+    var size: TopNavBar.BarSize = .large
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             Text(item.rawValue)
-                .font(.system(size: fontSize, weight: selected ? .bold : .medium))
+                .font(.system(size: size.font, weight: selected ? .bold : .medium))
                 .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
                 .lineLimit(1)
                 .fixedSize()
-                .padding(.horizontal, padding)
-                .padding(.vertical, 7)
+                .padding(.horizontal, size.pillPadding)
+                .padding(.vertical, size.pillHeight)
                 .background(Capsule().fill(Color.white.opacity(selected ? 0.14 : (hovering ? 0.09 : 0))))
                 .overlay(alignment: .bottom) {
                     // The line under the place you are on: the logo's blue-to-purple, as on the web app.
@@ -130,17 +146,18 @@ private struct NavPill: View {
 /// The active profile's picture and name at the top right (the web app's switch-profile button).
 private struct ProfileButton: View {
     let profile: Profile
+    var size: TopNavBar.BarSize = .large
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                ProfileAvatarView(avatar: profile.avatar).frame(width: 34, height: 34).clipShape(Circle())
-                Text(profile.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary).lineLimit(1).frame(maxWidth: 110)
+            HStack(spacing: 12) {
+                ProfileAvatarView(avatar: profile.avatar).frame(width: size.avatar, height: size.avatar).clipShape(Circle())
+                Text(profile.name).font(.system(size: size.font, weight: .semibold)).foregroundStyle(Theme.textPrimary).lineLimit(1).frame(maxWidth: 130)
             }
-            .padding(3)
-            .padding(.trailing, 12)
+            .padding(4)
+            .padding(.trailing, 14)
             .background(Capsule().fill(hovering ? Color.white.opacity(0.12) : Color(hex: 0x141417).opacity(0.58)))
         }
         .buttonStyle(.plain)
