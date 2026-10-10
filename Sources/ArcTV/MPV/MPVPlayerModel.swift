@@ -39,7 +39,8 @@ final class MPVPlayerModel: ObservableObject {
     func handle(_ event: MPVEvent) {
         switch event {
         case let .position(value):
-            position = value
+            // mpv reports the position with every frame; SwiftUI redrawing the controls that often is what made the player feel slow.
+            if !started || abs(value - position) >= 0.25 { position = value }
             if !started {
                 started = true
                 buffering = false

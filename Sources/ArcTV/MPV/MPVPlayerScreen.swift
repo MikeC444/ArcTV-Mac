@@ -32,6 +32,7 @@ struct MPVPlayerScreen: View {
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
     @State private var fullScreen = false
+    @State private var lastHover = Date.distantPast
 
     private var loading: Bool { (model.buffering || model.seeking) && model.failure == nil }
 
@@ -66,7 +67,11 @@ struct MPVPlayerScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onContinuousHover { phase in
-            if case .active = phase { showControls() }
+            // Mouse moves arrive dozens of times a second; only restart the hide timer a couple of times a second.
+            if case .active = phase, !controlsVisible || Date().timeIntervalSince(lastHover) > 0.5 {
+                lastHover = Date()
+                showControls()
+            }
         }
         .onChange(of: model.ended) { ended in
             if ended { appModel.goBack() }
@@ -211,7 +216,7 @@ struct MPVPlayerScreen: View {
                 .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .overlay(alignment: .leading) {
+        .overlay(alignment: .trailing) {
             Button { toggleFullScreen() } label: {
                 Image(systemName: fullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                     .font(.system(size: 18, weight: .semibold))

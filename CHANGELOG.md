@@ -403,3 +403,23 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up to 20 (first look):** the Back and 10-second icons at the top left no longer sit in circles. A full-screen button (it flips to "exit full screen") sits at the bottom left, level with the pills. Esc is no longer a back button while a video is on screen: the Back pills of the pages underneath (which stay alive behind the player) only answer Esc when nothing is playing, and in the player Esc only leaves full screen. Not seen on screen.
+
+## 21 -- A faster mpv player; the full-screen button on the right
+
+**Status:** Written; see the build result below. Nothing was timed or seen on screen, so how much faster it is, or whether it still stutters on your files, is not known.
+
+**Context:** "The mpv player is really slow and laggy." Nothing could be measured here. These are the likely causes in the code, fixed without a profiler.
+
+**Changes:**
+- The position (sent by mpv with every frame, 24 to 60 times a second) re-drew the whole control bar each time. It is now passed on only when it moves by a quarter of a second, which is as often as the clock and bar can show.
+- Pictures were drawn on the main thread once for every frame mpv announced. Requests are now folded together, so at most one is waiting, and the picture is drawn once per refresh.
+- The video surface was drawn in full retina pixels (four times the pixels of a plain window). It is now drawn at the window's size in points; video loses nothing visible, since a 1080p or 4K picture is at least as big as the window.
+- mpv is told to use the hardware decoder (VideoToolbox) and cheap scaling, with the costly extras off (fancy scalers, debanding, dithering, interpolation, HDR peak search), a 300 MB read-ahead (60 seconds) and a 100 MB buffer behind, and to drop late frames rather than fall behind. Option names this mpv doesn't know are ignored.
+- Mouse movement over the player restarts the hide timer at most twice a second.
+- The full-screen button moved from the bottom left to the bottom right.
+
+**Tests performed:** none (player code). The Mac code could not be compiled or run here; the Build and test workflow is the check.
+
+**Issues discovered:** the cause of the lag was not measured. If it is still slow, the next step is to time it on your Mac (which file, which Mac, how much CPU and GPU).
+
+**Issues fixed:** none confirmed.

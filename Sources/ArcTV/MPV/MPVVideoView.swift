@@ -42,7 +42,10 @@ final class MPVVideoView: NSOpenGLView {
 
     /// Makes the OpenGL context ready and starts mpv.
     func start(url: URL, startAt: Double = 0, languages: PlaybackLanguages = PlaybackLanguages()) {
-        wantsBestResolutionOpenGLSurface = true
+        // Drawn at the window's size in points, not in retina pixels: a quarter of the pixels to fill, with no visible loss for video.
+        wantsBestResolutionOpenGLSurface = false
+        var vsync: GLint = 1
+        openGLContext?.setValues(&vsync, for: .swapInterval)
         autoresizingMask = [.width, .height]
         openGLContext?.makeCurrentContext()
         setupMpv(startAt: startAt, languages: languages)
@@ -61,7 +64,17 @@ final class MPVVideoView: NSOpenGLView {
         if let audio = languages.audio { _ = mpv_set_option_string(handle, "alang", audio) }
         if let subtitle = languages.subtitle { _ = mpv_set_option_string(handle, "slang", subtitle) }
         if !languages.subtitlesOn { _ = mpv_set_option_string(handle, "sid", "no") }
-        _ = mpv_set_option_string(handle, "hwdec", "auto-safe")
+        // Speed first: the hardware decoder, cheap scaling and no extras that need heavy work per frame (the picture is shown at the window's size
+        // on screen, so the fancy scalers add cost but little the eye can see). Options this mpv doesn't know are ignored.
+        _ = mpv_set_option_string(handle, "hwdec", "videotoolbox")
+        for (name, value) in [
+            ("scale", "bilinear"), ("dscale", "bilinear"), ("cscale", "bilinear"), ("correct-downscaling", "no"), ("linear-downscaling", "no"),
+            ("sigmoid-upscaling", "no"), ("deband", "no"), ("dither-depth", "no"), ("interpolation", "no"), ("hdr-compute-peak", "no"),
+            ("video-sync", "audio"), ("framedrop", "vo"),
+            // A bigger read-ahead so a slow patch on the network is ridden out instead of stuttering.
+            ("cache", "yes"), ("demuxer-max-bytes", "300MiB"), ("demuxer-max-back-bytes", "100MiB"), ("demuxer-readahead-secs", "60"),
+            ("cache-pause-initial", "no"), ("network-timeout", "30")
+        ] { _ = mpv_set_option_string(handle, name, value) }
         _ = mpv_set_option_string(handle, "vo", "libmpv")
         _ = mpv_set_option_string(handle, "ytdl", "no")
         _ = mpv_set_option_string(handle, "keep-open", "no")
@@ -191,6 +204,26 @@ final class MPVVideoView: NSOpenGLView {
         }
     }
 
+    private let drawLock = NSLock()
+    private var drawPending = false
+
+    /// Asks for a new picture. Calls that arrive while one is already waiting are folded into it, so the main thread draws once per refresh
+    /// instead of once per frame mpv announces.
+    fileprivate func requestDraw() {
+        drawLock.lock()
+        let already = drawPending
+        drawPending = true
+        drawLock.unlock()
+        if already { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.drawLock.lock()
+            self.drawPending = false
+            self.drawLock.unlock()
+            self.display()
+        }
+    }
+
     private func emit(_ event: MPVEvent) {
         DispatchQueue.main.async { [weak self] in self?.onEvent?(event) }
     }
@@ -236,7 +269,7 @@ final class MPVVideoView: NSOpenGLView {
 private func mpvGLUpdate(_ context: UnsafeMutableRawPointer?) {
     guard let context else { return }
     let view = Unmanaged<MPVVideoView>.fromOpaque(context).takeUnretainedValue()
-    DispatchQueue.main.async { view.display() }
+    view.requestDraw()
 }
 
 private func mpvWakeUp(_ context: UnsafeMutableRawPointer?) {

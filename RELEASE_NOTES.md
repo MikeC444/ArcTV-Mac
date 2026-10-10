@@ -11,6 +11,7 @@ them under its version automatically.
 - Your sign-in is kept in a private file, so Arc TV never asks for your Mac password.
 - A built-in player that plays 4K, HDR and Dolby Vision files, with audio and subtitle choices.
 - A new player layout like the Fire TV app, with a full-screen button, and a loading spinner in the middle whenever the video is loading or you jump to a new spot.
+- Smoother playback: the player does far less work per frame, so it should feel lighter and less laggy.
 - Pick up where you left off: Continue Watching on Home remembers every title, on every device.
 - Add titles to My List, mark them watched, or take them out of Continue Watching with a right-click.
 - Manage your addons from the app: add one from a link, switch it off, or remove it.
