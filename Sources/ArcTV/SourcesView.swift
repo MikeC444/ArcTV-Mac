@@ -20,7 +20,7 @@ struct SourcesView: View {
             Backdrop(detail: target.title)
             HStack(alignment: .top, spacing: 0) {
                 infoPanel
-                    .frame(width: 300)
+                    .frame(width: 340)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -69,7 +69,8 @@ struct SourcesView: View {
                         }
                     }
                     .frame(maxWidth: 920, alignment: .leading)
-                    .padding(.horizontal, 36)
+                    .padding(.leading, 90)
+                    .padding(.trailing, 36)
                     .padding(.bottom, 48)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -245,7 +246,7 @@ private struct Backdrop: View {
                         .clipped()
                 }
             }
-            LinearGradient(colors: [Theme.background.opacity(0.94), Theme.background.opacity(0.80), Theme.background.opacity(0.92)],
+            LinearGradient(colors: [Theme.background.opacity(0.72), Theme.background.opacity(0.32), Theme.background.opacity(0.42)],
                            startPoint: .leading, endPoint: .trailing)
         }
         .ignoresSafeArea()

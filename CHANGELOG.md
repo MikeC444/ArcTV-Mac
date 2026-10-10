@@ -335,3 +335,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet.
 
 **Issues fixed:** none.
+
+**Follow-up to 17 (first look):** the list sat too close to the poster panel and the artwork was too dark. The list is moved right (the left panel is 340 points wide and the list starts 90 points further in) and the darkening over the artwork is lighter (strongest on the left, where the text is). Not seen on screen.
