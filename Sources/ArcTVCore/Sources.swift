@@ -155,9 +155,15 @@ public struct AddonFailure: Equatable, Sendable, Identifiable {
 
 /// Everything one look for sources found: the streams, which addons failed, and which cannot give streams for this title at all.
 public struct SourceResult: Equatable, Sendable {
-    public var items: [SourceItem] = []
-    public var failures: [AddonFailure] = []
-    public var skipped: [String] = []
+    public var items: [SourceItem]
+    public var failures: [AddonFailure]
+    public var skipped: [String]
+
+    public init(items: [SourceItem] = [], failures: [AddonFailure] = [], skipped: [String] = []) {
+        self.items = items
+        self.failures = failures
+        self.skipped = skipped
+    }
 }
 
 /// Why an addon did not answer, as the end of a sentence about it ("<addon> took too long to answer").
