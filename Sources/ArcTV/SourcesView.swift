@@ -95,7 +95,7 @@ struct SourcesView: View {
 
     private func choose(_ item: SourceItem) {
         guard let url = item.playURL else { return }
-        model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName))
+        model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
     }
 }
 

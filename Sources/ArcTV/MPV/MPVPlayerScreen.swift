@@ -5,13 +5,14 @@ import SwiftUI
 /// Puts the mpv video view into SwiftUI and wires it to the model.
 struct MPVVideoRepresentable: NSViewRepresentable {
     let url: URL
+    let startAt: Double
     let model: MPVPlayerModel
 
     func makeNSView(context: Context) -> MPVVideoView {
         let view = MPVVideoView(frame: .zero)
         view.onEvent = { [weak model] event in model?.handle(event) }
         model.view = view
-        view.start(url: url)
+        view.start(url: url, startAt: startAt)
         return view
     }
 
@@ -31,7 +32,7 @@ struct MPVPlayerScreen: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            MPVVideoRepresentable(url: item.url, model: model)
+            MPVVideoRepresentable(url: item.url, startAt: item.target.startAt, model: model)
                 .ignoresSafeArea()
                 .onTapGesture { model.togglePause() }
                 .onTapGesture(count: 2) { toggleFullScreen() }
@@ -63,8 +64,18 @@ struct MPVPlayerScreen: View {
             if ended { appModel.goBack() }
         }
         .onAppear { showControls() }
+        .task {
+            // Tell the account where you are every half minute, so Continue Watching is right on every device.
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                if Task.isCancelled { break }
+                await appModel.reportProgress(item.target, position: model.position, duration: model.duration)
+            }
+        }
         .onDisappear {
             hideTask?.cancel()
+            let target = item.target, position = model.position, duration = model.duration
+            Task { await appModel.reportProgress(target, position: position, duration: duration) }
             model.stop()
         }
         .animation(.easeOut(duration: 0.2), value: controlsVisible)

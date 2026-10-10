@@ -10,3 +10,5 @@ them under its version automatically.
 - Open any title, see its details and episodes, pick a source and watch it.
 - Your sign-in is kept in a private file, so Arc TV never asks for your Mac password.
 - A built-in player that plays 4K, HDR and Dolby Vision files, with audio and subtitle choices.
+- Pick up where you left off: Continue Watching on Home remembers every title, on every device.
+- Add titles to My List, mark them watched, or take them out of Continue Watching with a right-click.

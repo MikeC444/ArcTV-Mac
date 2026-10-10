@@ -33,15 +33,15 @@ final class MPVVideoView: NSOpenGLView {
     }
 
     /// Makes the OpenGL context ready and starts mpv.
-    func start(url: URL) {
+    func start(url: URL, startAt: Double = 0) {
         wantsBestResolutionOpenGLSurface = true
         autoresizingMask = [.width, .height]
         openGLContext?.makeCurrentContext()
-        setupMpv()
+        setupMpv(startAt: startAt)
         command("loadfile", args: [url.absoluteString, "replace"])
     }
 
-    private func setupMpv() {
+    private func setupMpv(startAt: Double) {
         guard let handle = mpv_create() else {
             onEvent?(.failed("The player could not be started."))
             return
@@ -54,6 +54,7 @@ final class MPVVideoView: NSOpenGLView {
         _ = mpv_set_option_string(handle, "vo", "libmpv")
         _ = mpv_set_option_string(handle, "ytdl", "no")
         _ = mpv_set_option_string(handle, "keep-open", "no")
+        if startAt > 1 { _ = mpv_set_option_string(handle, "start", String(Int(startAt))) }
         guard mpv_initialize(handle) >= 0 else {
             onEvent?(.failed("The player could not be started."))
             return

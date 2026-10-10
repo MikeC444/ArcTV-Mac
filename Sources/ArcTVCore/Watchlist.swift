@@ -15,6 +15,20 @@ public struct WatchlistItem: Codable, Equatable, Identifiable, Sendable {
 
     public var id: String { contentId }
 
+    public init(providerId: String, contentId: String, contentType: String, title: String, posterUrl: String? = nil, backdropUrl: String? = nil,
+                year: Int? = nil, rating: Double? = nil, watched: Bool? = nil, updatedAt: String) {
+        self.providerId = providerId
+        self.contentId = contentId
+        self.contentType = contentType
+        self.title = title
+        self.posterUrl = posterUrl
+        self.backdropUrl = backdropUrl
+        self.year = year
+        self.rating = rating
+        self.watched = watched
+        self.updatedAt = updatedAt
+    }
+
     /// As a poster-card title: the backend's MOVIE / TV_SHOW become the addon protocol's movie / series.
     public var asPreview: MetaPreview {
         MetaPreview(

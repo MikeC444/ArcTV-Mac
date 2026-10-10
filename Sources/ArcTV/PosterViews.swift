@@ -35,6 +35,21 @@ struct PosterCard: View {
         .onHover { hovering = $0 }
         .contentShape(Rectangle())
         .onTapGesture { model.openDetail(item) }
+        .contextMenu {
+            Button { model.openDetail(item) } label: { Label("View details", systemImage: "info.circle") }
+            Button { Task { await model.toggleSaved(item.asDetail) } } label: {
+                Label(model.isSaved(item.id) ? "Remove from My List" : "Add to My List", systemImage: model.isSaved(item.id) ? "minus.circle" : "plus.circle")
+            }
+            Button { Task { await model.toggleWatched(item.asDetail) } } label: {
+                Label(model.isWatched(item.id) ? "Mark as not watched" : "Mark as watched", systemImage: "checkmark.circle")
+            }
+            if let entry = model.continueItems.first(where: { $0.contentId == item.id }) {
+                Divider()
+                Button(role: .destructive) { Task { await model.removeFromContinueWatching(entry) } } label: {
+                    Label("Remove from Continue Watching", systemImage: "trash")
+                }
+            }
+        }
     }
 
     @ViewBuilder

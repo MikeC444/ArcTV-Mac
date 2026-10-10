@@ -128,3 +128,23 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet.
 
 **Issues fixed:** none yet.
+
+## 8 -- Stage 3: My List, Watched, Continue Watching and resume
+
+**Status:** Written; checked by the Build and test workflow. Not tried against the real account from the app.
+
+**Context:** The app could show My List but not change it, and forgot where you stopped.
+
+**Changes:**
+- Account calls: `GET /user/continue-watching`, `POST /user/watch-progress`, `DELETE /user/continue-watching`, `POST` and `DELETE /user/watchlist` (timestamps are ISO-8601 UTC with milliseconds; a token that has run out is refreshed and the call retried).
+- Title pages: My List and Watched toggles beside Play; Play becomes "Resume 12:34" (or "Resume S1 E3 12:34") when Continue Watching has the title, and the episode list resumes the right episode.
+- The mpv player starts at the saved position and reports progress every 30 seconds and on leaving; 92% or more counts as finished (a finished movie is marked watched).
+- Home: a Continue Watching row (wide cards with a progress bar) above the rows; clicking one opens the title, which offers Resume.
+- Right-click on any poster: View details, Add to / Remove from My List, Mark as watched / not watched, and Remove from Continue Watching when it is there.
+- My List now keeps the raw account entries so changes show at once and are put back if the account could not be reached.
+
+**Tests performed:** unit tests for timestamps, Continue Watching decoding and progress, the My List entry made from a title (and that empty fields are left out), and the progress report's episode pair. Not tried on a Mac.
+
+**Issues discovered:** none yet. Not done: Like / Not for me, Picked for you, Recommendations, profiles (the next stage); the built-in Apple player does not report progress.
+
+**Issues fixed:** none.

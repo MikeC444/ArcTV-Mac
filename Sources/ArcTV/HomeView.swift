@@ -24,6 +24,11 @@ struct HomeView: View {
                     } else {
                         Spacer().frame(height: 90)
                     }
+                    if !model.continueItems.isEmpty {
+                        ContinueRowView(items: model.continueItems)
+                            .padding(.top, 8)
+                            .padding(.bottom, 18)
+                    }
                     RowsStack(rows: rows)
                         .padding(.top, 8)
                         .padding(.bottom, 40)
@@ -185,5 +190,86 @@ struct ComingSoonView: View {
         }
         .padding(.horizontal, 44)
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// Continue Watching: wide cards with how far through you are; clicking one picks up where you left off.
+struct ContinueRowView: View {
+    @EnvironmentObject private var model: AppModel
+    let items: [ContinueItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Continue Watching")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.horizontal, 44)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 16) {
+                    ForEach(items) { item in
+                        ContinueCard(item: item)
+                    }
+                }
+                .padding(.horizontal, 44)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+}
+
+struct ContinueCard: View {
+    @EnvironmentObject private var model: AppModel
+    let item: ContinueItem
+    @State private var hovering = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Color.clear
+                .frame(width: 270, height: 152)
+                .overlay { artwork }
+                .overlay(alignment: .bottom) {
+                    ZStack(alignment: .leading) {
+                        Rectangle().fill(Color.white.opacity(0.25))
+                        GeometryReader { geo in
+                            Rectangle().fill(Theme.brandGradient).frame(width: geo.size.width * item.progress)
+                        }
+                    }
+                    .frame(height: 4)
+                }
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.surface))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(hovering ? 0.9 : 0), lineWidth: 2))
+                .shadow(color: .black.opacity(hovering ? 0.55 : 0), radius: 14, y: 6)
+                .scaleEffect(hovering ? 1.04 : 1)
+                .animation(.easeOut(duration: 0.15), value: hovering)
+            Text(item.title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+            Text([item.episodeLabel, MPVPlayerModel.clock(item.positionSeconds) + " in"].compactMap { $0 }.joined(separator: " · "))
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
+        }
+        .frame(width: 270)
+        .onHover { hovering = $0 }
+        .contentShape(Rectangle())
+        .onTapGesture { model.openDetail(item.asPreview) }
+        .contextMenu {
+            Button { model.openDetail(item.asPreview) } label: { Label("View details", systemImage: "info.circle") }
+            Divider()
+            Button(role: .destructive) { Task { await model.removeFromContinueWatching(item) } } label: {
+                Label("Remove from Continue Watching", systemImage: "trash")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var artwork: some View {
+        if let url = (item.backdropUrl ?? item.posterUrl).flatMap(URL.init(string:)) {
+            AsyncImage(url: url) { phase in
+                if case let .success(image) = phase { image.resizable().aspectRatio(contentMode: .fill) }
+            }
+        }
     }
 }

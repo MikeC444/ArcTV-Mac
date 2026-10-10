@@ -21,7 +21,7 @@ struct MyListView: View {
                             .foregroundStyle(Theme.textSecondary)
                             .padding(.horizontal, 44)
                     } else {
-                        PosterGrid(items: items)
+                        PosterGrid(items: items.map(\.asPreview))
                     }
                 } else {
                     ProgressView().controlSize(.large).frame(maxWidth: .infinity).padding(.top, 60)
@@ -29,6 +29,6 @@ struct MyListView: View {
                 Spacer().frame(height: 48)
             }
         }
-        .task { await model.loadMyList() }
+        .task { await model.loadAccountData() }
     }
 }

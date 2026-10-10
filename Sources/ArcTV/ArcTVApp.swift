@@ -57,6 +57,7 @@ struct MainView: View {
             .task {
                 await model.loadHome()
                 await model.loadAddons()
+                await model.loadAccountData()
             }
 
             TopNavBar()

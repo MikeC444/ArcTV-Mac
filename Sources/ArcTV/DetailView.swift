@@ -78,10 +78,20 @@ struct DetailView: View {
                             .lineLimit(4)
                             .frame(maxWidth: 620, alignment: .leading)
                     }
-                    Button(action: playMain) {
-                        Label(playLabel, systemImage: "play.fill")
+                    HStack(spacing: 12) {
+                        Button(action: playMain) {
+                            Label(playLabel, systemImage: "play.fill")
+                        }
+                        .buttonStyle(BrandButtonStyle())
+                        Button { Task { await model.toggleSaved(detail) } } label: {
+                            Label(model.isSaved(detail.id) ? "In My List" : "My List", systemImage: model.isSaved(detail.id) ? "checkmark" : "plus")
+                        }
+                        .buttonStyle(GlassButtonStyle())
+                        Button { Task { await model.toggleWatched(detail) } } label: {
+                            Label(model.isWatched(detail.id) ? "Watched" : "Mark watched", systemImage: model.isWatched(detail.id) ? "checkmark.circle.fill" : "checkmark.circle")
+                        }
+                        .buttonStyle(GlassButtonStyle())
                     }
-                    .buttonStyle(BrandButtonStyle())
                     .padding(.top, 4)
                 }
                 .padding(.horizontal, 44)
@@ -157,7 +167,14 @@ struct DetailView: View {
 
     private func seasonName(_ number: Int) -> String { number == 0 ? "Specials" : "Season \(number)" }
 
+    /// Where this title was left, from Continue Watching (a movie, or whichever episode of a show).
+    private var resume: ContinueItem? { model.resumeItem(titleID: detail.id, season: nil, episode: nil) }
+
     private var playLabel: String {
+        if let resume {
+            let time = MPVPlayerModel.clock(resume.positionSeconds)
+            return "Resume \(resume.episodeLabel.map { $0 + " " } ?? "")\(time)"
+        }
         if isShow, let first = firstEpisode { return "Play S\(first.season ?? 1) E\(first.episode ?? 1)" }
         return "Play"
     }
@@ -168,7 +185,14 @@ struct DetailView: View {
     }
 
     private func playMain() {
-        if isShow {
+        if let resume {
+            let episode = detail.seasons[resume.seasonNumber ?? -1]?.first { $0.episode == resume.episodeNumber }
+            model.openSources(PlayTarget(
+                title: detail, season: resume.seasonNumber, episode: resume.episodeNumber,
+                episodeTitle: episode.map { "S\($0.season ?? 0) E\($0.episode ?? 0) \($0.displayTitle)" } ?? resume.episodeTitle,
+                startAt: resume.positionSeconds
+            ))
+        } else if isShow {
             if let first = firstEpisode { playEpisode(first) }
         } else {
             model.openSources(PlayTarget(title: detail))
@@ -176,7 +200,11 @@ struct DetailView: View {
     }
 
     private func playEpisode(_ episode: EpisodeInfo) {
-        model.openSources(PlayTarget(title: detail, season: episode.season, episode: episode.episode, episodeTitle: "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)"))
+        let start = model.resumeItem(titleID: detail.id, season: episode.season, episode: episode.episode)?.positionSeconds ?? 0
+        model.openSources(PlayTarget(
+            title: detail, season: episode.season, episode: episode.episode,
+            episodeTitle: "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)", startAt: start
+        ))
     }
 
     /// The card only has the basics: the full answer adds cast, director and (for a show) the episodes.

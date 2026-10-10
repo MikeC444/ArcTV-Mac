@@ -23,6 +23,9 @@ public enum AppInfo {
         return defaultAPIBaseURL
     }
 
+    /// The id the other apps save Cinemeta titles under.
+    public static let cinemetaProviderId = "com.linvo.cinemeta"
+
     /// The same Cinemeta addon the other apps start with, so Home always has something to show.
     public static let cinemetaManifestURL = "https://v3-cinemeta.strem.io/manifest.json"
 }

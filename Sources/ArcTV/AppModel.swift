@@ -20,6 +20,8 @@ struct PlayTarget: Equatable, Identifiable {
     var season: Int?
     var episode: Int?
     var episodeTitle: String?
+    /// Where to start, in seconds (resuming); 0 starts from the beginning.
+    var startAt: Double = 0
 
     var id: String { streamID }
     var streamID: String { ArcTVCore.streamID(titleID: title.id, season: season, episode: episode) }
@@ -31,6 +33,7 @@ struct PlayingItem: Equatable {
     var url: URL
     var heading: String
     var sourceName: String
+    var target: PlayTarget
 }
 
 /// Which player plays video: mpv (plays almost anything) or the Mac's built-in player.
@@ -68,7 +71,8 @@ final class AppModel: ObservableObject {
     @Published var sourcesFor: PlayTarget?
     @Published var playing: PlayingItem?
     @Published var addons: [SyncedAddon] = []
-    @Published var myList: [MetaPreview]?
+    @Published var myList: [WatchlistItem]?
+    @Published var continueItems: [ContinueItem] = []
     @Published var myListError: String?
     @Published var signInError: String?
     @Published var signingIn = false
@@ -131,6 +135,7 @@ final class AppModel: ObservableObject {
         session = nil
         home = .idle
         myList = nil
+        continueItems = []
         addons = []
         detail = nil
         sourcesFor = nil
@@ -164,14 +169,83 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: My List, Watched and Continue Watching
+
+    /// Loads everything the account keeps: My List and Continue Watching.
+    func loadAccountData() async {
+        await loadMyList()
+        await loadContinueWatching()
+    }
+
     func loadMyList() async {
         myListError = nil
         do {
-            let items = try await authorized { client, token in try await client.watchlist(accessToken: token) }
-            myList = items.map(\.asPreview)
+            myList = try await authorized { client, token in try await client.watchlist(accessToken: token) }
         } catch {
             myListError = (error as? APIError)?.errorDescription ?? "Couldn't load your list. Check your connection."
         }
+    }
+
+    func loadContinueWatching() async {
+        if let items = try? await authorized({ client, token in try await client.continueWatching(accessToken: token) }) {
+            continueItems = items
+        }
+    }
+
+    func savedItem(_ id: String) -> WatchlistItem? { myList?.first { $0.contentId == id } }
+
+    func isSaved(_ id: String) -> Bool { savedItem(id) != nil }
+
+    func isWatched(_ id: String) -> Bool { savedItem(id)?.watched == true }
+
+    /// Adds the title to My List, or takes it off. Shown at once; put back if the account could not be reached.
+    func toggleSaved(_ title: MetaDetail) async {
+        let before = myList ?? []
+        if let existing = savedItem(title.id) {
+            myList = before.filter { $0.contentId != title.id }
+            do { try await authorized { client, token in try await client.removeFromWatchlist(accessToken: token, item: existing) } } catch { myList = before }
+        } else {
+            let item = title.watchlistItem(watched: false)
+            myList = before + [item]
+            do { try await authorized { client, token in try await client.saveToWatchlist(accessToken: token, item: item) } } catch { myList = before }
+        }
+    }
+
+    /// Marks the title watched, or not watched again (adding it to My List if it was not there).
+    func toggleWatched(_ title: MetaDetail) async {
+        let before = myList ?? []
+        let nowWatched = !isWatched(title.id)
+        var item = savedItem(title.id) ?? title.watchlistItem(watched: nowWatched)
+        item.watched = nowWatched
+        item.updatedAt = ISODate.now()
+        myList = before.filter { $0.contentId != title.id } + [item]
+        let toSend = item
+        do { try await authorized { client, token in try await client.saveToWatchlist(accessToken: token, item: toSend) } } catch { myList = before }
+    }
+
+    func removeFromContinueWatching(_ item: ContinueItem) async {
+        let before = continueItems
+        continueItems = before.filter { $0.contentId != item.contentId }
+        do { try await authorized { client, token in try await client.removeContinueWatching(accessToken: token, item: item) } } catch { continueItems = before }
+    }
+
+    /// Where this episode or movie was left, if Continue Watching has it.
+    func resumeItem(titleID: String, season: Int?, episode: Int?) -> ContinueItem? {
+        guard let item = continueItems.first(where: { $0.contentId == titleID }) else { return nil }
+        if season == nil && episode == nil { return item }
+        return item.seasonNumber == season && item.episodeNumber == episode ? item : nil
+    }
+
+    /// Tells the account where playback is (called now and then while playing, and when leaving the player).
+    func reportProgress(_ target: PlayTarget, position: Double, duration: Double) async {
+        guard duration > 30, position > 5 else { return }
+        let completed = position / duration >= 0.92
+        _ = try? await authorized { client, token in
+            try await client.reportProgress(accessToken: token, title: target.title, season: target.season, episode: target.episode,
+                                            episodeTitle: target.episodeTitle, positionSeconds: position, durationSeconds: duration, completed: completed)
+        }
+        if completed, !isWatched(target.title.id), target.title.type == "movie" { await toggleWatched(target.title) }
+        await loadContinueWatching()
     }
 
     func reloadHome() async {
