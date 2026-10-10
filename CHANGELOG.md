@@ -150,3 +150,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up (entry 7, mpv):** the first runs with the mpv libraries failed at "Making the DMG" with "No space left on device" (the app now holds mpv's libraries and is large). `scripts/package-app.sh` now frees the build caches when it runs on a build machine and sizes the disk image explicitly (the app plus a third).
+
+## 9 -- Stage 4a: Settings > Addons and Blocked Genres
+
+**Status:** Written; checked by the Build and test workflow. Not tried against the real account from the app.
+
+**Context:** There was no way to see or change the addons that give the app its streams, and blocked genres (kept on the account by the other apps) had no effect here.
+
+**Changes:**
+- Addons tab: lists every addon on the account (switched-off ones too) with its version, description and what it provides; a switch to turn each on or off; remove (with a confirmation); and "Add an addon" from a pasted link (stremio://, a bare host or a full manifest address; the manifest is fetched and checked, then saved on the account with its manifest kept as the addon sent it). Changes reach the source finder at once.
+- Blocked Genres tab: the genres as toggles, saved to the account's settings row (`GET`/`PUT /user/settings`, the whole row sent back with only the genre list changed, null languages sent as nulls); blocked genres are hidden from Home (and its banner), Movies, TV Shows and Search.
+- The account's addon list now keeps each manifest's raw JSON so toggling does not lose fields the app does not read.
+
+**Tests performed:** the build and the existing tests; no new unit tests for these screens. Not tried on a Mac.
+
+**Issues discovered:** Home Rows (choose and order rows) is not done: this app's row ids differ from the other apps'.
+
+**Issues fixed:** none.

@@ -63,8 +63,8 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     ]
 }
 
-/// Settings laid out like the web app's: grouped places down the left, the chosen one on the right. Account and Updates work; the rest say
-/// they are coming (they are built in later stages).
+/// Settings laid out like the web app's: grouped places down the left, the chosen one on the right. Account, Addons, Blocked Genres, Player and
+/// Updates work; the rest say they are coming (they are built in later stages).
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var tab: SettingsTab = .account
@@ -111,6 +111,8 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.textPrimary)
                 switch tab {
                 case .account: account
+                case .addons: AddonsPane()
+                case .blockedGenres: BlockedGenresPane()
                 case .player: player
                 case .updates: updates
                 default:

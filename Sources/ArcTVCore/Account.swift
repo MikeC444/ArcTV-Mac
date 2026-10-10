@@ -84,7 +84,7 @@ public extension MetaDetail {
 }
 
 extension AuthClient {
-    private func send(_ method: String, _ path: String, query: [String: String] = [:], body: Data? = nil, accessToken: String) async throws -> Data {
+    func sendJSON(_ method: String, _ path: String, query: [String: String] = [:], body: Data?, accessToken: String) async throws -> Data {
         guard var components = URLComponents(string: baseURL + path) else { throw APIError.badURL(baseURL + path) }
         if !query.isEmpty { components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         guard let url = components.url else { throw APIError.badURL(baseURL + path) }
@@ -101,7 +101,7 @@ extension AuthClient {
     }
 
     public func continueWatching(accessToken: String) async throws -> [ContinueItem] {
-        let data = try await send("GET", "/user/continue-watching", accessToken: accessToken)
+        let data = try await sendJSON("GET", "/user/continue-watching", body: nil, accessToken: accessToken)
         guard let decoded = try? JSONDecoder().decode(ContinueResponse.self, from: data) else { throw APIError.unreadable }
         return decoded.items
     }
@@ -115,28 +115,28 @@ extension AuthClient {
             backdropUrl: title.background, positionMs: Int64(max(0, positionSeconds) * 1000), durationMs: Int64(max(0, durationSeconds) * 1000),
             completed: completed, watchedAt: ISODate.now()
         )
-        _ = try await send("POST", "/user/watch-progress", body: try JSONEncoder().encode(report), accessToken: accessToken)
+        _ = try await sendJSON("POST", "/user/watch-progress", body: try JSONEncoder().encode(report), accessToken: accessToken)
     }
 
     /// Takes a title out of Continue Watching (without marking it watched).
     public func removeContinueWatching(accessToken: String, item: ContinueItem) async throws {
-        _ = try await send(
+        _ = try await sendJSON(
             "DELETE", "/user/continue-watching",
             query: ["providerId": item.providerId, "contentId": item.contentId, "contentType": item.contentType, "updatedAt": ISODate.now()],
-            accessToken: accessToken
+            body: nil, accessToken: accessToken
         )
     }
 
     /// Adds a title to My List, or updates it (its watched flag).
     public func saveToWatchlist(accessToken: String, item: WatchlistItem) async throws {
-        _ = try await send("POST", "/user/watchlist", body: try JSONEncoder().encode(item), accessToken: accessToken)
+        _ = try await sendJSON("POST", "/user/watchlist", body: try JSONEncoder().encode(item), accessToken: accessToken)
     }
 
     public func removeFromWatchlist(accessToken: String, item: WatchlistItem) async throws {
-        _ = try await send(
+        _ = try await sendJSON(
             "DELETE", "/user/watchlist",
             query: ["providerId": item.providerId, "contentId": item.contentId, "contentType": item.contentType, "updatedAt": ISODate.now()],
-            accessToken: accessToken
+            body: nil, accessToken: accessToken
         )
     }
 }

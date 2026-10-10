@@ -29,6 +29,8 @@ public struct SyncedAddon: Decodable, Equatable, Sendable {
     public var enabled: Bool
     public var sortOrder: Int
     public var manifestJson: AddonManifest?
+    /// The addon's manifest exactly as the account stores it (kept so a change can send it back untouched).
+    public var rawManifest: Data?
 }
 
 struct SyncedAddonsResponse: Decodable {
@@ -36,16 +38,52 @@ struct SyncedAddonsResponse: Decodable {
 }
 
 extension AuthClient {
-    /// The account's installed addons (the ones the other apps show under Settings > Addons).
-    public func addons(accessToken: String) async throws -> [SyncedAddon] {
-        guard let url = URL(string: baseURL + "/user/addons") else { throw APIError.badURL(baseURL) }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 60
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(AppInfo.version, forHTTPHeaderField: "X-ArcTV-App-Version")
-        let data = try await HTTP.data(for: request)
-        guard let decoded = try? JSONDecoder().decode(SyncedAddonsResponse.self, from: data) else { throw APIError.unreadable }
-        return decoded.items.filter(\.enabled).sorted { $0.sortOrder < $1.sortOrder }
+    /// The account's installed addons, in their order (the ones the other apps show under Settings > Addons). Disabled ones are left out
+    /// unless [includeDisabled].
+    public func addons(accessToken: String, includeDisabled: Bool = false) async throws -> [SyncedAddon] {
+        let data = try await sendJSON("GET", "/user/addons", body: nil, accessToken: accessToken)
+        guard var decoded = try? JSONDecoder().decode(SyncedAddonsResponse.self, from: data) else { throw APIError.unreadable }
+        // A second, loose read keeps each manifest's own JSON byte for byte, to send back unchanged.
+        let rawItems = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["items"] as? [[String: Any]] ?? []
+        var rawByURL: [String: Data] = [:]
+        for item in rawItems {
+            if let url = item["manifestUrl"] as? String, let manifest = item["manifestJson"],
+               let bytes = try? JSONSerialization.data(withJSONObject: manifest) { rawByURL[url] = bytes }
+        }
+        for index in decoded.items.indices { decoded.items[index].rawManifest = rawByURL[decoded.items[index].manifestUrl] }
+        let items = includeDisabled ? decoded.items : decoded.items.filter(\.enabled)
+        return items.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    /// Installs an addon on the account, or updates it (turn it on or off, move it).
+    public func saveAddon(accessToken: String, manifestURL: String, addonID: String, name: String, rawManifest: Data, enabled: Bool, sortOrder: Int) async throws {
+        guard let manifest = try? JSONSerialization.jsonObject(with: rawManifest) as? [String: Any] else { throw APIError.unreadable }
+        let body: [String: Any] = [
+            "manifestUrl": manifestURL, "addonId": addonID, "name": name, "manifestJson": manifest,
+            "enabled": enabled, "sortOrder": sortOrder, "updatedAt": ISODate.now()
+        ]
+        _ = try await sendJSON("POST", "/user/addons", body: try JSONSerialization.data(withJSONObject: body), accessToken: accessToken)
+    }
+
+    public func removeAddon(accessToken: String, manifestURL: String) async throws {
+        _ = try await sendJSON("DELETE", "/user/addons", query: ["manifestUrl": manifestURL, "updatedAt": ISODate.now()], body: nil, accessToken: accessToken)
+    }
+}
+
+/// What an addon's own manifest says it is, read from a link the person pasted.
+public struct AddonInstall: Equatable, Sendable {
+    public var manifestURL: String
+    public var addonID: String
+    public var name: String
+    public var rawManifest: Data
+
+    /// Fetches the manifest at [input] (a link in any of the usual shapes) and checks it looks like an addon.
+    public static func fetch(_ input: String) async throws -> AddonInstall {
+        let url = AddonURL.normalizeManifestURL(input)
+        let data = try await HTTP.get(url)
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let id = object["id"] as? String, !id.isEmpty, let name = object["name"] as? String, !name.isEmpty else { throw APIError.unreadable }
+        return AddonInstall(manifestURL: url, addonID: id, name: name, rawManifest: data)
     }
 }
 

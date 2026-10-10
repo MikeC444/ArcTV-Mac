@@ -35,6 +35,7 @@ final class SearchModel: ObservableObject {
 
 /// Search: a box at the top and the matching movies and shows as a grid.
 struct SearchView: View {
+    @EnvironmentObject private var appModel: AppModel
     @StateObject private var model = SearchModel()
     @State private var query = ""
 
@@ -73,7 +74,7 @@ struct SearchView: View {
                         .foregroundStyle(Theme.textSecondary)
                         .padding(.horizontal, 44)
                 case let .results(items):
-                    PosterGrid(items: items)
+                    PosterGrid(items: items.withoutBlocked(appModel.blockedGenres))
                 }
                 Spacer().frame(height: 48)
             }

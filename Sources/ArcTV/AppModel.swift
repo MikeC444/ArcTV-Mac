@@ -71,6 +71,9 @@ final class AppModel: ObservableObject {
     @Published var sourcesFor: PlayTarget?
     @Published var playing: PlayingItem?
     @Published var addons: [SyncedAddon] = []
+    /// Every addon on the account, switched off ones included (for Settings > Addons); [addons] is just the enabled ones.
+    @Published var allAddons: [SyncedAddon] = []
+    @Published var settings: AccountSettings?
     @Published var myList: [WatchlistItem]?
     @Published var continueItems: [ContinueItem] = []
     @Published var myListError: String?
@@ -137,6 +140,8 @@ final class AppModel: ObservableObject {
         myList = nil
         continueItems = []
         addons = []
+        allAddons = []
+        settings = nil
         detail = nil
         sourcesFor = nil
         playing = nil
@@ -164,8 +169,57 @@ final class AppModel: ObservableObject {
 
     /// The account's installed addons: where streams come from. Loaded once after sign-in.
     func loadAddons() async {
-        if let found = try? await authorized({ client, token in try await client.addons(accessToken: token) }) {
-            addons = found
+        if let found = try? await authorized({ client, token in try await client.addons(accessToken: token, includeDisabled: true) }) {
+            allAddons = found
+            addons = found.filter(\.enabled)
+        }
+    }
+
+    func installAddon(_ install: AddonInstall) async throws {
+        let order = (allAddons.map(\.sortOrder).max() ?? -1) + 1
+        try await authorized { client, token in
+            try await client.saveAddon(accessToken: token, manifestURL: install.manifestURL, addonID: install.addonID, name: install.name,
+                                       rawManifest: install.rawManifest, enabled: true, sortOrder: order)
+        }
+        await loadAddons()
+    }
+
+    func setAddon(_ addon: SyncedAddon, enabled: Bool) async {
+        guard let raw = addon.rawManifest else { return }
+        _ = try? await authorized { client, token in
+            try await client.saveAddon(accessToken: token, manifestURL: addon.manifestUrl, addonID: addon.addonId, name: addon.name,
+                                       rawManifest: raw, enabled: enabled, sortOrder: addon.sortOrder)
+        }
+        await loadAddons()
+    }
+
+    func removeAddon(_ addon: SyncedAddon) async {
+        _ = try? await authorized { client, token in try await client.removeAddon(accessToken: token, manifestURL: addon.manifestUrl) }
+        await loadAddons()
+    }
+
+    // MARK: Settings (blocked genres)
+
+    var blockedGenres: Set<String> { Set(settings?.blockedGenres ?? []) }
+
+    func loadSettings() async {
+        if let found = try? await authorized({ client, token in try await client.settings(accessToken: token) }) { settings = found }
+    }
+
+    /// Hides (or shows again) a genre everywhere. Shown at once; put back if the account could not be reached.
+    func setGenre(_ genre: String, blocked: Bool) async {
+        if settings == nil { await loadSettings() }
+        guard var next = settings else { return }
+        let before = next
+        var list = next.blockedGenres ?? []
+        list.removeAll { $0.caseInsensitiveCompare(genre) == .orderedSame }
+        if blocked { list.append(genre) }
+        next.blockedGenres = list
+        settings = next
+        do {
+            settings = try await authorized { client, token in try await client.saveSettings(accessToken: token, next) }
+        } catch {
+            settings = before
         }
     }
 

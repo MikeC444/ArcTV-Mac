@@ -19,7 +19,7 @@ struct HomeView: View {
         case let .loaded(rows):
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    if let featured = Self.featured(in: rows) {
+                    if let featured = Self.featured(in: rows, blocked: model.blockedGenres) {
                         HeroBanner(item: featured)
                     } else {
                         Spacer().frame(height: 90)
@@ -38,9 +38,9 @@ struct HomeView: View {
     }
 
     /// The first title that has wide artwork.
-    static func featured(in rows: [HomeRow]) -> MetaPreview? {
+    static func featured(in rows: [HomeRow], blocked: Set<String>) -> MetaPreview? {
         for row in rows {
-            if let hit = row.items.first(where: { $0.background != nil && $0.description != nil }) { return hit }
+            if let hit = row.items.withoutBlocked(blocked).first(where: { $0.background != nil && $0.description != nil }) { return hit }
         }
         return nil
     }
@@ -141,6 +141,7 @@ struct HeroBanner: View {
 }
 
 struct HomeRowView: View {
+    @EnvironmentObject private var model: AppModel
     let row: HomeRow
 
     var body: some View {
@@ -151,7 +152,7 @@ struct HomeRowView: View {
                 .padding(.horizontal, 44)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) {
-                    ForEach(row.items) { item in
+                    ForEach(row.items.withoutBlocked(model.blockedGenres)) { item in
                         PosterCard(item: item, width: 156)
                     }
                 }

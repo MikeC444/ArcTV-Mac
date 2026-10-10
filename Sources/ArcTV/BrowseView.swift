@@ -56,6 +56,7 @@ final class BrowseModel: ObservableObject {
 
 /// Movies or TV Shows, laid out like the web app's: a title, Featured / Highest Rated / Newest, a genre menu, then a poster grid that keeps loading.
 struct BrowseView: View {
+    @EnvironmentObject private var appModel: AppModel
     let title: String
     let type: String
     @StateObject private var browse: BrowseModel
@@ -105,7 +106,7 @@ struct BrowseView: View {
                 } else if browse.items.isEmpty {
                     Text("Nothing here yet.").foregroundStyle(Theme.textSecondary).padding(.horizontal, 44)
                 } else {
-                    PosterGrid(items: sort.apply(browse.items)) {
+                    PosterGrid(items: sort.apply(browse.items.withoutBlocked(appModel.blockedGenres))) {
                         Task { await browse.loadMore() }
                     }
                 }
