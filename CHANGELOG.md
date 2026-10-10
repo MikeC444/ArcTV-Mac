@@ -459,3 +459,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet.
 
 **Issues fixed:** none.
+
+**Follow-up to 21 (full screen):** going full screen while a video was playing left the picture at its old, smaller size with black all around it. The picture was sized from OpenGL's last viewport, which does not change when the window does. It is now sized from the view itself on every draw, the OpenGL surface is told when the view is resized (`reshape`), and a new picture is drawn after a resize. Not seen on screen.

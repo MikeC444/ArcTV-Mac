@@ -230,6 +230,20 @@ final class MPVVideoView: NSOpenGLView {
 
     // MARK: Drawing
 
+    /// The window was resized or went full screen: tell OpenGL its surface changed and draw again at the new size.
+    override func reshape() {
+        super.reshape()
+        openGLContext?.makeCurrentContext()
+        openGLContext?.update()
+        requestDraw()
+    }
+
+    override func viewDidEndLiveResize() {
+        super.viewDidEndLiveResize()
+        openGLContext?.update()
+        requestDraw()
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         guard let context = renderContext else { return }
 
@@ -237,10 +251,13 @@ final class MPVVideoView: NSOpenGLView {
         glClear(UInt32(GL_COLOR_BUFFER_BIT))
 
         glGetIntegerv(UInt32(GL_FRAMEBUFFER_BINDING), &defaultFBO)
-        var dims: [GLint] = [0, 0, 0, 0]
-        glGetIntegerv(GLenum(GL_VIEWPORT), &dims)
+        // The picture is drawn at the view's current size, read from the view itself (not from OpenGL's last viewport, which stays at the old
+        // size after the window is resized or goes full screen, leaving the picture small with black around it).
+        let backing = convertToBacking(bounds)
+        let width = max(1, Int32(backing.width.rounded())), height = max(1, Int32(backing.height.rounded()))
+        glViewport(0, 0, width, height)
 
-        var fbo = mpv_opengl_fbo(fbo: Int32(defaultFBO), w: Int32(dims[2]), h: Int32(dims[3]), internal_format: 0)
+        var fbo = mpv_opengl_fbo(fbo: Int32(defaultFBO), w: width, h: height, internal_format: 0)
         var flip: CInt = 1
         withUnsafeMutablePointer(to: &flip) { flipPointer in
             withUnsafeMutablePointer(to: &fbo) { fboPointer in
