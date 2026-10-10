@@ -53,6 +53,15 @@ STAGE="build/dmg"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "Arc TV" -srcfolder "$STAGE" -ov -format UDZO "build/ArcTV-${VERSION}.dmg"
+
+# The app holds the mpv player's libraries, so it is large. On a build machine (CI), free the build caches first so the disk image has room,
+# and give the image an explicit size (the app's size plus a third) rather than trusting hdiutil's guess.
+if [ -n "${CI:-}" ]; then
+  rm -rf .build "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/Library/org.swift.swiftpm" 2>/dev/null || true
+fi
+APP_KB=$(du -sk "$STAGE" | cut -f1)
+SIZE_MB=$(( APP_KB / 1024 * 4 / 3 + 64 ))
+echo "App is $((APP_KB / 1024)) MB; making a ${SIZE_MB} MB image"
+hdiutil create -volname "Arc TV" -srcfolder "$STAGE" -size "${SIZE_MB}m" -ov -format UDZO "build/ArcTV-${VERSION}.dmg"
 rm -rf "$STAGE"
 echo "Done: build/ArcTV-${VERSION}.dmg"

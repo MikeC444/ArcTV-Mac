@@ -148,3 +148,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet. Not done: Like / Not for me, Picked for you, Recommendations, profiles (the next stage); the built-in Apple player does not report progress.
 
 **Issues fixed:** none.
+
+**Follow-up (entry 7, mpv):** the first runs with the mpv libraries failed at "Making the DMG" with "No space left on device" (the app now holds mpv's libraries and is large). `scripts/package-app.sh` now frees the build caches when it runs on a build machine and sizes the disk image explicitly (the app plus a third).
