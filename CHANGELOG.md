@@ -337,3 +337,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up to 17 (first look):** the list sat too close to the poster panel and the artwork was too dark. The list is moved right (the left panel is 340 points wide and the list starts 90 points further in) and the darkening over the artwork is lighter (strongest on the left, where the text is). Not seen on screen.
+
+**Follow-up to 17 (matching the web layout):** the source list now runs to the right edge (the left panel is 37% of the window wide, the list fills the rest less a 22 point gutter, as on the web app), and "What are sources?" sits in a box. A movie's page is laid out like the web app's: the artwork covers the whole window (the dark fade at the bottom is lighter), the heading block is unchanged, the cast sits bottom left, and from about a third of the way across the IMDb rating sits above "You May Also Like". Shows keep their seasons and episodes below the buttons. Not seen on screen.

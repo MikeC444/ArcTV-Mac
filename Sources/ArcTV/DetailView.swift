@@ -31,9 +31,11 @@ struct DetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         hero
-                        below
+                        if isShow { below } else { movieBottom(width: geo.size.width) }
                     }
                     .frame(width: geo.size.width, alignment: .leading)
+                    .frame(height: isShow ? nil : max(geo.size.height, 640), alignment: .top)
+                    .frame(minHeight: geo.size.height, alignment: .top)
                 }
                 BackButton { model.goBack() }
                     .padding(.leading, 28)
@@ -57,7 +59,9 @@ struct DetailView: View {
                     .clipped()
             }
             LinearGradient(colors: [Theme.background.opacity(0.55), Theme.background.opacity(0.2), .clear], startPoint: .leading, endPoint: .trailing)
-            LinearGradient(colors: [.clear, .clear, Theme.background.opacity(0.75), Theme.background], startPoint: .top, endPoint: .bottom)
+            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.45),
+                                   .init(color: Theme.background.opacity(0.55), location: 0.8), .init(color: Theme.background.opacity(0.92), location: 1)],
+                           startPoint: .top, endPoint: .bottom)
         }
         .frame(width: size.width, height: size.height)
         .clipped()
@@ -101,7 +105,7 @@ struct DetailView: View {
             HStack(alignment: .center) {
                 actions
                 Spacer(minLength: 24)
-                if let rating = detail.imdbRating, !rating.isEmpty { ratingBox(rating) }
+                if isShow, let rating = detail.imdbRating, !rating.isEmpty { ratingBox(rating) }
             }
             .padding(.top, 24)
         }
@@ -194,10 +198,32 @@ struct DetailView: View {
     private var below: some View {
         VStack(alignment: .leading, spacing: 26) {
             if isShow, !detail.seasonNumbers.isEmpty { seasonsSection }
-            if !cast.isEmpty { castSection }
-            if !isShow, !similar.isEmpty { similarSection }
+            if !cast.isEmpty { castSection() }
+            
         }
         .padding(.bottom, 48)
+    }
+
+    /// A movie's bottom row, as on the web app: the cast on the left, and on the right (from about a third of the way across) the IMDb rating
+    /// with "You May Also Like" under it.
+    private func movieBottom(width: CGFloat) -> some View {
+        HStack(alignment: .bottom, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                if !cast.isEmpty { castSection(inset: 0) }
+            }
+            .frame(width: width * 0.365 - 44, alignment: .leading)
+            .padding(.leading, 44)
+            VStack(alignment: .leading, spacing: 14) {
+                if let rating = detail.imdbRating, !rating.isEmpty {
+                    HStack { Spacer(); ratingBox(rating) }.padding(.trailing, 22)
+                }
+                if !similar.isEmpty { similarSection(inset: 0) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxHeight: .infinity, alignment: .bottom)
+        .padding(.top, 20)
+        .padding(.bottom, 36)
     }
 
     private var currentSeason: Int { season ?? resume?.seasonNumber.flatMap { detail.seasonNumbers.contains($0) ? $0 : nil } ?? detail.seasonNumbers.first ?? 1 }
@@ -239,14 +265,14 @@ struct DetailView: View {
         }
     }
 
-    private var castSection: some View {
+    private func castSection(inset: CGFloat = 44) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Cast").font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.textPrimary).padding(.horizontal, 44)
+            Text("Cast").font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.textPrimary).padding(.horizontal, inset)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 20) {
                     ForEach(cast) { member in CastCard(member: member) }
                 }
-                .padding(.horizontal, 44)
+                .padding(.horizontal, inset)
             }
         }
     }
@@ -259,14 +285,14 @@ struct DetailView: View {
         return Array((matches.isEmpty ? pool : matches).prefix(15))
     }
 
-    private var similarSection: some View {
+    private func similarSection(inset: CGFloat = 44) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("You May Also Like").font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.textPrimary).padding(.horizontal, 44)
+            Text("You May Also Like").font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.textPrimary).padding(.horizontal, inset)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(similar) { item in SimilarCard(item: item) }
                 }
-                .padding(.horizontal, 44)
+                .padding(.leading, inset)
                 .padding(.vertical, 6)
             }
         }

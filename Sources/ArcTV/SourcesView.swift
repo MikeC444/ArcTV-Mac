@@ -18,9 +18,10 @@ struct SourcesView: View {
         ZStack(alignment: .topLeading) {
             Theme.background.ignoresSafeArea()
             Backdrop(detail: target.title)
+            GeometryReader { geo in
             HStack(alignment: .top, spacing: 0) {
                 infoPanel
-                    .frame(width: 340)
+                    .frame(width: geo.size.width * 0.37)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -68,12 +69,11 @@ struct SourcesView: View {
                             }
                         }
                     }
-                    .frame(maxWidth: 920, alignment: .leading)
-                    .padding(.leading, 90)
-                    .padding(.trailing, 36)
+                    .padding(.trailing, 22)
                     .padding(.bottom, 48)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+            }
             }
             if let progress = torrents.progress {
                 TorrentLoadingView(detail: target.title, progress: progress) { model.cancelTorrent() }
@@ -135,7 +135,9 @@ struct SourcesView: View {
                 Text("Sources are different streams or files available online. Choose the one that works best for you.")
                     .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
             }
-            .padding(.bottom, 28)
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.5)))
+            .padding(.bottom, 24)
         }
         .padding(.leading, 28)
         .padding(.trailing, 16)
