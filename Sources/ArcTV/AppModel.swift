@@ -898,7 +898,7 @@ final class AppModel: ObservableObject {
     /// A popup opened from Settings > Updates to look at it: closing it leaves no trace (it is not counted as seen).
     private var plusPopupIsPreview = false
     /// Demo: while true, the Plus invitation shows by itself a few seconds after Home loads (as a preview, so it is never counted as seen).
-    static let plusPopupDemo = true
+    static let plusPopupDemo = false
 
     func previewPlusPopup(_ popup: PlusPopup) {
         plusPopupIsPreview = true

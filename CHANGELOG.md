@@ -376,7 +376,7 @@ app's look, and talks to the same backend and Stremio addons.
 **Changes:**
 - A Download button on a title's page (Plus members): a panel lists the files the account's addons give as plain web links (what a debrid service gives; torrents can't be saved this way), best quality first and the smallest file first within a quality (`DownloadChoices`). A movie downloads the movie; a show downloads the episode Play would start. Choosing a file saves it to the Downloads folder (`DownloadManager`, a URLSession download with progress, Cancel, "Show in Finder"; names are made safe and never overwrite an existing file). The panel also lists what is being saved.
 - Settings > Arc TV Plus lists "Download" with a "Web and Mac only" tag. Both Plus popups list Downloads; the welcome tour has a new id, so members see the revised tour once more.
-- Settings > Updates has "Preview the Plus invitation" and "Preview the Plus welcome"; closing a preview is not counted as seeing it. A demo switch (`AppModel.plusPopupDemo`, on for now) also shows the invitation by itself three seconds after Home loads, and also skips the update check while it is on; it is to be turned off before a release.
+- Settings > Updates has "Preview the Plus invitation" and "Preview the Plus welcome"; closing a preview is not counted as seeing it. A demo switch (`AppModel.plusPopupDemo`, now off) also shows the invitation by itself three seconds after Home loads, and also skips the update check while it is on.
 
 **Tests performed:** unit tests for the order of choices (quality, then size; torrents left out) and for file names. The Mac code could not be compiled or run here; the Build and test workflow is the check.
 
