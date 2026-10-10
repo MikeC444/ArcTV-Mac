@@ -59,6 +59,8 @@ Same account, same list, same addons on every device:
 
 **Is it free?** Yes. Browsing, playing, My List, Continue Watching and addons are free. ArcTV Plus adds extras on top.
 
+**Is Arc TV affiliated with Stremio?** No. Arc TV is an independent app that supports the Stremio addon format, so addons made for Stremio work in it. It is not affiliated with or endorsed by Stremio.
+
 **Does it run on an Intel Mac?** Not for now. It needs Apple Silicon (M1 or newer) and macOS 14 or later.
 
 **Why the warning when I open it?** The app isn't notarized by Apple yet, so macOS asks you to confirm once. The steps above show how.
