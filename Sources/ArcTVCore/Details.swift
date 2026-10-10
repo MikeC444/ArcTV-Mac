@@ -14,6 +14,30 @@ public struct EpisodeInfo: Codable, Equatable, Identifiable, Sendable {
     public var displayTitle: String { title ?? name ?? "Episode \(episode ?? 0)" }
 }
 
+/// A person in the cast: a name, the character and a photo when the addon (or the account's cast lookup) has them.
+public struct CastMember: Equatable, Identifiable, Sendable {
+    public var name: String
+    public var role: String?
+    public var photoURL: String?
+    public var id: String { name }
+
+    public init(name: String, role: String? = nil, photoURL: String? = nil) {
+        self.name = name
+        self.role = role
+        self.photoURL = photoURL
+    }
+}
+
+public struct AppExtras: Codable, Equatable, Sendable {
+    public var cast: [CastExtra]?
+}
+
+public struct CastExtra: Codable, Equatable, Sendable {
+    public var name: String?
+    public var character: String?
+    public var photo: String?
+}
+
 /// What a title's details page shows (an addon's `/meta/<type>/<id>.json`).
 public struct MetaDetail: Codable, Equatable, Identifiable, Sendable {
     public var id: String
@@ -30,8 +54,21 @@ public struct MetaDetail: Codable, Equatable, Identifiable, Sendable {
     public var director: [String]?
     public var cast: [String]?
     public var videos: [EpisodeInfo]?
+    /// Cinemeta's extra: the cast with photos and characters.
+    public var app_extras: AppExtras?
 
-    /// Episodes grouped by season, seasons in order (season 0, "specials", last), episodes in order. Empty for a movie.
+    /// The cast with photos and characters when the addon sends them (Cinemeta's `app_extras.cast`); names the extended list lacks follow it, so
+    /// nobody in `cast` disappears.
+    public var castMembers: [CastMember] {
+        let photographed = (app_extras?.cast ?? []).compactMap { extra -> CastMember? in
+            guard let name = extra.name, !name.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+            return CastMember(name: name, role: extra.character.flatMap { $0.isEmpty ? nil : $0 }, photoURL: extra.photo.flatMap { $0.isEmpty ? nil : $0 })
+        }
+        let known = Set(photographed.map(\.name))
+        return photographed + (cast ?? []).filter { !$0.isEmpty && !known.contains($0) }.map { CastMember(name: $0) }
+    }
+
+    /// Episodes grouped by season, episodes in order. Empty for a movie.
     public var seasons: [Int: [EpisodeInfo]] {
         var grouped: [Int: [EpisodeInfo]] = [:]
         for video in videos ?? [] {
@@ -41,10 +78,8 @@ public struct MetaDetail: Codable, Equatable, Identifiable, Sendable {
         return grouped.mapValues { $0.sorted { ($0.episode ?? 0) < ($1.episode ?? 0) } }
     }
 
-    public var seasonNumbers: [Int] {
-        let numbers = seasons.keys.sorted()
-        return numbers.filter { $0 > 0 } + numbers.filter { $0 == 0 }
-    }
+    /// The seasons in order. Season 0 ("Specials") is left out, as on the web app.
+    public var seasonNumbers: [Int] { seasons.keys.filter { $0 > 0 }.sorted() }
 
     /// The preview card fields this detail came from, for places that show a poster.
     public var preview: MetaPreview {

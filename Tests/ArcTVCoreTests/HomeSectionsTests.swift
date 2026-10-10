@@ -78,3 +78,31 @@ final class HomeSectionsTests: XCTestCase {
         XCTAssertEqual(Set(extra.map(\.id)).count, 3)
     }
 }
+
+final class DetailExtrasTests: XCTestCase {
+    func testRuntimesAndDatesReadTheWayTheWebAppWritesThem() {
+        XCTAssertEqual(Format.runtime(minutes: 137), "2h 17m")
+        XCTAssertEqual(Format.runtimeMinutes("142 min"), 142)
+        XCTAssertEqual(Format.runtimeMinutes("2h 22min"), 142)
+        XCTAssertNil(Format.runtimeMinutes(nil))
+        XCTAssertEqual(Format.releaseDate("2024-03-05"), "Mar 5, 2024")
+        XCTAssertEqual(Format.releaseDate("2024-03-05T00:00:00.000Z"), "Mar 5, 2024")
+        XCTAssertNil(Format.releaseDate("soon"))
+    }
+
+    func testCastKeepsWhatTheAddonSentAndFillsInPhotosByName() {
+        let addon = [CastMember(name: "Zoë Saldaña", role: nil, photoURL: nil), CastMember(name: "A B", role: "Hero", photoURL: "keep.jpg")]
+        let tmdb = [TmdbCast(name: "Zoe Saldana", character: "Neytiri", photo: "zoe.jpg"), TmdbCast(name: "A B", character: "Other", photo: "other.jpg")]
+        let merged = CastMerge.merge(addon, tmdb)
+        XCTAssertEqual(merged[0], CastMember(name: "Zoë Saldaña", role: "Neytiri", photoURL: "zoe.jpg"))
+        XCTAssertEqual(merged[1], CastMember(name: "A B", role: "Hero", photoURL: "keep.jpg"))
+        XCTAssertEqual(CastMerge.merge([], tmdb).map(\.name), ["Zoe Saldana", "A B"])
+        XCTAssertEqual(CastMerge.merge(addon, []), addon)
+    }
+
+    func testCinemetaCastWithPhotosComesFirstThenTheRemainingNames() throws {
+        let json = #"{"id":"tt1","type":"movie","name":"One","cast":["A","B","C"],"app_extras":{"cast":[{"name":"B","character":"Bee","photo":"b.jpg"}]}}"#
+        let meta = try JSONDecoder().decode(MetaDetail.self, from: Data(json.utf8))
+        XCTAssertEqual(meta.castMembers, [CastMember(name: "B", role: "Bee", photoURL: "b.jpg"), CastMember(name: "A"), CastMember(name: "C")])
+    }
+}

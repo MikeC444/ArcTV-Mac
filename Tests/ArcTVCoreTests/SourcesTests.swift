@@ -52,7 +52,7 @@ final class SourcesTests: XCTestCase {
           {"id":"tt1:0:1","season":0,"episode":1,"title":"Special"},{"id":"tt1:2:1","season":2,"episode":1,"name":"Next"}]}
         """
         let detail = try JSONDecoder().decode(MetaDetail.self, from: Data(json.utf8))
-        XCTAssertEqual(detail.seasonNumbers, [1, 2, 0])
+        XCTAssertEqual(detail.seasonNumbers, [1, 2])
         XCTAssertEqual(detail.seasons[1]?.map(\.displayTitle), ["One", "Two"])
     }
 
