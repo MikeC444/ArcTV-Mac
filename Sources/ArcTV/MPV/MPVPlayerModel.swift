@@ -25,7 +25,9 @@ final class MPVPlayerModel: ObservableObject {
     @Published var buffering = true
     @Published var failure: String?
     @Published var ended = false
-    @Published var volume: Double = 100
+    /// The volume and speed last chosen, for every title on this Mac (not part of the synced account settings).
+    @Published var volume: Double = UserDefaults.standard.object(forKey: "ArcTVPlayerVolume") as? Double ?? 100
+    @Published var speed: Double = UserDefaults.standard.object(forKey: "ArcTVPlayerSpeed") as? Double ?? 1
     @Published var audioTracks: [MediaTrack] = []
     @Published var subtitleTracks: [MediaTrack] = []
 
@@ -39,6 +41,8 @@ final class MPVPlayerModel: ObservableObject {
             if !started {
                 started = true
                 buffering = false
+                view?.setString("volume", String(Int(volume)))
+                if speed != 1 { view?.setString("speed", String(speed)) }
                 refreshTracks()
             }
         case let .duration(value): duration = value
@@ -58,6 +62,13 @@ final class MPVPlayerModel: ObservableObject {
     func setVolume(_ value: Double) {
         volume = value
         view?.setString("volume", String(Int(value)))
+        UserDefaults.standard.set(value, forKey: "ArcTVPlayerVolume")
+    }
+
+    func setSpeed(_ value: Double) {
+        speed = value
+        view?.setString("speed", String(value))
+        UserDefaults.standard.set(value, forKey: "ArcTVPlayerSpeed")
     }
 
     func selectAudio(_ track: MediaTrack?) {

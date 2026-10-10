@@ -21,3 +21,9 @@ them under its version automatically.
 - Watched titles get a green tick, and My List can show just what you have watched, in the order you like.
 - Title pages now match the web app: logo, release date, trailer, IMDb rating, cast photos and more like this.
 - Settings sits in the top bar with Home, Movies, TV Shows, Search and My List.
+- Movies and TV Shows now have the web app's genre drop-down, search that suggests titles as you type, and recent searches.
+- Home appears instantly with your last rows while the new ones load, and the top bar slides away as you scroll.
+- Play carries on with the source you used before, and the player remembers your volume and speed.
+- No sources found? A step-by-step guide now walks you through setting them up.
+- A new sign-in page, with Sign Up built in, matches the web app.
+

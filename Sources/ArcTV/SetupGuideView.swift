@@ -124,7 +124,7 @@ struct SetupGuideView: View {
     }
 
     private func numbered(_ lead: String, _ text: String, _ number: Int) -> some View {
-        (Text("\(number). ").foregroundStyle(Theme.accent) + Text(lead + " ").bold().foregroundStyle(Theme.textPrimary) + Text(text).foregroundStyle(Theme.textSecondary))
+        (Text("\(number). ").foregroundColor(Theme.accent) + Text(lead + " ").bold().foregroundColor(Theme.textPrimary) + Text(text).foregroundColor(Theme.textSecondary))
             .font(.system(size: 15))
     }
 

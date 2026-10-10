@@ -136,6 +136,7 @@ struct MPVPlayerScreen: View {
                         .frame(width: 100)
                         .tint(Theme.textSecondary)
                 }
+                speedMenu
                 trackMenu(symbol: "waveform", tracks: model.audioTracks, none: nil, select: { model.selectAudio($0) })
                 trackMenu(symbol: "captions.bubble", tracks: model.subtitleTracks, none: "Off", select: { model.selectSubtitle($0) })
                 controlButton("arrow.up.left.and.arrow.down.right") { toggleFullScreen() }
@@ -146,6 +147,26 @@ struct MPVPlayerScreen: View {
         .padding(.top, 36)
         .padding(.bottom, 20)
         .background(LinearGradient(colors: [.clear, .black.opacity(0.75)], startPoint: .top, endPoint: .bottom))
+    }
+
+    private var speedMenu: some View {
+        Menu {
+            ForEach([0.5, 0.75, 1, 1.25, 1.5, 2], id: \.self) { value in
+                Button { model.setSpeed(value) } label: {
+                    let label = value == value.rounded() ? "\(Int(value))x" : "\(value)x"
+                    if model.speed == value { Label(label, systemImage: "checkmark") } else { Text(label) }
+                }
+            }
+        } label: {
+            Text(model.speed == model.speed.rounded() ? "\(Int(model.speed))x" : "\(model.speed)x")
+                .font(.system(size: 13, weight: .bold).monospacedDigit())
+                .foregroundStyle(Theme.textPrimary)
+                .frame(minWidth: 30, minHeight: 30)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Playback speed")
     }
 
     private func controlButton(_ symbol: String, size: CGFloat = 18, action: @escaping () -> Void) -> some View {

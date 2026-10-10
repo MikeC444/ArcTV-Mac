@@ -127,6 +127,8 @@ final class AppModel: ObservableObject {
     private let featureCache = FeatureCache.standard()
     @Published var signInError: String?
     @Published var signingIn = false
+    /// Set when the service says "too many attempts": the time the sign-in button works again.
+    @Published var waitUntil: Date?
 
     /// The backend address: what the person typed on the sign-in screen last time, else the one baked into this build, else the default.
     @Published var serverURL: String {
@@ -151,24 +153,34 @@ final class AppModel: ObservableObject {
         ratingPosters = UserDefaults.standard.dictionary(forKey: Self.posterKey) as? [String: String] ?? [:]
     }
 
-    func signIn(email: String, password: String) async {
+    /// Signs in (or, with `register`, makes the account first). Failures are put in words in `signInError`; "too many tries" sets `waitUntil`.
+    func signIn(email: String, password: String, register: Bool = false, displayName: String = "") async {
         signInError = nil
         let address = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !address.isEmpty, address.lowercased().hasPrefix("http") else {
             signInError = "Enter the server address first (it starts with https://)."
             return
         }
+        if let problem = Credentials.problem(email: email, password: password) {
+            signInError = problem
+            return
+        }
         signingIn = true
         defer { signingIn = false }
         do {
-            let next = try await AuthClient(baseURL: address).login(
-                email: email.trimmingCharacters(in: .whitespaces), password: password,
-                deviceId: DeviceIdentity.id, deviceName: DeviceIdentity.name
-            )
+            let client = AuthClient(baseURL: address)
+            let cleanEmail = email.trimmingCharacters(in: .whitespaces)
+            let next = register
+                ? try await client.register(email: cleanEmail, password: password, displayName: displayName, deviceId: DeviceIdentity.id, deviceName: DeviceIdentity.name)
+                : try await client.login(email: cleanEmail, password: password, deviceId: DeviceIdentity.id, deviceName: DeviceIdentity.name)
             store.save(next)
             session = next
         } catch let error as APIError {
-            signInError = error.errorDescription
+            if case .server(429, _) = error {
+                waitUntil = Date().addingTimeInterval(30)
+            } else {
+                signInError = error.errorDescription
+            }
         } catch {
             signInError = "Couldn't reach the server. Check the address and your connection."
         }

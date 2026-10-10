@@ -212,3 +212,24 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** the intermittent link failure is worked around, not diagnosed: the build is tried up to five times. A retry from a clean build directory was tried and failed once, so it was dropped.
 
+## 12 -- Parity with the web app, part 2: Movies / TV Shows, Search, Home loading, sources, player memory, sign-in
+
+**Status:** Written; checked by the Build and test workflow (see below). Not seen on a Mac.
+
+**Context:** The remaining differences from the web app that were listed: Search, Movies and TV Shows, the top bar, Home's loading, the sources page, the player and the sign-in screen.
+
+**Changes:**
+- Movies and TV Shows: the title with a genre drop-down beside it (the Cinemeta genre lists, blocked genres left out), Featured / Highest Rated / Newest, and pages of titles from every addon on the account (not only Cinemeta), shuffled, loaded as you scroll and kept so Back finds the same list; grey placeholders while the first page loads. The selected pill is now the web's solid cyan.
+- Search: a round box that searches as you type (a short pause, never one letter), up to five matching titles under it (poster, name, "Movie · 2024"), recent searches (kept per account, with Clear and a remove button on each), Movies and TV Shows as separate grids with their counts, "Still checking other addons…", "No results". Every addon is searched at once (each with a 6 second limit); one that can search is asked for real, otherwise its catalogues are filtered by title. Not done: the arrow keys for the suggestion list.
+- Home: the last session's rows (up to 30 per row, kept for 7 days, per account) are shown at once and replaced as soon as the first fresh ones arrive; grey placeholders in the shape of Home while nothing is known yet; an offline banner along the bottom while the Mac has no network.
+- Top bar: slides away as you scroll down a page and returns when you scroll up or move the pointer to the top (done by watching scroll events, so it follows the amount scrolled only approximately).
+- Sources: the source list is skipped when the title (or episode) was watched before on a source that is still there (matched by torrent hash, then by addon and release name, then by release name); "Choose source" in the poster menu always shows the list. The empty page now says "No sources found" with the reasons, Try Again, Manage Addons (opens Settings > Addons) and the web app's step-by-step guide to setting up a debrid service and Torrentio.
+- Player: the volume and a new speed menu (0.5x to 2x) are remembered for every title on this Mac.
+- Sign-in: the web layout: the living-room photo on the right fading into the page, "Your Entertainment, Your Way", Log In and Sign Up, the email form (with a display name when signing up, show or hide password, the same checks as the web app, a countdown after "too many attempts"), and the server address behind a small link. Creating an account is new (`POST /auth/register`).
+
+**Tests performed:** unit tests for recent searches, the genre lists, the cached Home rows (same account only, only while fresh), remembered sources (hash match, same addon and release, never a source that cannot play, per account and per episode). The sandbox cannot compile Swift; the workflow is the check, and nothing was seen on screen.
+
+**Issues discovered:** the web app has no "Pick up where you left off?" prompt: the web player code and the Home and Detail pages have none, and what the web does is the "skip the list for a remembered source" behaviour above (the parity notes said otherwise). Signing in by scanning a QR code is not built. The profile picture in the top bar comes with profiles.
+
+**Issues fixed:** none.
+

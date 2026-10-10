@@ -23,6 +23,15 @@ struct LoginRequest: Encodable {
     var platform: String?
 }
 
+struct RegisterRequest: Encodable {
+    var email: String
+    var password: String
+    var displayName: String?
+    var deviceId: String
+    var deviceName: String?
+    var platform: String?
+}
+
 struct RefreshRequest: Encodable {
     var refreshToken: String
 }
@@ -47,6 +56,18 @@ public struct AuthClient: Sendable {
     public func login(email: String, password: String, deviceId: String, deviceName: String) async throws -> Session {
         let body = LoginRequest(email: email, password: password, deviceId: deviceId, deviceName: deviceName, platform: "macos")
         let data = try await post("/auth/login", body: body, accessToken: nil)
+        do {
+            return try JSONDecoder().decode(Session.self, from: data)
+        } catch {
+            throw APIError.unreadable
+        }
+    }
+
+    /// Makes a new account and signs it in on this device.
+    public func register(email: String, password: String, displayName: String?, deviceId: String, deviceName: String) async throws -> Session {
+        let name = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = RegisterRequest(email: email, password: password, displayName: (name?.isEmpty ?? true) ? nil : name, deviceId: deviceId, deviceName: deviceName, platform: "macos")
+        let data = try await post("/auth/register", body: body, accessToken: nil)
         do {
             return try JSONDecoder().decode(Session.self, from: data)
         } catch {
@@ -86,5 +107,18 @@ public struct AuthClient: Sendable {
         request.setValue(AppInfo.version, forHTTPHeaderField: "X-ArcTV-App-Version")
         request.httpBody = try JSONEncoder().encode(body)
         return try await HTTP.data(for: request)
+    }
+}
+
+/// The same loose check the web app makes before asking the server (which stays the authority).
+public enum Credentials {
+    public static let minPasswordLength = 8
+
+    public static func problem(email: String, password: String) -> String? {
+        let trimmed = email.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "Enter your email address." }
+        if trimmed.range(of: #"^[^\s@]+@[^\s@]+\.[^\s@]+$"#, options: .regularExpression) == nil { return "Enter a valid email address." }
+        if password.count < minPasswordLength { return "Password must be at least \(minPasswordLength) characters." }
+        return nil
     }
 }
