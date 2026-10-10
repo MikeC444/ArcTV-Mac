@@ -7,78 +7,143 @@ struct SourcesView: View {
     let target: PlayTarget
     @State private var result = SourceResult()
     @State private var loading = true
+    @State private var filter: SourceFilter = .all
+    @State private var sort: SourceSort = .quality
     @ObservedObject private var torrents = TorrentEngine.shared
+
+    private var arranged: [SourceItem] { SourceListing.arrange(result.items, filter: filter, sort: sort) }
+    private var recommendedID: String? { SourceListing.recommendedID(in: result.items) }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             Theme.background.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Select a source")
-                            .font(.system(size: 30, weight: .heavy))
-                            .foregroundStyle(Theme.textPrimary)
-                        Text(target.heading)
-                            .font(.system(size: 15))
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    .padding(.top, 70)
-
-                    if let failure = torrents.failure {
-                        Text(failure)
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color(hex: 0xFFB020))
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0xFFB020).opacity(0.12)))
-                    }
-
-                    if loading {
-                        HStack(spacing: 12) {
-                            ProgressView()
-                            Text("Asking your addons…").foregroundStyle(Theme.textSecondary)
+            Backdrop(detail: target.title)
+            HStack(alignment: .top, spacing: 0) {
+                infoPanel
+                    .frame(width: 300)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Select a source")
+                                .font(.system(size: 30, weight: .heavy))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("Choose the best quality and server for your stream.")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Theme.textSecondary)
                         }
-                        .padding(.top, 20)
-                    } else {
-                        if result.items.isEmpty {
-                            noSources
+                        .padding(.top, 36)
+
+                        if let failure = torrents.failure {
+                            Text(failure)
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color(hex: 0xFFB020))
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0xFFB020).opacity(0.12)))
+                        }
+
+                        if loading {
+                            HStack(spacing: 12) {
+                                ProgressView()
+                                Text("Asking your addons…").foregroundStyle(Theme.textSecondary)
+                            }
+                            .padding(.top, 20)
                         } else {
-                            VStack(spacing: 8) {
-                                ForEach(result.items) { item in
-                                    SourceRow(item: item) { choose(item) }
+                            if result.items.isEmpty {
+                                noSources
+                            } else {
+                                filterBar
+                                VStack(spacing: 10) {
+                                    ForEach(arranged) { item in
+                                        SourceRow(item: item, recommended: item.id == recommendedID) { choose(item) }
+                                    }
                                 }
+                                if arranged.count <= 1 && filter != .all {
+                                    Button("No other sources in this quality. Show all sources") { filter = .all }
+                                        .buttonStyle(.plain)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Theme.accent)
+                                }
+                                statusLines
                             }
                         }
-                        if !result.items.isEmpty { statusLines }
                     }
+                    .frame(maxWidth: 920, alignment: .leading)
+                    .padding(.horizontal, 36)
+                    .padding(.bottom, 48)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: 900, alignment: .leading)
-                .padding(.horizontal, 44)
-                .padding(.bottom, 48)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            BackButton { model.goBack() }
-                .padding(.leading, 28)
-                .padding(.top, 22)
-            if let progress = torrents.progress { torrentOverlay(progress) }
+            if let progress = torrents.progress {
+                TorrentLoadingView(detail: target.title, progress: progress) { model.cancelTorrent() }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await load() }
     }
 
-    private func torrentOverlay(_ progress: TorrentProgress) -> some View {
-        ZStack {
-            Color.black.opacity(0.78).ignoresSafeArea()
-            VStack(spacing: 14) {
-                ProgressView().controlSize(.large)
-                Text(progress.message).font(.system(size: 20, weight: .bold)).foregroundStyle(Theme.textPrimary)
-                if let detail = progress.detail { Text(detail).font(.system(size: 14)).foregroundStyle(Theme.textSecondary) }
-                Text("Torrents take a little longer to start than other sources.").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
-                Button { model.cancelTorrent() } label: { Label("Cancel", systemImage: "xmark") }
-                    .buttonStyle(GlassButtonStyle())
-                    .padding(.top, 6)
+    /// Quality pills and the sort choice, as on the web app.
+    private var filterBar: some View {
+        HStack(spacing: 8) {
+            ForEach(SourceFilter.allCases) { option in
+                ChoicePill(label: option.rawValue, selected: filter == option) { filter = option }
             }
+            Spacer(minLength: 12)
+            Button { sort = sort.next } label: {
+                HStack(spacing: 6) {
+                    Text("Sort by: \(sort.rawValue)")
+                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(Theme.surfaceHigh))
+            }
+            .buttonStyle(.plain)
         }
+    }
+
+    /// The title on the left: poster, year, logo, genres and length, description.
+    private var infoPanel: some View {
+        let detail = target.title
+        let runtime = Format.runtimeMinutes(detail.runtime).map { Format.runtime(minutes: $0) } ?? ""
+        let facts = [(detail.genres ?? []).prefix(3).joined(separator: "  •  "), runtime].filter { !$0.isEmpty }.joined(separator: "   ")
+        return VStack(alignment: .leading, spacing: 10) {
+            BackButton { model.goBack() }
+            if let poster = detail.poster, let url = URL(string: poster) {
+                CachedImage(url: url) { Color.white.opacity(0.06) }
+                    .frame(width: 132, height: 198)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.top, 8)
+            }
+            if let year = detail.year { Text(String(year)).font(.system(size: 15)).foregroundStyle(Theme.textSecondary) }
+            if let logo = detail.logo, let url = URL(string: logo) {
+                CachedImage(url: url, contentMode: .fit) { titleText(detail) }
+                    .frame(maxWidth: 240, maxHeight: 80, alignment: .leading)
+            } else {
+                titleText(detail)
+            }
+            if !facts.isEmpty { Text(facts).font(.system(size: 14)).foregroundStyle(Theme.textSecondary) }
+            if let about = detail.description {
+                Text(about).font(.system(size: 14)).foregroundStyle(Theme.textSecondary).lineLimit(5)
+            }
+            Spacer(minLength: 12)
+            VStack(alignment: .leading, spacing: 4) {
+                Label("What are sources?", systemImage: "info.circle").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                Text("Sources are different streams or files available online. Choose the one that works best for you.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+            }
+            .padding(.bottom, 28)
+        }
+        .padding(.leading, 28)
+        .padding(.trailing, 16)
+        .padding(.top, 22)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func titleText(_ detail: MetaDetail) -> some View {
+        Text(detail.name).font(.system(size: 24, weight: .heavy)).foregroundStyle(Theme.textPrimary).lineLimit(2)
     }
 
     /// Nothing came back: why, what to do next, and the beginner's guide for someone who has not set up sources yet.
@@ -167,41 +232,140 @@ struct SourcesView: View {
     }
 }
 
+/// The title's artwork behind the page, darkened so the text on it reads.
+private struct Backdrop: View {
+    let detail: MetaDetail
+
+    var body: some View {
+        ZStack {
+            if let url = (detail.background ?? detail.poster).flatMap(URL.init(string:)) {
+                GeometryReader { geo in
+                    CachedImage(url: url) { Color.clear }
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                }
+            }
+            LinearGradient(colors: [Theme.background.opacity(0.94), Theme.background.opacity(0.80), Theme.background.opacity(0.92)],
+                           startPoint: .leading, endPoint: .trailing)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+/// What shows while a torrent gets ready: the title's artwork, its logo, and how the torrent is getting on, centred, where the player will appear.
+struct TorrentLoadingView: View {
+    let detail: MetaDetail
+    let progress: TorrentProgress
+    let cancel: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let url = (detail.background ?? detail.poster).flatMap(URL.init(string:)) {
+                GeometryReader { geo in
+                    CachedImage(url: url) { Color.clear }
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                }
+                .ignoresSafeArea()
+            }
+            Color.black.opacity(0.62).ignoresSafeArea()
+            VStack(spacing: 18) {
+                if let logo = detail.logo, let url = URL(string: logo) {
+                    CachedImage(url: url, contentMode: .fit) { name }
+                        .frame(maxWidth: 460, maxHeight: 150)
+                        .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
+                } else {
+                    name
+                }
+                ProgressView().controlSize(.large).padding(.top, 10)
+                Text(progress.message).font(.system(size: 20, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                if let extra = progress.detail { Text(extra).font(.system(size: 14)).foregroundStyle(Theme.textSecondary) }
+                Text("Torrents take a little longer to start than other sources.").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                Button(action: cancel) { Label("Cancel", systemImage: "xmark") }
+                    .buttonStyle(GlassButtonStyle())
+                    .padding(.top, 6)
+            }
+            .padding(40)
+        }
+    }
+
+    private var name: some View {
+        Text(detail.name).font(.system(size: 40, weight: .heavy)).foregroundStyle(Theme.textPrimary).multilineTextAlignment(.center)
+    }
+}
+
 private struct SourceRow: View {
     let item: SourceItem
+    let recommended: Bool
     let action: () -> Void
     @State private var hovering = false
 
+    private var tierColor: Color {
+        switch item.quality {
+        case .p2160: return Theme.accent
+        case .p1080: return Theme.blue
+        case .p720: return Color(hex: 0x1DB8A6)
+        default: return Theme.textTertiary
+        }
+    }
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
-                Text(item.quality.label)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(item.canStream ? Color(hex: 0x04161A) : Theme.textTertiary)
-                    .frame(width: 54)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(item.canStream ? AnyShapeStyle(Theme.brandGradient) : AnyShapeStyle(Color.white.opacity(0.08))))
-                VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 16) {
+                VStack(spacing: 2) {
+                    Text(item.quality.label).font(.system(size: 15, weight: .bold))
+                    if let tag = item.sourceTag { Text(tag).font(.system(size: 10, weight: .semibold)) }
+                }
+                .foregroundStyle(tierColor)
+                .frame(width: 70, height: 46)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(tierColor, lineWidth: 1.5))
+                VStack(alignment: .leading, spacing: 4) {
                     Text(item.headline)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(item.canStream ? Theme.textPrimary : Theme.textTertiary)
-                        .lineLimit(2)
-                    HStack(spacing: 8) {
-                        Text(item.addonName)
-                        if let size = item.sizeText { Text(size) }
-                        if item.isTorrent { Text("Torrent · streams inside Arc TV") }
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    if let codec = item.codecText {
+                        Text(codec).font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                     }
-                    .font(.system(size: 12))
+                    HStack(spacing: 12) {
+                        if let seeders = item.seeders { Label("\(seeders) seeders", systemImage: "person.fill") }
+                        if let audio = item.audioTag { Label(audio, systemImage: "speaker.wave.2.fill") }
+                        if item.isTorrent { Label("Torrent", systemImage: "arrow.down.circle") }
+                    }
+                    .font(.system(size: 11))
                     .foregroundStyle(Theme.textTertiary)
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 3) {
+                    if let size = item.sizeText { Text(size).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.textSecondary) }
+                    Label(item.addonName, systemImage: "wifi").font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
+                }
                 if item.canStream {
-                    Image(systemName: "play.fill").foregroundStyle(hovering ? Theme.accent : Theme.textTertiary)
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color(hex: 0x04161A))
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(hovering ? AnyShapeStyle(Theme.brandGradient) : AnyShapeStyle(Theme.accent.opacity(0.85))))
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 12).fill(hovering && item.canStream ? Color.white.opacity(0.09) : Theme.elevated))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 14).fill(hovering && item.canStream ? Theme.surface : Theme.surfaceHigh.opacity(0.85)))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(recommended ? Theme.accent : Color.clear, lineWidth: 1.5))
+            .overlay(alignment: .topTrailing) {
+                if recommended {
+                    Label("Recommended", systemImage: "star.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Color(hex: 0x04161A))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Theme.accent))
+                        .offset(x: -14, y: -10)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .disabled(!item.canStream)

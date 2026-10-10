@@ -318,3 +318,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the C++ and Swift built on the CI Mac (the first build failed on a Swift concurrency error in the server, now fixed). One existing test assumed a torrent can never be picked as the remembered source; it now checks that only a source with neither a link nor a hash is skipped. Open questions that only a real run answers: whether the copied libraries load inside the app, how quickly a popular and an unpopular torrent start, and whether seeking inside an MKV is quick enough. Two players asking for different ranges at once (a start and the end of an MP4) share one set of piece deadlines, so the last request wins.
 
 **Issues fixed:** none.
+
+## 17 -- Select a source matches the web app; the torrent loading screen
+
+**Status:** Written; see the build result below. Not seen on screen.
+
+**Context:** Asked for the source page to look like the web app (artwork behind it, the title's details and poster on the left, filters) and for a torrent to open a player-like screen at once with the artwork, the logo and the progress.
+
+**Changes:**
+- Select a source: the title's artwork darkened behind the page; on the left the Back button, poster, year, logo (or name), genres and length, description and "What are sources?"; on the right the heading, quality pills (All Sources, 4K, 1080p, 720p, Other), "Sort by" (Quality, Seeders, Size; one tap goes to the next), and the sources as cards: a quality badge in its colour with REMUX/BluRay/WEB-DL/etc. beneath, the release name, the video format and HDR, seeders and sound, the size and addon, a play button, and "Recommended" on the best direct source. The web app's page also has "MP4 & web formats" / "Plays on this device" switches, device-support notes and a safety footer; those are about what a browser can play and are not copied.
+- The release-name reading (seeders from the "👤" line, source tag, codec and HDR, sound, size) and the filter and sort rules are in ArcTVCore (`SourceListing`) with tests.
+- Torrent loading: choosing a torrent now covers the window at once with the title's artwork, its logo (or name) and, centred under it, the status (finding people, connections and speed) with Cancel. It is drawn by the source page, not by the player itself, so there is no player until the first part has arrived.
+
+**Tests performed:** unit tests for reading release names and for the filters and sorts. The Mac code could not be compiled here; the Build and test workflow is the check. Nothing was seen on screen.
+
+**Issues discovered:** none yet.
+
+**Issues fixed:** none.

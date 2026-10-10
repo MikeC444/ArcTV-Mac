@@ -88,3 +88,33 @@ final class TorrentTests: XCTestCase {
         XCTAssertNil(ByteRange.parse("bytes=5-2", size: 1000))
     }
 }
+
+final class SourceListingTests: XCTestCase {
+    private func item(_ title: String, url: String? = nil, hash: String? = "h", index: Int = 0, size: Int64? = nil) -> SourceItem {
+        var stream = AddonStream(url: url, infoHash: hash, title: title)
+        if let size { stream.behaviorHints = StreamHints(filename: nil, videoSize: size) }
+        return SourceItem(addonName: "T", stream: stream, index: index)
+    }
+
+    func testReadsTheReleaseName() {
+        let source = item("Movie.2026.2160p.WEB-DL.DV.HDR10+.DDP5.1.Atmos.H265-X\n👤 42 💾 21.3 GB")
+        XCTAssertEqual(source.seeders, 42)
+        XCTAssertEqual(source.sourceTag, "WEB-DL")
+        XCTAssertEqual(source.codecText, "HEVC  ·  HDR10+  ·  Dolby Vision")
+        XCTAssertEqual(source.audioTag, "Atmos")
+        XCTAssertEqual(source.sizeBytes, Int64(21.3 * 1_073_741_824))
+        XCTAssertNil(item("plain name").seeders)
+    }
+
+    func testFilterAndSort() {
+        let direct = item("Movie 1080p", url: "https://x/a.mkv", hash: nil, index: 0)
+        let uhd = item("Movie 2160p\n👤 5", index: 1, size: 20_000_000_000)
+        let hd = item("Movie 720p\n👤 90", index: 2, size: 2_000_000_000)
+        let all = [direct, uhd, hd]
+        XCTAssertEqual(SourceListing.recommendedID(in: all), direct.id)
+        XCTAssertEqual(SourceListing.arrange(all, filter: .uhd, sort: .quality).map(\.id), [direct.id, uhd.id])
+        XCTAssertEqual(SourceListing.arrange(all, filter: .all, sort: .seeders).map(\.id), [direct.id, hd.id, uhd.id])
+        XCTAssertEqual(SourceListing.arrange(all, filter: .all, sort: .size).map(\.id), [direct.id, uhd.id, hd.id])
+        XCTAssertEqual(SourceSort.size.next, .quality)
+    }
+}
