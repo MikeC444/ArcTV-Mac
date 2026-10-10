@@ -20,7 +20,7 @@ public extension String {
             }
             text = out + nsText.substring(from: last)
         }
-        return text.replacingOccurrences(of: "&", with: "&")
+        return text.replacingOccurrences(of: "&" + "amp;", with: "&")
     }
 }
 

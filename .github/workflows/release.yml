@@ -60,8 +60,16 @@ jobs:
             echo "Bug fixes and improvements." > "$RUNNER_TEMP/release_notes.md"
           fi
 
+      - name: Build
+        run: |
+          for attempt in 1 2 3 4 5; do
+            swift build --build-tests && exit 0
+            echo "Build failed (attempt $attempt of 5); trying again"
+          done
+          exit 1
+
       - name: Test
-        run: swift test || (echo "Linking failed; trying once more from a clean build" && rm -rf .build && swift test)
+        run: swift test
 
       - name: Package the app and DMG
         env:

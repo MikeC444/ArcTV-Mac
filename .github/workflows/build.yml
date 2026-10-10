@@ -16,10 +16,19 @@ jobs:
       - name: Swift version
         run: swift --version
 
+      # The final link of the app (the mpv libraries) fails on libsmbclient symbols in roughly half of the builds, with identical code, and works
+      # the next time (the cause is not known; the order the build tool lists the libraries in is the suspect). Only the link is redone, so trying
+      # again is cheap.
+      - name: Build
+        run: |
+          for attempt in 1 2 3 4 5; do
+            swift build --build-tests && exit 0
+            echo "Build failed (attempt $attempt of 5); trying again"
+          done
+          exit 1
+
       - name: Test
-        # The final link of the app (the mpv libraries) sometimes fails on libsmbclient symbols, on some build machines and not others; a second
-        # try from a clean build directory is the workaround (a retry in the same directory failed again; the cause is not known).
-        run: swift test || (echo "Linking failed; trying once more from a clean build" && rm -rf .build && swift test)
+        run: swift test
 
       - name: Package the app and DMG
         run: scripts/package-app.sh "0.0.0-ci.${{ github.run_number }}"
