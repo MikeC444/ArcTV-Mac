@@ -28,35 +28,44 @@ rm -rf build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/ArcTV" "$APP/Contents/MacOS/ArcTV"
 
-# The torrent engine (libtorrent) and the OpenSSL it needs come from Homebrew: copy them inside the app and point the program at the copies, so
-# the app runs on a Mac that has no Homebrew.
+# The torrent engine (libtorrent) and the libraries it needs (OpenSSL, whichever version Homebrew has) come from Homebrew: copy them inside the
+# app and point everything at the copies, so the app runs on a Mac that has no Homebrew. Dependencies are found by reading each library's own
+# list, so a new OpenSSL version in Homebrew needs no change here.
 FW="$APP/Contents/Frameworks"
 mkdir -p "$FW"
-TORRENT_LIB="$(brew --prefix libtorrent-rasterbar)/lib/libtorrent-rasterbar.2.1.dylib"
-SSL_DIR="$(brew --prefix openssl@3)/lib"
-cp -L "$TORRENT_LIB" "$FW/libtorrent-rasterbar.2.1.dylib"
-cp -L "$SSL_DIR/libssl.3.dylib" "$FW/libssl.3.dylib"
-cp -L "$SSL_DIR/libcrypto.3.dylib" "$FW/libcrypto.3.dylib"
-chmod u+w "$FW"/*.dylib
-for lib in libtorrent-rasterbar.2.1.dylib libssl.3.dylib libcrypto.3.dylib; do
-  install_name_tool -id "@rpath/$lib" "$FW/$lib"
-done
-# Every reference to a Homebrew copy of these three becomes a reference to the copy inside the app.
-fix_refs() {
-  local file="$1"
+BREW_PREFIX="$(brew --prefix)"
+copy_deps() {
+  local file="$1" dep real name
   otool -L "$file" | tail -n +2 | awk '{print $1}' | while read -r dep; do
     case "$dep" in
-      */libtorrent-rasterbar.2.1.dylib|*/libssl.3.dylib|*/libcrypto.3.dylib)
+      "$BREW_PREFIX"/*|/opt/homebrew/*|/usr/local/opt/*|/usr/local/Cellar/*)
+        name="$(basename "$dep")"
+        if [ ! -f "$FW/$name" ]; then
+          real="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$dep")"
+          cp "$real" "$FW/$name"
+          chmod u+w "$FW/$name"
+          install_name_tool -id "@rpath/$name" "$FW/$name"
+          copy_deps "$FW/$name"
+        fi ;;
+    esac
+  done
+}
+fix_refs() {
+  local file="$1" dep
+  otool -L "$file" | tail -n +2 | awk '{print $1}' | while read -r dep; do
+    case "$dep" in
+      "$BREW_PREFIX"/*|/opt/homebrew/*|/usr/local/opt/*|/usr/local/Cellar/*)
         install_name_tool -change "$dep" "@rpath/$(basename "$dep")" "$file" ;;
     esac
   done
 }
+copy_deps "$APP/Contents/MacOS/ArcTV"
 fix_refs "$APP/Contents/MacOS/ArcTV"
 for lib in "$FW"/*.dylib; do fix_refs "$lib"; done
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/ArcTV" 2>/dev/null || true
-echo "Frameworks inside the app:"; otool -L "$APP/Contents/MacOS/ArcTV" | grep -E "torrent|ssl|crypto" || true
-if otool -L "$APP/Contents/MacOS/ArcTV" "$FW"/*.dylib | grep -q "/opt/homebrew"; then
-  echo "A Homebrew path is still referenced:"; otool -L "$APP/Contents/MacOS/ArcTV" "$FW"/*.dylib | grep "/opt/homebrew"; exit 1
+echo "Frameworks inside the app:"; ls "$FW"
+if otool -L "$APP/Contents/MacOS/ArcTV" "$FW"/*.dylib | grep -qE "/opt/homebrew|/usr/local/(opt|Cellar)"; then
+  echo "A Homebrew path is still referenced:"; otool -L "$APP/Contents/MacOS/ArcTV" "$FW"/*.dylib | grep -E "/opt/homebrew|/usr/local/(opt|Cellar)"; exit 1
 fi
 
 # CFBundleVersion must be a plain number-ish string; the marketing version can be anything.
