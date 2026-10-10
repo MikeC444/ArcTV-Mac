@@ -74,6 +74,10 @@ struct MainView: View {
                     .id(target.id)
                     .transition(.opacity)
             }
+            if model.guideOpen {
+                SetupGuideView()
+                    .transition(.opacity)
+            }
             if let playing = model.playing {
                 Group {
                     switch model.playerEngine {

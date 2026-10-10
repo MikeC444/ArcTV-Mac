@@ -23,6 +23,8 @@ struct PlayTarget: Equatable, Identifiable {
     var episodeTitle: String?
     /// Where to start, in seconds (resuming); 0 starts from the beginning.
     var startAt: Double = 0
+    /// Show the source list even when this title was watched on a source before (Choose source).
+    var chooseSource = false
 
     var id: String { streamID }
     var streamID: String { ArcTVCore.streamID(titleID: title.id, season: season, episode: episode) }
@@ -94,6 +96,10 @@ final class AppModel: ObservableObject {
     @Published var playing: PlayingItem?
     /// The poster whose actions menu (right-click) is open.
     @Published var cardMenu: CardMenuTarget?
+    /// The sources set-up guide is open.
+    @Published var guideOpen = false
+    /// Which place in Settings is showing.
+    @Published var settingsTab: SettingsTab = .account
     @Published var addons: [SyncedAddon] = []
     /// Every addon on the account, switched off ones included (for Settings > Addons); [addons] is just the enabled ones.
     @Published var allAddons: [SyncedAddon] = []
@@ -204,6 +210,7 @@ final class AppModel: ObservableObject {
         pickedTask?.cancel()
         detail = nil
         cardMenu = nil
+        guideOpen = false
         sourcesFor = nil
         playing = nil
         selected = .home
@@ -313,6 +320,16 @@ final class AppModel: ObservableObject {
     }
 
     func openDetail(_ item: MetaPreview) { detail = item }
+
+    /// Goes to a place in Settings from anywhere (closing whatever is open over the tabs).
+    func openSettings(_ tab: SettingsTab) {
+        playing = nil
+        sourcesFor = nil
+        detail = nil
+        guideOpen = false
+        settingsTab = tab
+        selected = .settings
+    }
 
     func openCardMenu(_ item: MetaPreview, fromPicked: Bool = false) { cardMenu = CardMenuTarget(item: item, fromPicked: fromPicked) }
 

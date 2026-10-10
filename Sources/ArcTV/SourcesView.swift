@@ -31,10 +31,7 @@ struct SourcesView: View {
                         .padding(.top, 20)
                     } else {
                         if result.items.isEmpty {
-                            Text(emptyMessage)
-                                .foregroundStyle(Theme.textSecondary)
-                                .frame(maxWidth: 560, alignment: .leading)
-                                .padding(.top, 12)
+                            noSources
                         } else {
                             VStack(spacing: 8) {
                                 ForEach(result.items) { item in
@@ -42,7 +39,7 @@ struct SourcesView: View {
                                 }
                             }
                         }
-                        statusLines
+                        if !result.items.isEmpty { statusLines }
                     }
                 }
                 .frame(maxWidth: 900, alignment: .leading)
@@ -56,6 +53,28 @@ struct SourcesView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await load() }
+    }
+
+    /// Nothing came back: why, what to do next, and the beginner's guide for someone who has not set up sources yet.
+    private var noSources: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "magnifyingglass").font(.system(size: 36)).foregroundStyle(Theme.textTertiary)
+            Text("No sources found").font(.system(size: 22, weight: .bold)).foregroundStyle(Theme.textPrimary)
+            Text(emptyMessage).foregroundStyle(Theme.textSecondary).multilineTextAlignment(.center).frame(maxWidth: 560)
+            statusLines
+            HStack(spacing: 10) {
+                if !result.failures.isEmpty {
+                    Button { Task { await retry() } } label: { Label("Try Again", systemImage: "arrow.clockwise") }.buttonStyle(GlassButtonStyle())
+                }
+                Button { model.openSettings(.addons) } label: { Label("Manage Addons", systemImage: "puzzlepiece.extension") }.buttonStyle(GlassButtonStyle())
+            }
+            .padding(.top, 8)
+            Text("New to this?").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.textPrimary).padding(.top, 20)
+            Button { model.guideOpen = true } label: { Label("Step-by-step guide to setting up your sources", systemImage: "book") }
+                .buttonStyle(BrandButtonStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 30)
     }
 
     private var emptyMessage: String {
@@ -90,11 +109,26 @@ struct SourcesView: View {
     private func load() async {
         if model.addons.isEmpty { await model.loadAddons() }
         result = await SourceFinder.find(addons: model.addons, type: target.title.type, id: target.streamID)
+        // Watched before: carry on with the same source instead of asking (unless "Choose source" was used).
+        if !target.chooseSource, let user = model.session?.user.id,
+           let last = LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode),
+           let match = last.match(in: result.items) {
+            choose(match)
+        }
+        loading = false
+    }
+
+    private func retry() async {
+        loading = true
+        result = await SourceFinder.find(addons: model.addons, type: target.title.type, id: target.streamID)
         loading = false
     }
 
     private func choose(_ item: SourceItem) {
         guard let url = item.playURL else { return }
+        if let user = model.session?.user.id {
+            LastSourceStore(userID: user).set(LastSource(item), titleID: target.title.id, season: target.season, episode: target.episode)
+        }
         model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
     }
 }

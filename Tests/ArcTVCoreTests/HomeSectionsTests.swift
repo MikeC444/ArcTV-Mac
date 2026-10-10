@@ -154,3 +154,37 @@ final class HomeCacheTests: XCTestCase {
         XCTAssertNil(cache.load(userID: "user/1", now: now.addingTimeInterval(HomeCache.maxAge + 1)))
     }
 }
+
+final class LastSourceTests: XCTestCase {
+    private func item(_ addon: String, _ title: String, hash: String? = nil, url: String? = "https://x/y.mkv", index: Int = 0) -> SourceItem {
+        SourceItem(addonName: addon, stream: AddonStream(url: url, ytId: nil, infoHash: hash, fileIdx: nil, title: title, name: nil, description: nil, behaviorHints: nil), index: index)
+    }
+
+    func testTheSameTorrentIsFoundEvenWhenTheListChanged() {
+        let last = LastSource(addonName: "A", releaseTitle: "Old name", infoHash: "ABC")
+        let list = [item("A", "Other", hash: "zzz", index: 0), item("B", "New name", hash: "abc", index: 1)]
+        XCTAssertEqual(last.match(in: list)?.id, "B#1")
+    }
+
+    func testTheSameReleaseFromTheSameAddonBeatsTheSameNameElsewhere() {
+        let last = LastSource(addonName: "A", releaseTitle: "Movie.1080p")
+        let list = [item("B", "Movie.1080p", index: 0), item("A", "Movie.1080p", index: 1)]
+        XCTAssertEqual(last.match(in: list)?.id, "A#1")
+        XCTAssertEqual(LastSource(addonName: "Z", releaseTitle: "Movie.1080p").match(in: list)?.id, "B#0")
+        XCTAssertNil(LastSource(addonName: "A", releaseTitle: "Nothing like it").match(in: list))
+    }
+
+    func testASourceThatCannotPlayIsNeverPicked() {
+        let last = LastSource(addonName: "A", releaseTitle: "Movie", infoHash: "abc")
+        XCTAssertNil(last.match(in: [item("A", "Movie", hash: "abc", url: nil)]))
+    }
+
+    func testTheStoreRemembersPerEpisodeAndPerAccount() {
+        let suite = UserDefaults(suiteName: "arctv-test-\(UUID().uuidString)")!
+        let mine = LastSourceStore(defaults: suite, userID: "u1")
+        mine.set(LastSource(addonName: "A", releaseTitle: "E1"), titleID: "tt1", season: 1, episode: 1)
+        XCTAssertEqual(mine.get(titleID: "tt1", season: 1, episode: 1)?.releaseTitle, "E1")
+        XCTAssertNil(mine.get(titleID: "tt1", season: 1, episode: 2))
+        XCTAssertNil(LastSourceStore(defaults: suite, userID: "u2").get(titleID: "tt1", season: 1, episode: 1))
+    }
+}

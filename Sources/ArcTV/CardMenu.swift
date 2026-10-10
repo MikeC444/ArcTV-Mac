@@ -251,7 +251,7 @@ struct CardMenuView: View {
         if item.type == "series", resume == nil {
             model.openDetail(item)
         } else {
-            model.openSources(PlayTarget(title: item.asDetail, season: resume?.seasonNumber, episode: resume?.episodeNumber, episodeTitle: resume?.episodeTitle))
+            model.openSources(PlayTarget(title: item.asDetail, season: resume?.seasonNumber, episode: resume?.episodeNumber, episodeTitle: resume?.episodeTitle, chooseSource: true))
         }
     }
 }

@@ -67,7 +67,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 /// Updates work; the rest say they are coming (they are built in later stages).
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var tab: SettingsTab = .account
+    private var tab: SettingsTab { model.settingsTab }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -89,7 +89,7 @@ struct SettingsView: View {
                         .padding(.top, group.0 == "You" ? 0 : 14)
                         .padding(.bottom, 2)
                     ForEach(group.1) { item in
-                        SidebarRow(tab: item, selected: tab == item) { tab = item }
+                        SidebarRow(tab: item, selected: tab == item) { model.settingsTab = item }
                     }
                 }
             }
