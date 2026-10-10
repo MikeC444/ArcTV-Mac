@@ -294,3 +294,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the repository's releases endpoint answered 404 from this sandbox, so how the check behaves on a published release is untested. The app does not install updates itself; it links to the download.
 
 **Issues fixed:** none.
+
+**Follow-up to 15 (first look):** the first Home row sat too far below the banner, with empty picture under the buttons. The banner is shorter (62% of the window, at least 500 points, was 74% and 620) and the first row overlaps it more (70 points, was 44). Not seen on screen.

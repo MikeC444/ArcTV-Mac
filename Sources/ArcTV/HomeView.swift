@@ -20,7 +20,7 @@ struct HomeView: View {
                     if model.heroTitles.isEmpty {
                         Spacer().frame(height: 90)
                     } else {
-                        HeroCarousel(items: model.heroTitles, height: max(geo.size.height * 0.74, 620))
+                        HeroCarousel(items: model.heroTitles, height: max(geo.size.height * 0.62, 500))
                     }
                     // The first row rides up over the bottom of the banner (which fades into the page there), as on the web app.
                     VStack(alignment: .leading, spacing: 0) {
@@ -36,7 +36,7 @@ struct HomeView: View {
                             ForEach(rows) { row in HomeRowView(row: row) }
                         }
                     }
-                    .padding(.top, model.heroTitles.isEmpty ? 8 : -44)
+                    .padding(.top, model.heroTitles.isEmpty ? 8 : -70)
                     .padding(.bottom, 40)
                 }
             }
