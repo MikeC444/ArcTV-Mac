@@ -15,6 +15,7 @@ struct DetailView: View {
     /// nil while the lookup runs, "" when there is none, else "yyyy-MM-dd".
     @State private var releaseDate: String?
     @State private var cast: [CastMember]
+    @State private var downloadTarget: PlayTarget?
 
     init(preview: MetaPreview) {
         self.preview = preview
@@ -40,6 +41,10 @@ struct DetailView: View {
                 BackButton { model.goBack() }
                     .padding(.leading, 28)
                     .padding(.top, 22)
+                if let target = downloadTarget {
+                    DownloadPanel(target: target) { downloadTarget = nil }
+                        .transition(.opacity)
+                }
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -171,6 +176,12 @@ struct DetailView: View {
                 .frame(height: 48)
                 .disabled(trailer == nil)
                 .help(trailer == nil ? "No trailer found for this title" : "Watch the trailer on YouTube")
+            if model.plus.active {
+                Button { downloadTarget = downloadTargetForMain() } label: { Label("Download", systemImage: "arrow.down.circle") }
+                    .buttonStyle(GlassButtonStyle())
+                    .frame(height: 48)
+                    .help("Save this to your Mac")
+            }
             if expanded {
                 HStack(spacing: 14) {
                     RoundIconButton(icon: model.isWatched(detail.id) ? "checkmark.circle.fill" : "checkmark.circle", on: model.isWatched(detail.id),
@@ -326,6 +337,13 @@ struct DetailView: View {
         } else {
             model.openSources(PlayTarget(title: detail))
         }
+    }
+
+    /// What the Download button saves: the movie, or for a show the episode Play would start (where you left off, else the first).
+    private func downloadTargetForMain() -> PlayTarget {
+        guard isShow, let episode = resumeEpisode ?? firstEpisode else { return PlayTarget(title: detail) }
+        return PlayTarget(title: detail, season: episode.season, episode: episode.episode,
+                          episodeTitle: "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)")
     }
 
     private func playEpisode(_ episode: EpisodeInfo) {

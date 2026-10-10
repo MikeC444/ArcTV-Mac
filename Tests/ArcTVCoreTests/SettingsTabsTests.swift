@@ -133,3 +133,29 @@ final class QRSignInTests: XCTestCase {
         XCTAssertThrowsError(try QRPoll.read(Data("nope".utf8)))
     }
 }
+
+final class DownloadChoicesTests: XCTestCase {
+    private func item(_ title: String, url: String?, index: Int, size: Int64? = nil) -> SourceItem {
+        var stream = AddonStream(url: url, infoHash: url == nil ? "h" : nil, title: title)
+        if let size { stream.behaviorHints = StreamHints(filename: nil, videoSize: size) }
+        return SourceItem(addonName: "D", stream: stream, index: index)
+    }
+
+    func testBestQualityThenSmallest() {
+        let items = [
+            item("Movie 1080p", url: "https://x/a.mkv", index: 0, size: 5_000),
+            item("Movie 2160p", url: "https://x/b.mkv", index: 1, size: 40_000),
+            item("Movie 2160p", url: "https://x/c.mkv", index: 2, size: 20_000),
+            item("Movie 2160p torrent", url: nil, index: 3, size: 1)
+        ]
+        XCTAssertEqual(DownloadChoices.sorted(items).map(\.id), ["D#2", "D#1", "D#0"])
+    }
+
+    func testFileName() throws {
+        let url = try XCTUnwrap(URL(string: "https://x/y/file.mp4?token=1"))
+        XCTAssertEqual(DownloadChoices.fileName(release: "Movie: The/Cut?  2026", url: url), "Movie The Cut 2026.mp4")
+        XCTAssertEqual(DownloadChoices.fileName(release: "Show.S01E02.mkv", url: url), "Show.S01E02.mkv")
+        XCTAssertEqual(DownloadChoices.fileName(release: "Name", url: try XCTUnwrap(URL(string: "https://x/stream"))), "Name.mkv")
+        XCTAssertEqual(DownloadChoices.fileName(release: "???", url: url), "Arc TV download.mp4")
+    }
+}

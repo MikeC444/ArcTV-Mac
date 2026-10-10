@@ -26,6 +26,8 @@ public enum PlusCopy {
         public var detail: String
         /// "Coming soon" instead of "Included".
         public var soon: Bool
+        /// A small tag, such as "Web and Mac only", for a perk the phone and Fire TV apps don't have.
+        public var tag: String? = nil
         public var id: String { title }
     }
 
@@ -34,7 +36,8 @@ public enum PlusCopy {
         Perk(title: "Profiles", detail: "Up to 5 profiles on one account, each with its own My List, Continue Watching, settings and recommendations. Add kids profiles, and lock any profile with a PIN.", soon: false),
         Perk(title: "Parental controls", detail: "Locks on individual genres and titles, built on kids profiles and Blocked Genres.", soon: true),
         Perk(title: "Smart source picking", detail: "Skips Select a Source and starts the best source your device can play, once every addon has answered. Turn it on in Plus settings.", soon: false),
-        Perk(title: "Your stats", detail: "How much you watch, how this week compares, your streak, a map of your last 13 weeks and your busiest day, under Settings > Your stats.", soon: false)
+        Perk(title: "Your stats", detail: "How much you watch, how this week compares, your streak, a map of your last 13 weeks and your busiest day, under Settings > Your stats.", soon: false),
+        Perk(title: "Download", detail: "A Download button on a movie or episode lists the files from your debrid service, best quality at the smallest size first, to save to your Mac.", soon: false, tag: "Web and Mac only")
     ]
 }
 
@@ -69,7 +72,7 @@ extension AuthClient {
 /// The two Plus popups. The welcome shows once, ever (a revised tour gets a new id); the invitation comes back five days after it was closed,
 /// and never after "Don't show me again".
 public enum PlusPopups {
-    public static let welcomeID = "2026-10-features"
+    public static let welcomeID = "2026-10-features-2"
     public static let snooze: TimeInterval = 5 * 24 * 3600
 
     public static func welcomeDue(seen: String?, shownThisLaunch: Bool) -> Bool { seen != welcomeID && !shownThisLaunch }

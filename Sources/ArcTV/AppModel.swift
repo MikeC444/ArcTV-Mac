@@ -895,6 +895,13 @@ final class AppModel: ObservableObject {
     /// Which Plus popup is on screen.
     enum PlusPopup: Equatable { case welcome, invitation }
     @Published var plusPopup: PlusPopup?
+    /// A popup opened from Settings > Updates to look at it: closing it leaves no trace (it is not counted as seen).
+    private var plusPopupIsPreview = false
+
+    func previewPlusPopup(_ popup: PlusPopup) {
+        plusPopupIsPreview = true
+        plusPopup = popup
+    }
     /// A newer version of the app than this one, offered once (until "Skip this version" or Later).
     @Published var updateOffer: ReleaseInfo?
     private static let skippedUpdateKey = "ArcTVSkippedUpdate"
@@ -973,7 +980,9 @@ final class AppModel: ObservableObject {
     /// Close or the main button: the welcome is never shown again; the invitation waits five days.
     func closePlusPopup(openSettings tab: SettingsTab? = nil) {
         let defaults = UserDefaults.standard
-        switch plusPopup {
+        let preview = plusPopupIsPreview
+        plusPopupIsPreview = false
+        switch preview ? nil : plusPopup {
         case .welcome: defaults.set(PlusPopups.welcomeID, forKey: popupKey("WelcomeSeen"))
         case .invitation: defaults.set(Date().addingTimeInterval(PlusPopups.snooze).timeIntervalSince1970, forKey: popupKey("InvitationSnoozedUntil"))
         case nil: break
@@ -983,7 +992,8 @@ final class AppModel: ObservableObject {
     }
 
     func dismissInvitationForever() {
-        UserDefaults.standard.set(true, forKey: popupKey("InvitationNever"))
+        if !plusPopupIsPreview { UserDefaults.standard.set(true, forKey: popupKey("InvitationNever")) }
+        plusPopupIsPreview = false
         plusPopup = nil
     }
 }

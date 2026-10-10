@@ -366,6 +366,12 @@ struct UpdatesPane: View {
                 } label: { Label("Preview the update pop-up", systemImage: "eye") }
                     .buttonStyle(GlassButtonStyle())
             }
+            HStack(spacing: 12) {
+                Button { model.previewPlusPopup(.invitation) } label: { Label("Preview the Plus invitation", systemImage: "eye") }
+                    .buttonStyle(GlassButtonStyle())
+                Button { model.previewPlusPopup(.welcome) } label: { Label("Preview the Plus welcome", systemImage: "eye") }
+                    .buttonStyle(GlassButtonStyle())
+            }
         }
         .task { if state == .idle { await check() } }
     }

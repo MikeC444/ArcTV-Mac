@@ -40,4 +40,5 @@ them under its version automatically.
 - Sign in by scanning a QR code with your phone.
 - Move through search suggestions with the arrow keys, and press Return to open one.
 - Account now shows which profile you are watching as.
+- Arc TV Plus: save movies and episodes to your Mac with the new Download button, best quality at the smallest size first.
 - Arc TV now needs a Mac with Apple Silicon and macOS 14 or later.

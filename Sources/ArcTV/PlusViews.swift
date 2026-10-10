@@ -58,6 +58,7 @@ struct PlusPane: View {
                         HStack(spacing: 10) {
                             Text(perk.title).font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
                             tag(perk.soon ? "Coming soon" : (plus.paywall ? "Plus" : "Included in early access"), soon: perk.soon)
+                            if let extra = perk.tag { tag(extra, soon: true) }
                         }
                         Text(perk.detail).font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                     }
@@ -482,12 +483,14 @@ struct PlusPopupView: View {
                 Benefit(icon: "heart.fill", title: "Picked for you", detail: "A Home row chosen from the movies and shows you like, with the reason under each poster. Tune it in Settings > Recommendations."),
                 Benefit(icon: "person.2.fill", title: "Up to 5 profiles", detail: "Their own My List, Continue Watching and recommendations. Add kids profiles and PIN locks."),
                 Benefit(icon: "bolt.fill", title: "Smart source picking", detail: "Skips the source list and starts the best source your Mac can play."),
-                Benefit(icon: "chart.bar.fill", title: "Your stats", detail: "How much you watch, your streak and a map of your last 13 weeks.")
+                Benefit(icon: "chart.bar.fill", title: "Your stats", detail: "How much you watch, your streak and a map of your last 13 weeks."),
+                Benefit(icon: "arrow.down.circle.fill", title: "Downloads (web and Mac)", detail: "Save movies and episodes to your Mac from the Download button on a title's page.")
             ]
         }
         return [
             Benefit(icon: "heart.fill", title: "Picked for you", detail: "A Home row chosen from the movies and shows you like, with the reason under each poster."),
             Benefit(icon: "person.2.fill", title: "Up to 5 profiles", detail: "Their own My List, Continue Watching and recommendations. Add kids profiles and PIN locks."),
+            Benefit(icon: "arrow.down.circle.fill", title: "Downloads on the web and Mac", detail: "Save movies and episodes to your Mac, best quality at the smallest size first."),
             Benefit(icon: "rosette", title: "And more", detail: "Smart source picking and your watch stats, with parental controls on the way.")
         ]
     }
