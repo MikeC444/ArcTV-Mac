@@ -14,11 +14,12 @@ cd "$(dirname "$0")/.."
 
 echo "Building ArcTV $VERSION (universal: arm64 + x86_64)"
 # The final link sometimes fails on libsmbclient symbols (the cause is not known); the same build works the next time, so it is tried again.
+built=no
 for attempt in 1 2 3 4 5; do
-  swift build -c release --arch arm64 --arch x86_64 && break
-  [ "$attempt" = 5 ] && exit 1
+  if swift build -c release --arch arm64 --arch x86_64; then built=yes; break; fi
   echo "Build failed (attempt $attempt of 5); trying again"
 done
+[ "$built" = yes ] || exit 1
 BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
 
 APP="build/ArcTV.app"

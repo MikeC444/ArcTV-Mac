@@ -62,8 +62,9 @@ jobs:
 
       - name: Build
         run: |
+          set +e
           for attempt in 1 2 3 4 5; do
-            swift build --build-tests && exit 0
+            if swift build --build-tests; then exit 0; fi
             echo "Build failed (attempt $attempt of 5); trying again"
           done
           exit 1
