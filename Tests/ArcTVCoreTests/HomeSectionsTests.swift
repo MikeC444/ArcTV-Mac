@@ -231,3 +231,91 @@ final class ProfileTests: XCTestCase {
         XCTAssertTrue(try body(.some("1234")).contains("\"pin\":\"1234\""))
     }
 }
+
+final class PlusAndStatsTests: XCTestCase {
+    private var utc: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    private func iso(_ text: String) -> String { text }
+
+    func testTheWelcomeShowsOnceEverAndTheInvitationComesBackAfterFiveDays() {
+        XCTAssertTrue(PlusPopups.welcomeDue(seen: nil, shownThisLaunch: false))
+        XCTAssertFalse(PlusPopups.welcomeDue(seen: PlusPopups.welcomeID, shownThisLaunch: false))
+        XCTAssertFalse(PlusPopups.welcomeDue(seen: nil, shownThisLaunch: true))
+        let now = Date(timeIntervalSince1970: 1_790_000_000)
+        XCTAssertTrue(PlusPopups.invitationDue(never: false, snoozedUntil: nil, shownThisLaunch: false, now: now))
+        let closed = now.addingTimeInterval(PlusPopups.snooze)
+        XCTAssertFalse(PlusPopups.invitationDue(never: false, snoozedUntil: closed, shownThisLaunch: false, now: now.addingTimeInterval(4 * 24 * 3600)))
+        XCTAssertTrue(PlusPopups.invitationDue(never: false, snoozedUntil: closed, shownThisLaunch: false, now: closed))
+        XCTAssertFalse(PlusPopups.invitationDue(never: true, snoozedUntil: nil, shownThisLaunch: false, now: now))
+        XCTAssertEqual(PlusPopups.snooze, 5 * 24 * 3600)
+    }
+
+    func testWhatCountsAsWatchedAndHowLongsAreWritten() {
+        XCTAssertEqual(HistoryItem(contentId: "a", contentType: "MOVIE", positionMs: 10, durationMs: 100, completed: true, watchedAt: "").watchedMs, 100)
+        XCTAssertEqual(HistoryItem(contentId: "a", contentType: "MOVIE", positionMs: 400, durationMs: 100, completed: false, watchedAt: "").watchedMs, 100)
+        XCTAssertEqual(HistoryItem(contentId: "a", contentType: "MOVIE", positionMs: 40, durationMs: 0, completed: false, watchedAt: "").watchedMs, 40)
+        XCTAssertEqual(WatchStats.duration(126 * 3_600_000), "126 hours")
+        XCTAssertEqual(WatchStats.duration(65 * 60_000), "1 hour 5 minutes")
+        XCTAssertEqual(WatchStats.duration(40 * 60_000), "40 minutes")
+        XCTAssertEqual(WatchStats.duration(30_000), "under a minute")
+        XCTAssertEqual(WatchStats.short(45 * 60_000), "45m")
+        XCTAssertEqual(WatchStats.short(3 * 3_600_000), "3h")
+        XCTAssertEqual(WatchStats.short(90 * 60_000), "1.5h")
+        XCTAssertEqual(WatchStats.short(0), "")
+        XCTAssertEqual(WatchStats.weekChange(last7: 118, prev7: 100)?.percent, 18)
+        XCTAssertEqual(WatchStats.weekChange(last7: 70, prev7: 100)?.direction, "down")
+        XCTAssertNil(WatchStats.weekChange(last7: 1, prev7: 0))
+    }
+
+    func testStatsCountEachTitleOnceByDayAndFindStreaksAndTheBusiestDay() {
+        let hour: Int64 = 3_600_000
+        // "Now" is Wednesday 2026-10-14 12:00 UTC.
+        let now = ISODate.date(from: "2026-10-14T12:00:00.000Z")!
+        let items = [
+            HistoryItem(contentId: "m1", contentType: "MOVIE", positionMs: 2 * hour, durationMs: 2 * hour, completed: true, watchedAt: "2026-10-14T09:00:00.000Z"),
+            HistoryItem(contentId: "s1e1", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 1, positionMs: hour, durationMs: hour, completed: true, watchedAt: "2026-10-13T20:00:00.000Z"),
+            HistoryItem(contentId: "s1e2", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 2, positionMs: hour / 2, durationMs: hour, completed: false, watchedAt: "2026-10-12T20:00:00.000Z"),
+            HistoryItem(contentId: "m2", contentType: "MOVIE", positionMs: hour, durationMs: 2 * hour, completed: false, watchedAt: "2026-09-01T20:00:00.000Z")
+        ]
+        let stats = WatchStats.compute(items, now: now, calendar: utc)
+        XCTAssertFalse(stats.isEmpty)
+        XCTAssertEqual(stats.totalMs, 2 * hour + hour + hour / 2 + hour)
+        XCTAssertEqual(stats.last7DaysMs, 2 * hour + hour + hour / 2)
+        XCTAssertEqual(stats.movieMs, 3 * hour)
+        XCTAssertEqual(stats.showMs, hour + hour / 2)
+        XCTAssertEqual(stats.moviesFinished, 1)
+        XCTAssertEqual(stats.episodesWatched, 1)
+        XCTAssertEqual(stats.showsWatched, 2) // two episodes are two history rows, each its own key
+        XCTAssertEqual(stats.streakDays, 3) // 12th, 13th and 14th
+        XCTAssertEqual(stats.longestStreakDays, 3)
+        XCTAssertEqual(stats.activeDays, 4)
+        XCTAssertEqual(stats.dailyMs.last, 2 * hour)
+        XCTAssertEqual(stats.busiestWeekday, 2) // Wednesday (index 2, Monday first) holds the 2-hour movie
+        XCTAssertTrue(WatchStats.compute([], now: now, calendar: utc).isEmpty)
+    }
+
+    func testTheActivityGridStartsOnAMondayAndLightsTheBusiestDays() {
+        let now = ISODate.date(from: "2026-10-14T12:00:00.000Z")!
+        var daily = [Int64](repeating: 0, count: WatchStats.heatDays)
+        daily[WatchStats.heatDays - 1] = 100
+        daily[WatchStats.heatDays - 2] = 25
+        let cells = WatchStats.heatCells(daily, now: now, calendar: utc)
+        let blanks = cells.prefix { $0.ms == nil }.count
+        XCTAssertEqual(cells.count - blanks, WatchStats.heatDays)
+        XCTAssertEqual(cells.last?.level, 4)
+        XCTAssertEqual(cells[cells.count - 2].level, 1)
+        XCTAssertEqual(cells.count % 7, 0 == cells.count % 7 ? 0 : cells.count % 7)
+        // 2026-10-14 minus 90 days is 2026-07-16, a Thursday: three blank cells (Mon, Tue, Wed) come first.
+        XCTAssertEqual(blanks, 3)
+    }
+
+    func testThePlansAndPerksAreNamed() {
+        XCTAssertEqual(PlusPlan.all.map(\.id), ["monthly", "yearly", "lifetime"])
+        XCTAssertEqual(PlusPlan.label(for: "yearly"), "Yearly")
+        XCTAssertTrue(PlusCopy.perks.contains { $0.title == "Parental controls" && $0.soon })
+    }
+}
