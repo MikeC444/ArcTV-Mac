@@ -29,6 +29,10 @@ struct HomeView: View {
                             .padding(.top, 8)
                             .padding(.bottom, 18)
                     }
+                    if let picked = model.picked {
+                        PickedRowView(row: picked)
+                            .padding(.bottom, 18)
+                    }
                     RowsStack(rows: rows)
                         .padding(.top, 8)
                         .padding(.bottom, 40)
@@ -154,6 +158,30 @@ struct HomeRowView: View {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(row.items.withoutBlocked(model.blockedGenres)) { item in
                         PosterCard(item: item, width: 156)
+                    }
+                }
+                .padding(.horizontal, 44)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+}
+
+/// Picked for you (Arc TV Plus): titles chosen from what you like, finish and save, each with the reason under it.
+struct PickedRowView: View {
+    @EnvironmentObject private var model: AppModel
+    let row: PickedRow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(row.title)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.horizontal, 44)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 16) {
+                    ForEach(row.entries) { entry in
+                        PosterCard(item: entry.item, width: 156, reason: entry.reason, fromPicked: true)
                     }
                 }
                 .padding(.horizontal, 44)

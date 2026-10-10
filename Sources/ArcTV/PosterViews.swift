@@ -6,6 +6,10 @@ struct PosterCard: View {
     @EnvironmentObject private var model: AppModel
     let item: MetaPreview
     var width: CGFloat? = nil
+    /// Why this title is in Picked for you ("Because you liked ..."), shown under it.
+    var reason: String? = nil
+    /// True on the Picked for you row, where the menu can take a title out of it.
+    var fromPicked = false
     @State private var hovering = false
 
     var body: some View {
@@ -30,6 +34,13 @@ struct PosterCard: View {
                     .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
             }
+            if let reason {
+                Text(reason)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.accent.opacity(0.85))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
         }
         .frame(width: width)
         .onHover { hovering = $0 }
@@ -42,6 +53,20 @@ struct PosterCard: View {
             }
             Button { Task { await model.toggleWatched(item.asDetail) } } label: {
                 Label(model.isWatched(item.id) ? "Mark as not watched" : "Mark as watched", systemImage: "checkmark.circle")
+            }
+            if model.plus.active {
+                Divider()
+                Button { Task { await model.rate(item, .like) } } label: {
+                    Label(model.rating(of: item.id) == .like ? "Remove Like" : "Like", systemImage: model.rating(of: item.id) == .like ? "hand.thumbsup.fill" : "hand.thumbsup")
+                }
+                Button { Task { await model.rate(item, .dislike) } } label: {
+                    Label(model.rating(of: item.id) == .dislike ? "Remove Not for me" : "Not for me", systemImage: model.rating(of: item.id) == .dislike ? "hand.thumbsdown.fill" : "hand.thumbsdown")
+                }
+            }
+            if fromPicked {
+                Button(role: .destructive) { Task { await model.removeFromPicked(item.id) } } label: {
+                    Label("Remove from Picked for you", systemImage: "xmark.circle")
+                }
             }
             if let entry = model.continueItems.first(where: { $0.contentId == item.id }) {
                 Divider()

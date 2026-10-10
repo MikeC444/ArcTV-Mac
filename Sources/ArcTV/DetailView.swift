@@ -91,6 +91,16 @@ struct DetailView: View {
                             Label(model.isWatched(detail.id) ? "Watched" : "Mark watched", systemImage: model.isWatched(detail.id) ? "checkmark.circle.fill" : "checkmark.circle")
                         }
                         .buttonStyle(GlassButtonStyle())
+                        if model.plus.active {
+                            Button { Task { await model.rate(detail.preview, .like) } } label: {
+                                Label(model.rating(of: detail.id) == .like ? "Liked" : "Like", systemImage: model.rating(of: detail.id) == .like ? "hand.thumbsup.fill" : "hand.thumbsup")
+                            }
+                            .buttonStyle(GlassButtonStyle())
+                            Button { Task { await model.rate(detail.preview, .dislike) } } label: {
+                                Label(model.rating(of: detail.id) == .dislike ? "Not for me ✓" : "Not for me", systemImage: model.rating(of: detail.id) == .dislike ? "hand.thumbsdown.fill" : "hand.thumbsdown")
+                            }
+                            .buttonStyle(GlassButtonStyle())
+                        }
                     }
                     .padding(.top, 4)
                 }

@@ -14,3 +14,5 @@ them under its version automatically.
 - Add titles to My List, mark them watched, or take them out of Continue Watching with a right-click.
 - Manage your addons from the app: add one from a link, switch it off, or remove it.
 - Hide the genres you never want to see, on every device.
+- Like or mark Not for me on any title, and your Home gets a Picked for you row of titles chosen just for you (ArcTV Plus).
+- See what shapes your picks in Settings, and start fresh any time.

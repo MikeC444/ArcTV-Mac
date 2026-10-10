@@ -9,6 +9,15 @@ public enum ISODate {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)
     }
+
+    /// Reads a backend timestamp, with or without fractional seconds.
+    public static func date(from text: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: text) { return date }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: text)
+    }
 }
 
 /// A title the account can pick up again (`GET /user/continue-watching`).

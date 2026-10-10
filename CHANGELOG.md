@@ -167,3 +167,24 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** Home Rows (choose and order rows) is not done: this app's row ids differ from the other apps'.
 
 **Issues fixed:** none.
+
+## 10 -- Stage 4b: Like / Not for me, Picked for you and Settings > Recommendations
+
+**Status:** Written; not yet checked by the Build and test workflow when this entry was written. Not tried against the real account from the app.
+
+**Context:** The other apps give Arc TV Plus members a Picked for you row on Home, fed by Like / Not for me, My List and finished titles. The Mac app had none of it.
+
+**Changes:**
+- The recommendation engine, ported from the Fire TV app (which is itself the web app's) value for value, as pure functions in the core library: signals (Like 5, Not for me -5, finished 2, saved 1; the strongest applies), preferences split equally across a title's genres, directors and cast, cosine scoring with genre 0.6 / director 0.25 / cast 0.15 (missing categories are left out and the rest renormalised), the shortlist (by overall genre match, per genre by taste share, then round-robin over the profile's own titles; at most 60 detail lookups), composition (the best five stay, the other places follow the genre split by Sainte-Laguë with a seeded weighted draw so a refresh swaps most of the row), the diversity cap (one title explains at most three picks), reasons ("Because you liked X", "More from directors you enjoy") and the popular fallback until there are three signals with one positive. The seeded generator is mulberry32, the same arithmetic as the other apps.
+- Features (genres, directors, cast) are looked up through Cinemeta, four at a time, and kept in a cache file (800 titles, 30 days) so a refresh rarely touches the network.
+- Account calls: `GET /user/plus`, `GET`/`POST`/`DELETE /user/feedback`, `GET`/`POST /user/picked-dismissals`.
+- Home: a Picked for you row after Continue Watching, only for Plus accounts, with the reason under each title; it includes TV shows; a title rated, finished, started or removed leaves it at once. "Remove from Picked for you" (right-click) keeps a title out for five days on every device. The picks are fixed for a launch and change when Home is refreshed (what showed last time is less likely to return).
+- Like and Not for me in the poster's right-click menu and on the title page (Plus only); pressing the same one again takes it off.
+- Settings > Recommendations (Plus only): Liked / Not for me lists with View and Remove, "What shapes your picks" (points per kind of title, a note when there are not enough signals yet or more than the engine reads), "How it works", and Reset preferences with a confirmation.
+
+**Tests performed:** unit tests ported from the Fire TV app (signals, preferences, scoring, ranking different profiles differently, exclusions, explanations, the cold-start fallback, the lookup bound, a title never picking itself, diversity, TV shows) and new ones for the seeded generator against reference values from the web app's generator, composition, the summary and points wording, the five-day removal window and its merge with the account's list, the Home row, the feature cache and lookup bound, and decoding the account's answers. The sandbox has no Swift, so none of this was compiled or run here; the Build and test workflow is the check. The screens were not seen.
+
+**Issues discovered:** Ratings are per profile on the account; this app only has the main profile until profiles are added. A title rated on another device has no poster in the Recommendations list until it is rated here.
+
+**Issues fixed:** none.
+

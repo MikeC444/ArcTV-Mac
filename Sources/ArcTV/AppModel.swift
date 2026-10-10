@@ -77,6 +77,24 @@ final class AppModel: ObservableObject {
     @Published var myList: [WatchlistItem]?
     @Published var continueItems: [ContinueItem] = []
     @Published var myListError: String?
+    /// What the account has of Arc TV Plus (Like / Not for me and Picked for you need it).
+    @Published var plus: PlusStatus = .none
+    /// Like / Not for me by title id.
+    @Published var ratings: [String: FeedbackItem] = [:]
+    /// Titles taken out of Picked for you by hand, and when (each stays out for five days).
+    @Published var pickedRemoved: [String: Date] = [:]
+    /// Posters of rated titles, kept on this Mac so Settings can show them (the account does not store them).
+    @Published var ratingPosters: [String: String] = [:]
+    /// What the engine last picked; the row on Home is made from it, minus anything marked since.
+    @Published private(set) var pickedResult: EngineResult?
+    private var pickedPool: [MetaPreview] = []
+    private var pickedKey = ""
+    private var accountLoaded = false
+    private var pickedTask: Task<Void, Never>?
+    private var pickedSeed = Int.random(in: 0...Int(Int32.max))
+    private var previousShown: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "ArcTVPickedShown") ?? [])
+    private var rememberedShown = false
+    private let featureCache = FeatureCache.standard()
     @Published var signInError: String?
     @Published var signingIn = false
 
@@ -86,11 +104,16 @@ final class AppModel: ObservableObject {
     }
 
     private static let serverKey = "ArcTVServerURL"
+    private static let removedKey = "ArcTVPickedRemoved"
+    private static let posterKey = "ArcTVRatingPosters"
     private let store = SessionStore()
 
     init() {
         serverURL = AppInfo.resolveAPIBaseURL(saved: UserDefaults.standard.string(forKey: Self.serverKey), bundled: AppInfo.bundledAPIBaseURL)
         session = store.load()
+        let saved = UserDefaults.standard.dictionary(forKey: Self.removedKey) as? [String: Double] ?? [:]
+        pickedRemoved = saved.mapValues { Date(timeIntervalSince1970: $0) }
+        ratingPosters = UserDefaults.standard.dictionary(forKey: Self.posterKey) as? [String: String] ?? [:]
     }
 
     func signIn(email: String, password: String) async {
@@ -142,6 +165,12 @@ final class AppModel: ObservableObject {
         addons = []
         allAddons = []
         settings = nil
+        plus = .none
+        ratings = [:]
+        pickedResult = nil
+        pickedKey = ""
+        accountLoaded = false
+        pickedTask?.cancel()
         detail = nil
         sourcesFor = nil
         playing = nil
@@ -154,6 +183,7 @@ final class AppModel: ObservableObject {
         let year = Calendar.current.component(.year, from: Date())
         let rows = await HomeRows.load(specs: HomeRows.defaultRows(year: year), manifestURL: AppInfo.cinemetaManifestURL)
         home = rows.isEmpty ? .empty : .loaded(rows)
+        schedulePicked()
     }
 
     func openDetail(_ item: MetaPreview) { detail = item }
@@ -204,6 +234,7 @@ final class AppModel: ObservableObject {
 
     func loadSettings() async {
         if let found = try? await authorized({ client, token in try await client.settings(accessToken: token) }) { settings = found }
+        schedulePicked()
     }
 
     /// Hides (or shows again) a genre everywhere. Shown at once; put back if the account could not be reached.
@@ -221,6 +252,7 @@ final class AppModel: ObservableObject {
         } catch {
             settings = before
         }
+        schedulePicked()
     }
 
     // MARK: My List, Watched and Continue Watching
@@ -229,6 +261,13 @@ final class AppModel: ObservableObject {
     func loadAccountData() async {
         await loadMyList()
         await loadContinueWatching()
+        await loadPlus()
+        if plus.active {
+            await loadRatings()
+            await loadPickedRemovals()
+        }
+        accountLoaded = true
+        schedulePicked()
     }
 
     func loadMyList() async {
@@ -258,10 +297,12 @@ final class AppModel: ObservableObject {
         if let existing = savedItem(title.id) {
             myList = before.filter { $0.contentId != title.id }
             do { try await authorized { client, token in try await client.removeFromWatchlist(accessToken: token, item: existing) } } catch { myList = before }
+            schedulePicked()
         } else {
             let item = title.watchlistItem(watched: false)
             myList = before + [item]
             do { try await authorized { client, token in try await client.saveToWatchlist(accessToken: token, item: item) } } catch { myList = before }
+            schedulePicked()
         }
     }
 
@@ -275,6 +316,7 @@ final class AppModel: ObservableObject {
         myList = before.filter { $0.contentId != title.id } + [item]
         let toSend = item
         do { try await authorized { client, token in try await client.saveToWatchlist(accessToken: token, item: toSend) } } catch { myList = before }
+        schedulePicked()
     }
 
     func removeFromContinueWatching(_ item: ContinueItem) async {
@@ -303,7 +345,143 @@ final class AppModel: ObservableObject {
     }
 
     func reloadHome() async {
+        // A refresh swaps most of Picked for you: what is showing now becomes "shown last time" and a new draw starts.
+        if let shown = picked?.entries.map(\.id) {
+            previousShown = Set(shown)
+            UserDefaults.standard.set(shown, forKey: "ArcTVPickedShown")
+        }
+        pickedSeed = Int.random(in: 0...Int(Int32.max))
+        pickedKey = ""
         home = .idle
         await loadHome()
+    }
+
+    // MARK: Arc TV Plus: Like / Not for me and Picked for you
+
+    func loadPlus() async {
+        if let found = try? await authorized({ client, token in try await client.plusStatus(accessToken: token) }) { plus = found }
+    }
+
+    func loadRatings() async {
+        guard let items = try? await authorized({ client, token in try await client.feedback(accessToken: token) }) else { return }
+        var next: [String: FeedbackItem] = [:]
+        for item in items where item.deletedAt == nil && item.rating != nil { next[item.contentId] = item }
+        ratings = next
+    }
+
+    func loadPickedRemovals() async {
+        guard let items = try? await authorized({ client, token in try await client.pickedDismissals(accessToken: token) }) else { return }
+        pickedRemoved = PickedDismissals.merged(pickedRemoved, with: items)
+        savePickedRemoved()
+    }
+
+    func rating(of id: String) -> Rating? { ratings[id]?.rating }
+
+    /// Likes (or marks Not for me) a title; doing the same again takes the rating off. Shown at once; put back if the account could not be reached.
+    func rate(_ item: MetaPreview, _ rating: Rating) async {
+        guard plus.active else { return }
+        let before = ratings
+        let beforePosters = ratingPosters
+        if let existing = ratings[item.id], existing.rating == rating {
+            ratings[item.id] = nil
+            do { try await authorized { client, token in try await client.clearFeedback(accessToken: token, item: existing) } } catch { ratings = before }
+        } else {
+            let entry = FeedbackItem(title: item, rating: rating)
+            ratings[item.id] = entry
+            if let poster = item.poster { ratingPosters[item.id] = poster }
+            do { try await authorized { client, token in try await client.setFeedback(accessToken: token, item: entry) } } catch {
+                ratings = before
+                ratingPosters = beforePosters
+            }
+        }
+        UserDefaults.standard.set(ratingPosters, forKey: Self.posterKey)
+        schedulePicked()
+    }
+
+    /// Clears every Like and Not for me. Anything the account could not clear stays.
+    func resetRatings() async {
+        let all = Array(ratings.values)
+        ratings = [:]
+        for item in all {
+            do { try await authorized { client, token in try await client.clearFeedback(accessToken: token, item: item) } } catch { ratings[item.contentId] = item }
+        }
+        if ratings.isEmpty { ratingPosters = [:] }
+        UserDefaults.standard.set(ratingPosters, forKey: Self.posterKey)
+        schedulePicked()
+    }
+
+    /// Takes a title out of Picked for you for five days (no taste signal), on every device.
+    func removeFromPicked(_ id: String) async {
+        let now = Date()
+        pickedRemoved[id] = now
+        savePickedRemoved()
+        _ = try? await authorized { client, token in try await client.dismissPicked(accessToken: token, contentID: id, at: now) }
+    }
+
+    private func savePickedRemoved() {
+        let live = pickedRemoved.filter { Date().timeIntervalSince($0.value) < PickedDismissals.window }
+        pickedRemoved = live
+        UserDefaults.standard.set(live.mapValues { $0.timeIntervalSince1970 }, forKey: Self.removedKey)
+    }
+
+    /// Titles that must not show in Picked for you right now: rated, finished, or already in Continue Watching.
+    private var hiddenFromPicked: Set<String> {
+        var ids = Set(ratings.keys).union(continueItems.map(\.contentId))
+        for item in myList ?? [] where item.watched == true { ids.insert(item.contentId) }
+        return ids
+    }
+
+    var pickedAvailable: Bool { plus.active && session != nil }
+
+    /// The Picked for you row for Home, nil when there is none (not Plus, nothing picked yet).
+    var picked: PickedRow? {
+        guard pickedAvailable else { return nil }
+        return pickedRow(result: pickedResult, pool: pickedPool, hiddenIDs: hiddenFromPicked, dismissed: PickedDismissals.active(pickedRemoved))
+    }
+
+    /// Works out the row again when what feeds it has changed (ratings, My List, what is on offer). The picks are chosen with this launch's seed,
+    /// so they stay put until Home is refreshed.
+    func schedulePicked() {
+        guard pickedAvailable else {
+            pickedResult = nil
+            return
+        }
+        guard accountLoaded, case let .loaded(rows) = home else { return }
+        let pool = distinctByID(rows.flatMap(\.items)).withoutBlocked(blockedGenres)
+        let types = Dictionary((myList ?? []).map { ($0.contentId, $0.contentType == "MOVIE" ? "movie" : "series") }, uniquingKeysWith: { first, _ in first })
+        var refs: [String: TitleRef] = [:]
+        var rated: [String: (title: String, rating: Rating)] = [:]
+        for (id, item) in ratings {
+            guard let rating = item.rating else { continue }
+            rated[id] = (item.title, rating)
+            refs[id] = TitleRef(id: id, providerId: item.providerId, type: item.contentType == "MOVIE" ? "movie" : "series")
+        }
+        for item in myList ?? [] where refs[item.contentId] == nil {
+            refs[item.contentId] = TitleRef(id: item.contentId, providerId: item.providerId, type: types[item.contentId])
+        }
+        let interactions = collectInteractions(interactionInputs(list: myList ?? [], ratings: rated))
+        let key = signatureOf(interactions) + "#" + pool.map(\.id).joined(separator: ",")
+        if key == pickedKey { return }
+        pickedKey = key
+
+        let excluded = excludedFromPicks(list: myList ?? [], ratedIDs: Set(ratings.keys), continueIDs: Set(continueItems.map(\.contentId)),
+                                         dismissed: PickedDismissals.active(pickedRemoved))
+        let loader = FeatureLoading.loader(cache: featureCache) { ref in
+            let meta = try? await AddonClient().fetchMeta(manifestURL: AppInfo.cinemetaManifestURL, type: ref.type ?? "movie", id: ref.id)
+            return meta.map(featuresFromMeta)
+        }
+        let input = EngineInput(interactions: interactions, excludeIDs: excluded, pool: pool.map(\.asCandidate), interactionRefs: refs,
+                                loadFeatures: loader, seed: pickedSeed, previousShown: previousShown)
+        pickedTask?.cancel()
+        pickedTask = Task { [weak self] in
+            let result = await recommend(input)
+            guard !Task.isCancelled, let model = self else { return }
+            model.pickedPool = pool
+            model.pickedResult = result
+            if !model.rememberedShown, result.isPersonal {
+                model.rememberedShown = true
+                UserDefaults.standard.set(result.items.map(\.id), forKey: "ArcTVPickedShown")
+            }
+        }
     }
 }
