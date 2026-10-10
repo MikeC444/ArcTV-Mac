@@ -13,8 +13,9 @@ API_BASE_URL="${API_BASE_URL:-}"
 cd "$(dirname "$0")/.."
 
 echo "Building ArcTV $VERSION (universal: arm64 + x86_64)"
-# The final link sometimes fails on libsmbclient symbols (the order the libraries are listed in changes from run to run); one more try fixes it.
-swift build -c release --arch arm64 --arch x86_64 || swift build -c release --arch arm64 --arch x86_64
+# The final link sometimes fails on libsmbclient symbols, on some build machines and not others; a second try from a clean build directory has
+# gone through every time.
+swift build -c release --arch arm64 --arch x86_64 || { echo "Linking failed; trying once more from a clean build"; rm -rf .build; swift build -c release --arch arm64 --arch x86_64; }
 BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
 
 APP="build/ArcTV.app"

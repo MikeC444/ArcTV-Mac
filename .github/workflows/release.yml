@@ -61,7 +61,7 @@ jobs:
           fi
 
       - name: Test
-        run: swift test || (echo "Linking failed; trying once more" && swift test)
+        run: swift test || (echo "Linking failed; trying once more from a clean build" && rm -rf .build && swift test)
 
       - name: Package the app and DMG
         env:
