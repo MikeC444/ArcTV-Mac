@@ -53,6 +53,10 @@ struct MPVPlayerScreen: View {
                 .onTapGesture { model.togglePause() }
                 .onTapGesture(count: 2) { toggleFullScreen() }
 
+            if !model.hasStarted && model.failure == nil {
+                PlayerLoadingCover(title: item.target.title).allowsHitTesting(false).transition(.opacity)
+            }
+
             if loading {
                 ProgressView().controlSize(.large).allowsHitTesting(false)
             }
@@ -107,6 +111,7 @@ struct MPVPlayerScreen: View {
             model.stop()
         }
         .animation(.easeOut(duration: 0.2), value: controlsVisible)
+        .animation(.easeOut(duration: 0.3), value: model.hasStarted)
     }
 
     // MARK: Controls
@@ -572,5 +577,39 @@ private struct MenuRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+    }
+}
+
+/// What fills the player until the first picture plays: the title's artwork, darkened, with its logo (or name) in the middle.
+private struct PlayerLoadingCover: View {
+    let title: MetaDetail
+
+    var body: some View {
+        ZStack {
+            Color.black
+            if let url = (title.background ?? title.poster).flatMap(URL.init(string:)) {
+                GeometryReader { geo in
+                    CachedImage(url: url) { Color.clear }
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                }
+            }
+            Color.black.opacity(0.6)
+            VStack {
+                if let logo = title.logo, let url = URL(string: logo) {
+                    CachedImage(url: url, contentMode: .fit) { name }
+                        .frame(maxWidth: 460, maxHeight: 150)
+                        .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
+                } else {
+                    name
+                }
+                Spacer().frame(height: 90)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private var name: some View {
+        Text(title.name).font(.system(size: 40, weight: .heavy)).foregroundStyle(Theme.textPrimary).multilineTextAlignment(.center)
     }
 }

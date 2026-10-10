@@ -23,6 +23,8 @@ final class MPVPlayerModel: ObservableObject {
     @Published var duration: Double = 0
     @Published var paused = false
     @Published var buffering = true
+    /// False until the first picture is playing: the screen shows the title's artwork and logo until then.
+    @Published private(set) var hasStarted = false
     /// True from the moment a jump is asked for until mpv has landed on the new spot (and kept playing); shows the spinner while the stream loads.
     @Published var seeking = false
     @Published var failure: String?
@@ -43,6 +45,7 @@ final class MPVPlayerModel: ObservableObject {
             if !started || abs(value - position) >= 0.25 { position = value }
             if !started {
                 started = true
+                hasStarted = true
                 buffering = false
                 view?.setString("volume", String(Int(volume)))
                 if speed != 1 { view?.setString("speed", String(speed)) }

@@ -16,6 +16,8 @@ struct DetailView: View {
     @State private var releaseDate: String?
     @State private var cast: [CastMember]
     @State private var downloadTarget: PlayTarget?
+    /// False until the full details (cast, episodes) have come back, so grey placeholders hold their places.
+    @State private var detailLoaded = false
 
     init(preview: MetaPreview) {
         self.preview = preview
@@ -208,8 +210,8 @@ struct DetailView: View {
     @ViewBuilder
     private var below: some View {
         VStack(alignment: .leading, spacing: 26) {
-            if isShow, !detail.seasonNumbers.isEmpty { seasonsSection }
-            if !cast.isEmpty { castSection() }
+            if isShow, !detail.seasonNumbers.isEmpty { seasonsSection } else if isShow, !detailLoaded { SeasonsSkeleton().padding(.horizontal, 44) }
+            if !cast.isEmpty { castSection() } else if !detailLoaded { CastSkeleton().padding(.horizontal, 44) }
             
         }
         .padding(.bottom, 48)
@@ -219,7 +221,7 @@ struct DetailView: View {
     private func movieBottom(width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .top) {
-                if !cast.isEmpty { castSection(inset: 0) }
+                if !cast.isEmpty { castSection(inset: 0) } else if !detailLoaded { CastSkeleton() }
                 Spacer(minLength: 24)
                 if let rating = detail.imdbRating, !rating.isEmpty { ratingBox(rating) }
             }
@@ -374,6 +376,7 @@ struct DetailView: View {
         async let date: Void = loadReleaseDate()
         async let photos: Void = loadCastPhotos()
         _ = await (date, photos)
+        detailLoaded = true
     }
 
     private func loadReleaseDate() async {

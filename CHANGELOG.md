@@ -441,3 +441,21 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the logo file is small (121 pixels high), so the mark is enlarged in the icon and its edges are a little soft at the largest sizes. A sharper copy of the logo would fix that.
 
 **Issues fixed:** none.
+
+## 23 -- Loading placeholders and the player's loading picture
+
+**Status:** Written; see the build result below. Nothing was seen on screen.
+
+**Context:** The player showed a black screen and a spinner while it started, and several pages showed a lone spinner while they loaded.
+
+**Changes:**
+- Player: until the first picture plays, the title's artwork (darkened) and its logo (or name) fill the window with the spinner below, then fade out.
+- Select a source: while the addons answer, the quality pills and sort button and eight source cards are drawn in grey in the same places and sizes as the real ones (78 point cards, 70 by 46 badge, 34 point pills), under the real heading; the poster and details on the left were already real.
+- A title's page: grey placeholders for the cast (round photos with names) and, for a show, the seasons and episode cards, until the full details come back.
+- My List and search: the grid of grey posters instead of a spinner; stats: grey tiles. Home, Movies and TV Shows already had them.
+
+**Tests performed:** none (screen code). The Mac code could not be compiled or run here; the Build and test workflow is the check. The placeholders' sizes were taken from the real views' sizes in the code, not measured on screen.
+
+**Issues discovered:** none yet.
+
+**Issues fixed:** none.

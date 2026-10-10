@@ -44,11 +44,7 @@ struct SourcesView: View {
                         }
 
                         if loading {
-                            HStack(spacing: 12) {
-                                ProgressView()
-                                Text("Asking your addons…").foregroundStyle(Theme.textSecondary)
-                            }
-                            .padding(.top, 20)
+                            SourcesSkeleton()
                         } else {
                             if result.items.isEmpty {
                                 noSources

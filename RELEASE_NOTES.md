@@ -16,6 +16,7 @@ them under its version automatically.
 - Next episode: a button in the last minute, and the next episode starts by itself when one ends (switch it off in Settings > Player).
 - Choose how big the torrent buffer is and how much disk a torrent may use, in Settings > Player.
 - Arc TV now has its own app icon.
+- Grey placeholders now hold the place of whatever is still loading (sources, cast, episodes, stats and more), and the player shows your movie's picture and logo while it starts.
 - Pick up where you left off: Continue Watching on Home remembers every title, on every device.
 - Add titles to My List, mark them watched, or take them out of Continue Watching with a right-click.
 - Manage your addons from the app: add one from a link, switch it off, or remove it.

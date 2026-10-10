@@ -275,7 +275,7 @@ struct StatsPane: View {
             } else if model.statsFailed {
                 Text("Couldn't read your watch history right now. Try again in a moment.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
             } else {
-                ProgressView().controlSize(.large).frame(maxWidth: .infinity).padding(.top, 40)
+                StatsSkeleton()
             }
         }
         .task { if model.plus.active { await model.loadStats() } }

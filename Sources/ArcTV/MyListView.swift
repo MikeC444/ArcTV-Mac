@@ -30,7 +30,7 @@ struct MyListView: View {
                         PosterGrid(items: shown.map(\.asPreview))
                     }
                 } else {
-                    ProgressView().controlSize(.large).frame(maxWidth: .infinity).padding(.top, 60)
+                    GridSkeleton()
                 }
                 Spacer().frame(height: 48)
             }

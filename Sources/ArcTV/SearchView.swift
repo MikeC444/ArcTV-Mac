@@ -189,11 +189,10 @@ struct SearchView: View {
                 .foregroundStyle(Theme.textSecondary)
                 .padding(.horizontal, 44)
         case .searching:
-            HStack(spacing: 10) {
-                ProgressView().controlSize(.small)
-                Text("Searching…").font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
+            VStack(alignment: .leading, spacing: 10) {
+                Shimmer(cornerRadius: 6).frame(width: 120, height: 22).padding(.horizontal, 44).padding(.top, 20)
+                GridSkeleton()
             }
-            .padding(.horizontal, 44)
         case let .results(_, _, loading):
             let found = shown
             if found.movies.isEmpty && found.tvShows.isEmpty {
