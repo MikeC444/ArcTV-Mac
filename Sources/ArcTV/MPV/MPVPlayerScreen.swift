@@ -31,6 +31,7 @@ struct MPVPlayerScreen: View {
     @State private var hideTask: Task<Void, Never>?
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
+    @State private var fullScreen = false
 
     private var loading: Bool { (model.buffering || model.seeking) && model.failure == nil }
 
@@ -70,7 +71,12 @@ struct MPVPlayerScreen: View {
         .onChange(of: model.ended) { ended in
             if ended { appModel.goBack() }
         }
-        .onAppear { showControls() }
+        .onAppear {
+            showControls()
+            fullScreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in fullScreen = true }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in fullScreen = false }
         .task {
             // Tell the account where you are every half minute, so Continue Watching is right on every device.
             while !Task.isCancelled {
@@ -179,11 +185,10 @@ struct MPVPlayerScreen: View {
     private func roundIcon(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
-                .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
-                .contentShape(Circle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(help)
@@ -206,6 +211,17 @@ struct MPVPlayerScreen: View {
                 .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
+        .overlay(alignment: .leading) {
+            Button { toggleFullScreen() } label: {
+                Image(systemName: fullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(fullScreen ? "Exit full screen" : "Full screen")
+        }
     }
 
     private func trackPill(_ title: String, _ symbol: String, tracks: [MediaTrack], none: String?, select: @escaping (MediaTrack?) -> Void) -> some View {
@@ -283,7 +299,7 @@ struct MPVPlayerScreen: View {
         }
     }
 
-    /// Space pauses, the arrow keys skip 10 seconds (up and down change the volume), F goes full screen. Esc (Back) is on the Back button.
+    /// Space pauses, the arrow keys skip 10 seconds (up and down change the volume), F goes full screen, and Esc only leaves full screen.
     private var keyboardShortcuts: some View {
         ZStack {
             Button("") { model.togglePause() }.keyboardShortcut(.space, modifiers: [])
@@ -292,6 +308,8 @@ struct MPVPlayerScreen: View {
             Button("") { model.setVolume(min(100, model.volume + 10)) }.keyboardShortcut(.upArrow, modifiers: [])
             Button("") { model.setVolume(max(0, model.volume - 10)) }.keyboardShortcut(.downArrow, modifiers: [])
             Button("") { toggleFullScreen() }.keyboardShortcut("f", modifiers: [])
+            // Esc leaves full screen; it is not a back button here.
+            Button("") { if fullScreen { toggleFullScreen() } }.keyboardShortcut(.escape, modifiers: [])
         }
         .opacity(0)
         .allowsHitTesting(false)

@@ -517,8 +517,9 @@ private struct SimilarCard: View {
     }
 }
 
-/// A "Back" pill; Esc does the same.
+/// A "Back" pill; Esc does the same (except while a video is on screen, where Esc is not a back button).
 struct BackButton: View {
+    @EnvironmentObject private var model: AppModel
     let action: () -> Void
 
     var body: some View {
@@ -532,6 +533,6 @@ struct BackButton: View {
                 .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .keyboardShortcut(.cancelAction)
+        .keyboardShortcut(model.playing == nil ? .cancelAction : nil)
     }
 }

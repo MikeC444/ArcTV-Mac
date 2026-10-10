@@ -401,3 +401,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet. The Mac's built-in player (`BuiltInPlayerView`) still has its old controls.
 
 **Issues fixed:** none.
+
+**Follow-up to 20 (first look):** the Back and 10-second icons at the top left no longer sit in circles. A full-screen button (it flips to "exit full screen") sits at the bottom left, level with the pills. Esc is no longer a back button while a video is on screen: the Back pills of the pages underneath (which stay alive behind the player) only answer Esc when nothing is playing, and in the player Esc only leaves full screen. Not seen on screen.
