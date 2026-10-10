@@ -30,6 +30,11 @@ public enum BrowseSort: String, CaseIterable, Identifiable, Sendable {
 
 /// The genres Cinemeta's catalogues can be filtered by (the web app's drop-down).
 public enum Genres {
+    /// The Movies drop-down: exactly the genres Cinemeta's catalogue lists, in its order.
+    public static let movies = ["Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western"]
+    /// The TV Shows drop-down: the same, and three more.
+    public static let shows = movies + ["Reality-TV", "Talk-Show", "Game-Show"]
+
     public static let all = [
         "Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy",
         "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western"

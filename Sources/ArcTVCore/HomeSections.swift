@@ -253,3 +253,145 @@ public enum HeroPool {
         return (own + extra).shuffled(using: &generator)
     }
 }
+
+/// Movies and TV Shows pages: pages of a type from every addon, optionally for one genre. A port of `getSectionsByType` / `getMoreItemsByType`.
+public extension HomeSource {
+    /// One page (100 titles per catalogue; page 0 is the first). Catalogues that need a genre are used only when a genre is chosen.
+    func browsePage(type: String, genre: String?, page: Int, client: AddonClient = AddonClient()) async -> [MetaPreview] {
+        let wanted = catalogs.filter { $0.type == type }.filter { catalog in
+            guard let genre else { return catalog.isBase }
+            return HomeSections.isYear(genre) ? catalog.genreOptions.contains(where: HomeSections.isYear) : catalog.genreOptions.contains(genre)
+        }
+        if wanted.isEmpty { return [] }
+        var extra: [String: String] = [:]
+        if let genre { extra["genre"] = genre }
+        if page > 0 { extra["skip"] = String(page * HomeSections.pageSize) }
+        let request = extra
+        let manifestURL = self.manifestURL
+        let lists = await withTaskGroup(of: (Int, [MetaPreview]).self) { group -> [[MetaPreview]] in
+            for (index, catalog) in wanted.enumerated() {
+                group.addTask { (index, (try? await client.fetchCatalog(manifestURL: manifestURL, type: catalog.type, catalogId: catalog.id, extra: request)) ?? []) }
+            }
+            var results = Array(repeating: [MetaPreview](), count: wanted.count)
+            for await (index, items) in group { results[index] = items }
+            return results
+        }
+        return distinctByID(HomeSections.interleaved(lists))
+    }
+}
+
+/// What a search has found so far (the web app's `SearchResults`).
+public struct SearchProgress: Equatable, Sendable {
+    public var movies: [MetaPreview]
+    public var tvShows: [MetaPreview]
+    /// Addons that have not answered yet (and have not timed out).
+    public var pending: Int
+    /// Addons that failed or timed out.
+    public var failed: Int
+}
+
+/// Searching every addon at once. Results are handed over the moment each addon answers, merged in the same addon order so rows don't jump about.
+/// An addon with a catalogue that can search is asked for real; otherwise its base catalogues are filtered by title. A slow addon is left behind.
+public enum CatalogSearch {
+    public static let timeout: TimeInterval = 6
+
+    private actor Collector {
+        var lists: [[MetaPreview]?]
+        var pending: Int
+        var failed = 0
+
+        init(count: Int) {
+            lists = Array(repeating: nil, count: count)
+            pending = count
+        }
+
+        func set(_ index: Int, _ items: [MetaPreview]) { lists[index] = items }
+        func finish(failed didFail: Bool) {
+            pending -= 1
+            if didFail { failed += 1 }
+        }
+
+        func snapshot() -> SearchProgress {
+            let merged = distinctByID(HomeSections.interleaved(lists.compactMap { $0 }))
+            return SearchProgress(movies: merged.filter { $0.type == "movie" }, tvShows: merged.filter { $0.type == "series" }, pending: pending, failed: failed)
+        }
+    }
+
+    public static func search(sources: [HomeSource], query: String, client: AddonClient = AddonClient(),
+                              onUpdate: @escaping @Sendable (SearchProgress) async -> Void) async -> SearchProgress {
+        let collector = Collector(count: sources.count)
+        await withTaskGroup(of: Void.self) { group in
+            for (index, source) in sources.enumerated() {
+                group.addTask {
+                    let answered = await withTaskGroup(of: [MetaPreview]?.self) { race -> [MetaPreview]? in
+                        race.addTask {
+                            await searchOne(source, query: query, client: client) { partial in
+                                await collector.set(index, partial)
+                                await onUpdate(await collector.snapshot())
+                            }
+                        }
+                        race.addTask {
+                            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                            return nil
+                        }
+                        let first = await race.next() ?? nil
+                        race.cancelAll()
+                        return first
+                    }
+                    if let answered { await collector.set(index, answered) }
+                    await collector.finish(failed: answered == nil)
+                    await onUpdate(await collector.snapshot())
+                }
+            }
+        }
+        return await collector.snapshot()
+    }
+
+    static func searchOne(_ source: HomeSource, query: String, client: AddonClient, partial: @escaping @Sendable ([MetaPreview]) async -> Void) async -> [MetaPreview] {
+        let catalogs = source.catalogs
+        let searchable = catalogs.filter { ($0.extra ?? []).contains { $0.name == "search" } }
+        if !searchable.isEmpty {
+            let perCatalog = SearchLists(count: searchable.count)
+            await withTaskGroup(of: Void.self) { group in
+                for (index, catalog) in searchable.enumerated() {
+                    group.addTask {
+                        let items = (try? await client.fetchCatalog(manifestURL: source.manifestURL, type: catalog.type, catalogId: catalog.id, extra: ["search": query])) ?? []
+                        await perCatalog.set(index, items)
+                        if !items.isEmpty { await partial(distinctByID(HomeSections.interleaved(await perCatalog.all()))) }
+                    }
+                }
+            }
+            let found = distinctByID(HomeSections.interleaved(await perCatalog.all()))
+            if !found.isEmpty { return found }
+        }
+        let base = catalogs.filter(\.isBase)
+        let lists = await withTaskGroup(of: (Int, [MetaPreview]).self) { group -> [[MetaPreview]] in
+            for (index, catalog) in base.enumerated() {
+                group.addTask { (index, (try? await client.fetchCatalog(manifestURL: source.manifestURL, type: catalog.type, catalogId: catalog.id)) ?? []) }
+            }
+            var results = Array(repeating: [MetaPreview](), count: base.count)
+            for await (index, items) in group { results[index] = items }
+            return results
+        }
+        let needle = query.lowercased()
+        return distinctByID(HomeSections.interleaved(lists)).filter { $0.name.lowercased().contains(needle) }
+    }
+
+    private actor SearchLists {
+        var lists: [[MetaPreview]]
+        init(count: Int) { lists = Array(repeating: [], count: count) }
+        func set(_ index: Int, _ items: [MetaPreview]) { lists[index] = items }
+        func all() -> [[MetaPreview]] { lists }
+    }
+}
+
+/// Recent searches: newest first, a repeat (any letter case) moves up instead of doubling, and only the newest few are kept.
+public enum RecentSearches {
+    public static let limit = 8
+
+    public static func adding(_ query: String, to list: [String]) -> [String] {
+        let q = query.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        if q.isEmpty { return list }
+        return Array(([q] + list.filter { $0.lowercased() != q.lowercased() }).prefix(limit))
+    }
+}

@@ -171,10 +171,10 @@ struct ChoicePill: View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 14, weight: selected ? .bold : .medium))
-                .foregroundStyle(selected ? Color(hex: 0x04161A) : Theme.textPrimary)
+                .foregroundStyle(selected ? Color(hex: 0x04161A) : Theme.textSecondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(Capsule().fill(selected ? AnyShapeStyle(Theme.brandGradient) : AnyShapeStyle(Color.white.opacity(0.1))))
+                .background(Capsule().fill(selected ? Theme.accent : Theme.surfaceHigh))
         }
         .buttonStyle(.plain)
     }

@@ -9,7 +9,7 @@ struct HomeView: View {
     var body: some View {
         switch model.home {
         case .idle, .loading:
-            LoadingView()
+            HomeSkeleton()
         case .empty:
             ComingSoonView(title: "Nothing to show yet", note: "Home couldn't load its rows. Check your connection and your addons in Settings, then try again.")
         case .loaded:

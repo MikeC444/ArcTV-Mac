@@ -83,6 +83,11 @@ struct MainView: View {
                 }
                 .transition(.opacity)
             }
+            if !model.online {
+                OfflineBanner()
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .allowsHitTesting(false)
+            }
             if let menu = model.cardMenu {
                 CardMenuView(target: menu)
                     .transition(.opacity)

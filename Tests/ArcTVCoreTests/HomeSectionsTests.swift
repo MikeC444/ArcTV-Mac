@@ -118,3 +118,39 @@ final class HTMLDecodeTests: XCTestCase {
         XCTAssertEqual("plain".htmlDecoded, "plain")
     }
 }
+
+final class BrowseAndSearchTests: XCTestCase {
+    func testRecentSearchesPutTheNewestFirstAndDoNotDouble() {
+        var list: [String] = []
+        for term in ["alien", "  sinners ", "ALIEN", "it"] { list = RecentSearches.adding(term, to: list) }
+        XCTAssertEqual(list, ["it", "ALIEN", "sinners"])
+        XCTAssertEqual(RecentSearches.adding("   ", to: list), list)
+        var many: [String] = []
+        for number in 1...12 { many = RecentSearches.adding("t\(number)", to: many) }
+        XCTAssertEqual(many.count, RecentSearches.limit)
+        XCTAssertEqual(many.first, "t12")
+    }
+
+    func testTheMovieAndShowGenreListsMatchCinemeta() {
+        XCTAssertEqual(Genres.movies.count, 19)
+        XCTAssertEqual(Genres.shows.count, 22)
+        XCTAssertTrue(Genres.shows.starts(with: Genres.movies))
+        XCTAssertFalse(Genres.movies.contains("Reality-TV"))
+    }
+}
+
+final class HomeCacheTests: XCTestCase {
+    func testTheLastRowsComeBackForTheSameAccountOnlyAndOnlyWhileFresh() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("arctv-home-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = HomeCache(directory: directory)
+        let items = (0..<40).map { MetaPreview(id: "t\($0)", type: "movie", name: "T\($0)") }
+        let now = Date(timeIntervalSince1970: 1_790_000_000)
+        cache.save([HomeSection(id: "a_base", title: "Popular", items: items)], userID: "user/1", now: now)
+        let back = cache.load(userID: "user/1", now: now.addingTimeInterval(60))
+        XCTAssertEqual(back?.first?.title, "Popular")
+        XCTAssertEqual(back?.first?.items.count, HomeCache.itemsPerRow)
+        XCTAssertNil(cache.load(userID: "someone-else", now: now))
+        XCTAssertNil(cache.load(userID: "user/1", now: now.addingTimeInterval(HomeCache.maxAge + 1)))
+    }
+}

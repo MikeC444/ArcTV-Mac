@@ -1,5 +1,6 @@
 import ArcTVCore
 import Foundation
+import Network
 import SwiftUI
 
 /// The places in the top bar, in the web app's order.
@@ -76,6 +77,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var homeRaw: [HomeSection] = []
     /// The titles the Home banner rotates through, picked once per launch.
     @Published private(set) var heroTitles: [MetaPreview] = []
+    /// The addons that fill Home, Movies, TV Shows and Search (every enabled one that offers catalogues; Cinemeta when there is none).
+    @Published private(set) var catalogSources: [HomeSource] = []
+    /// False while the Mac has no network.
+    @Published private(set) var online = true
+    private var homeFromCache = false
+    private let homeCache = HomeCache()
+    private let pathMonitor = NWPathMonitor()
     private var homeComplete = false
     private var homeGeneration = 0
     private var heroKey: String?
@@ -127,6 +135,11 @@ final class AppModel: ObservableObject {
     init() {
         serverURL = AppInfo.resolveAPIBaseURL(saved: UserDefaults.standard.string(forKey: Self.serverKey), bundled: AppInfo.bundledAPIBaseURL)
         session = store.load()
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            let reachable = path.status == .satisfied
+            Task { @MainActor [weak self] in self?.online = reachable }
+        }
+        pathMonitor.start(queue: DispatchQueue(label: "arctv.network"))
         let saved = UserDefaults.standard.dictionary(forKey: Self.removedKey) as? [String: Double] ?? [:]
         pickedRemoved = saved.mapValues { Date(timeIntervalSince1970: $0) }
         ratingPosters = UserDefaults.standard.dictionary(forKey: Self.posterKey) as? [String: String] ?? [:]
@@ -204,12 +217,20 @@ final class AppModel: ObservableObject {
         homeComplete = false
         homeGeneration += 1
         let generation = homeGeneration
+        // The last launch's rows are on screen at once; the fresh ones replace them as soon as the first arrive.
+        if let userID = session?.user.id, let cached = homeCache.load(userID: userID) {
+            homeRaw = cached
+            homeFromCache = true
+            home = .loaded
+            pickHero()
+        }
 
         var sources = addons.compactMap { addon in addon.manifestJson.map { HomeSource(manifestURL: addon.manifestUrl, manifest: $0) } }
             .filter { !$0.catalogs.isEmpty }
         if sources.isEmpty, let manifest = try? await AddonClient().fetchManifest(AppInfo.cinemetaManifestURL) {
             sources = [HomeSource(manifestURL: AppInfo.cinemetaManifestURL, manifest: manifest)]
         }
+        catalogSources = sources
         let seed = "\(session?.user.id ?? "guest")|\(HomeVariety.dayStamp())"
         await withTaskGroup(of: Void.self) { group in
             for source in sources {
@@ -219,12 +240,17 @@ final class AppModel: ObservableObject {
         guard generation == homeGeneration else { return }
         homeComplete = true
         if homeRaw.isEmpty { home = .empty }
+        if !homeFromCache, !homeRaw.isEmpty, let userID = session?.user.id { homeCache.save(homeRaw, userID: userID) }
         pickHero()
         schedulePicked()
     }
 
     private func receive(_ batch: [HomeSection], generation: Int) {
         guard generation == homeGeneration else { return }
+        if homeFromCache {
+            homeFromCache = false
+            homeRaw = []
+        }
         homeRaw += batch
         home = .loaded
         pickHero()
