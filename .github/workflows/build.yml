@@ -29,7 +29,8 @@ jobs:
           exit 1
 
       - name: Test
-        run: swift test
+        # The build step above built the tests; building them again here relinks the app, which is the step that fails.
+        run: swift test --skip-build
 
       - name: Package the app and DMG
         run: scripts/package-app.sh "0.0.0-ci.${{ github.run_number }}"
