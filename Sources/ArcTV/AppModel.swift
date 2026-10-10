@@ -33,6 +33,20 @@ struct PlayingItem: Equatable {
     var sourceName: String
 }
 
+/// Which player plays video: mpv (plays almost anything) or the Mac's built-in player.
+enum PlayerEngine: String, CaseIterable, Identifiable {
+    case mpv
+    case builtIn
+
+    var id: String { rawValue }
+    var title: String { self == .mpv ? "Arc TV player (mpv)" : "Mac built-in player" }
+    var detail: String {
+        self == .mpv
+            ? "Plays MKV, HEVC, HDR and Dolby Vision, with audio and subtitle choices. Recommended."
+            : "Apple's own player. Only plays MP4 and streaming (HLS) files; many sources won't open."
+    }
+}
+
 /// What the whole app knows: who is signed in, which server it talks to, and what Home shows.
 @MainActor
 final class AppModel: ObservableObject {
@@ -45,6 +59,9 @@ final class AppModel: ObservableObject {
 
     @Published var session: Session?
     @Published var selected: NavItem = .home
+    @Published var playerEngine: PlayerEngine = PlayerEngine(rawValue: UserDefaults.standard.string(forKey: "ArcTVPlayerEngine") ?? "") ?? .mpv {
+        didSet { UserDefaults.standard.set(playerEngine.rawValue, forKey: "ArcTVPlayerEngine") }
+    }
     @Published var home: HomeState = .idle
     /// Which screen is open over the tabs: a title's details, then its sources, then the player (each sits on top of the one before).
     @Published var detail: MetaPreview?

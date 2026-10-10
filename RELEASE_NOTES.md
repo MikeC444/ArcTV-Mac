@@ -9,3 +9,4 @@ them under its version automatically.
 - Arc TV on your Mac: sign in with your account and browse Popular, New and Top rated movies and shows.
 - Open any title, see its details and episodes, pick a source and watch it.
 - Your sign-in is kept in a private file, so Arc TV never asks for your Mac password.
+- A built-in player that plays 4K, HDR and Dolby Vision files, with audio and subtitle choices.

@@ -111,6 +111,7 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.textPrimary)
                 switch tab {
                 case .account: account
+                case .player: player
                 case .updates: updates
                 default:
                     Text("\(tab.rawValue) is coming in a later update.")
@@ -138,6 +139,29 @@ struct SettingsView: View {
                     .buttonStyle(GlassButtonStyle())
                 Button { Task { await model.signOut() } } label: { Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right") }
                     .buttonStyle(GlassButtonStyle())
+            }
+        }
+    }
+
+    private var player: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(PlayerEngine.allCases) { engine in
+                Button { model.playerEngine = engine } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: model.playerEngine == engine ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(model.playerEngine == engine ? Theme.accent : Theme.textTertiary)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(engine.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                            Text(engine.detail).font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(model.playerEngine == engine ? Theme.accent.opacity(0.7) : Theme.divider, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
         }
     }

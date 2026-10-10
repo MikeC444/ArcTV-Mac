@@ -72,8 +72,13 @@ struct MainView: View {
                     .transition(.opacity)
             }
             if let playing = model.playing {
-                PlayerView(item: playing)
-                    .transition(.opacity)
+                Group {
+                    switch model.playerEngine {
+                    case .mpv: MPVPlayerScreen(item: playing)
+                    case .builtIn: BuiltInPlayerView(item: playing)
+                    }
+                }
+                .transition(.opacity)
             }
         }
         .animation(.easeOut(duration: 0.18), value: model.detail?.id)

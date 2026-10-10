@@ -110,3 +110,21 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up (same entry):** the Stage 2 build failed on the macOS runner with "reference to captured var 'self' in concurrently-executing code" in the player (a closure kept `self` inside `init`); the failure watcher is now set up in `start()`. Xcode on the user's Mac had built the same code, so the compiler versions differ.
+
+## 7 -- The mpv player, and the player choice in Settings
+
+**Status:** Written; whether it compiles and links is checked by the Build and test workflow (this adds a large binary dependency). Not seen playing video: no Mac was available to the author.
+
+**Context:** The Mac's built-in player (AVKit) cannot open MKV files, which is what debrid addons mostly give ("Cannot Open"). The Android apps use VLC; the Mac app uses mpv.
+
+**Changes:**
+- New dependency: MPVKit 0.41.0 (libmpv built for Apple platforms, LGPL build) in `Package.swift`.
+- `MPVVideoView`: an OpenGL view mpv draws into, adapted from MPVKit's macOS demo (create and set options, render context, wake-up and draw callbacks, an event loop for position, duration, pause, buffering, end and failure, clean shutdown).
+- `MPVPlayerModel` and `MPVPlayerScreen`: the app's own controls over the video: play and pause, 10-second skips, a seek bar, volume, audio and subtitle track menus (read from mpv's track list), full screen, auto-hiding controls, tap to pause, double-tap for full screen; space, left and right arrows and F as shortcuts; a failure panel; going back when the video ends.
+- The player is chosen in Settings > Player: Arc TV player (mpv) is the default, the Mac built-in player stays as the other choice (the old player view is now `BuiltInPlayerView`).
+
+**Tests performed:** none of the player itself (it cannot run here). Unit tests still cover the core library.
+
+**Issues discovered:** none yet.
+
+**Issues fixed:** none yet.

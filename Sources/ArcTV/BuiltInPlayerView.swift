@@ -34,7 +34,7 @@ final class PlayerController: ObservableObject {
 }
 
 /// The player: the Mac's own video player (AVKit) in a full window, with Back (or Esc) to leave.
-struct PlayerView: View {
+struct BuiltInPlayerView: View {
     @EnvironmentObject private var model: AppModel
     let item: PlayingItem
     @StateObject private var controller: PlayerController
