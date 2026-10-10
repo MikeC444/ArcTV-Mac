@@ -1,6 +1,11 @@
 import ArcTVCore
 import SwiftUI
 
+private struct MenuHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 /// What right-clicking a poster opens (the web app's poster menu): the title's artwork, a big Play (or Resume), My List / Watched / Like / Not for me
 /// that stay open and show a tick when set, then View details, Choose source and the removals.
 struct CardMenuView: View {
@@ -10,29 +15,37 @@ struct CardMenuView: View {
     private var item: MetaPreview { target.item }
     private var resume: ContinueItem? { model.continueItems.first { $0.contentId == item.id } }
     private let panelWidth: CGFloat = 500
+    @State private var contentHeight: CGFloat = 640
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.62)
-                .ignoresSafeArea()
-                .onTapGesture { close() }
-
-            ScrollView {
-                VStack(spacing: 16) {
-                    banner
-                    VStack(spacing: 16) {
-                        playButton
-                        toggles
-                        rows
-                    }
-                    .padding(.horizontal, 26)
-                    .padding(.bottom, 22)
-                }
+        GeometryReader { geo in
+            ZStack {
+                Color.black.opacity(0.62)
+                    .ignoresSafeArea()
+                    .onTapGesture { close() }
+                panel
+                    .frame(width: panelWidth, height: min(contentHeight, geo.size.height - 60))
             }
-            .scrollIndicators(.hidden)
-            .frame(width: panelWidth)
-            .frame(maxHeight: 700)
-            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var panel: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                banner
+                VStack(spacing: 16) {
+                    playButton
+                    toggles
+                    rows
+                }
+                .padding(.horizontal, 26)
+                .padding(.bottom, 22)
+            }
+            .background(GeometryReader { proxy in Color.clear.preference(key: MenuHeightKey.self, value: proxy.size.height) })
+        }
+        .onPreferenceChange(MenuHeightKey.self) { contentHeight = $0 }
+        .scrollIndicators(.hidden)
             .background(RoundedRectangle(cornerRadius: 24).fill(Theme.elevated))
             .clipShape(RoundedRectangle(cornerRadius: 24))
             .overlay(RoundedRectangle(cornerRadius: 24).stroke(Theme.divider, lineWidth: 1))
@@ -48,8 +61,7 @@ struct CardMenuView: View {
                 .keyboardShortcut(.cancelAction)
                 .padding(14)
             }
-            .shadow(color: .black.opacity(0.6), radius: 40, y: 20)
-        }
+        .shadow(color: .black.opacity(0.6), radius: 40, y: 20)
     }
 
     private func close() { model.cardMenu = nil }
