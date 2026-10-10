@@ -71,16 +71,37 @@ public struct AddonResource: Codable, Equatable, Sendable {
     }
 }
 
+/// A filter a catalogue accepts: "genre" (with the options it lists), "skip" (paging), "search".
+public struct CatalogExtra: Codable, Equatable, Sendable {
+    public var name: String
+    public var isRequired: Bool?
+    public var options: [String]?
+
+    public init(name: String, isRequired: Bool? = nil, options: [String]? = nil) {
+        self.name = name
+        self.isRequired = isRequired
+        self.options = options
+    }
+}
+
 public struct CatalogDefinition: Codable, Equatable, Sendable {
     public var type: String
     public var id: String
     public var name: String?
+    public var extra: [CatalogExtra]?
 
-    public init(type: String, id: String, name: String? = nil) {
+    public init(type: String, id: String, name: String? = nil, extra: [CatalogExtra]? = nil) {
         self.type = type
         self.id = id
         self.name = name
+        self.extra = extra
     }
+
+    var genreExtra: CatalogExtra? { (extra ?? []).first { $0.name == "genre" } }
+    var genreOptions: [String] { genreExtra?.options ?? [] }
+    /// A catalogue that does not need a genre to answer.
+    var isBase: Bool { genreExtra?.isRequired != true }
+    var supportsSkip: Bool { (extra ?? []).contains { $0.name == "skip" } }
 }
 
 /// One title in a catalogue: enough for a poster card now, and for a details page later.

@@ -1,28 +1,25 @@
+import AppKit
 import ArcTVCore
 import SwiftUI
 
-/// Home: a big banner for the first title, then the rows.
+/// Home: the rotating banner of featured titles, Continue Watching, Picked for you (Plus), then the rows.
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        content
-    }
-
-    @ViewBuilder
-    private var content: some View {
         switch model.home {
         case .idle, .loading:
             LoadingView()
         case .empty:
-            ComingSoonView(title: "Nothing to show yet", note: "Home couldn't load its rows. Check your connection, then open Settings and try again.")
-        case let .loaded(rows):
+            ComingSoonView(title: "Nothing to show yet", note: "Home couldn't load its rows. Check your connection and your addons in Settings, then try again.")
+        case .loaded:
+            let rows = model.homeSections
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    if let featured = Self.featured(in: rows, blocked: model.blockedGenres) {
-                        HeroBanner(item: featured)
-                    } else {
+                    if model.heroTitles.isEmpty {
                         Spacer().frame(height: 90)
+                    } else {
+                        HeroCarousel(items: model.heroTitles)
                     }
                     if !model.continueItems.isEmpty {
                         ContinueRowView(items: model.continueItems)
@@ -33,39 +30,88 @@ struct HomeView: View {
                         PickedRowView(row: picked)
                             .padding(.bottom, 18)
                     }
-                    RowsStack(rows: rows)
-                        .padding(.top, 8)
-                        .padding(.bottom, 40)
+                    LazyVStack(alignment: .leading, spacing: 26) {
+                        ForEach(rows) { row in HomeRowView(row: row) }
+                    }
+                    .padding(.top, 8)
+                    .padding(.bottom, 40)
                 }
             }
         }
     }
-
-    /// The first title that has wide artwork.
-    static func featured(in rows: [HomeRow], blocked: Set<String>) -> MetaPreview? {
-        for row in rows {
-            if let hit = row.items.withoutBlocked(blocked).first(where: { $0.background != nil && $0.description != nil }) { return hit }
-        }
-        return nil
-    }
 }
 
-struct RowsStack: View {
-    let rows: [HomeRow]
+/// The banner at the top of Home: ten featured titles that change by themselves every few seconds (stopped by the pause button, or while the pointer
+/// is over it), with dots to jump to one.
+struct HeroCarousel: View {
+    @EnvironmentObject private var model: AppModel
+    let items: [MetaPreview]
+    @State private var index = 0
+    @State private var paused = false
+    @State private var hovering = false
+    @State private var forward = true
+    private let height: CGFloat = 520
+    private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 26) {
-            ForEach(rows) { row in
-                HomeRowView(row: row)
+        let current = items[min(index, items.count - 1)]
+        ZStack(alignment: .bottomTrailing) {
+            HeroSlide(item: current, height: height)
+                .id(current.id)
+                .transition(.asymmetric(
+                    insertion: .move(edge: forward ? .trailing : .leading),
+                    removal: .move(edge: forward ? .leading : .trailing)
+                ))
+            if items.count > 1 { controls }
+        }
+        .frame(height: height)
+        .clipped()
+        .onHover { hovering = $0 }
+        .onReceive(timer) { _ in
+            guard items.count > 1, !paused, !hovering else { return }
+            go(to: (index + 1) % items.count)
+        }
+    }
+
+    private func go(to target: Int) {
+        guard target != index else { return }
+        forward = target > index || (index == items.count - 1 && target == 0)
+        withAnimation(.easeInOut(duration: 0.65)) { index = target }
+    }
+
+    private var controls: some View {
+        HStack(spacing: 4) {
+            Button { paused.toggle() } label: {
+                Image(systemName: paused ? "play.fill" : "pause.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
+                    .frame(width: 28, height: 24)
+                    .shadow(color: .black.opacity(0.7), radius: 3)
+            }
+            .buttonStyle(.plain)
+            .help(paused ? "Play the slide show" : "Pause the slide show")
+            ForEach(items.indices, id: \.self) { dot in
+                Button { go(to: dot) } label: {
+                    Circle()
+                        .fill(dot == index ? Color.white : Color.white.opacity(0.4))
+                        .frame(width: dot == index ? 9 : 7, height: dot == index ? 9 : 7)
+                        .frame(width: 18, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
+        .padding(.trailing, 36)
+        .padding(.bottom, 22)
     }
 }
 
-struct HeroBanner: View {
+/// One featured title: its wide picture, logo (or name), a line of facts, genres, a short description and the buttons.
+private struct HeroSlide: View {
     @EnvironmentObject private var model: AppModel
     let item: MetaPreview
-    private let height: CGFloat = 470
+    let height: CGFloat
+    @State private var trailer: String?
 
     var body: some View {
         GeometryReader { geo in
@@ -86,52 +132,63 @@ struct HeroBanner: View {
 
                 details
                     .padding(.horizontal, 44)
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 56)
             }
             .frame(width: geo.size.width, height: height)
         }
         .frame(height: height)
+        .task(id: item.id) { trailer = await model.trailerID(for: item) }
     }
 
     private var details: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             if let logo = item.logo, let url = URL(string: logo) {
                 AsyncImage(url: url) { phase in
                     switch phase {
-                    case let .success(image):
-                        image.resizable().aspectRatio(contentMode: .fit)
-                    default:
-                        titleText
+                    case let .success(image): image.resizable().aspectRatio(contentMode: .fit)
+                    default: titleText
                     }
                 }
-                .frame(maxWidth: 360, maxHeight: 110, alignment: .leading)
+                .frame(maxWidth: 380, maxHeight: 110, alignment: .leading)
             } else {
                 titleText
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 if let year = item.releaseInfo { Text(year) }
+                if let runtime = item.runtime { Text(runtime) }
                 if let rating = item.imdbRating { Label(rating, systemImage: "star.fill") }
-                if let genres = item.genres, !genres.isEmpty { Text(genres.prefix(3).joined(separator: " · ")) }
             }
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(Theme.textSecondary)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(.white)
+
+            if let genres = item.genres, !genres.isEmpty {
+                Text(genres.prefix(3).joined(separator: "  ·  "))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
 
             if let description = item.description {
                 Text(description)
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.textPrimary.opacity(0.9))
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white)
                     .lineLimit(3)
-                    .frame(maxWidth: 520, alignment: .leading)
+                    .frame(maxWidth: 560, alignment: .leading)
             }
 
-            HStack(spacing: 12) {
-                Button { model.openDetail(item) } label: { Label("Play", systemImage: "play.fill") }
+            HStack(spacing: 14) {
+                Button { model.play(item) } label: { Label("Play", systemImage: "play.fill") }
                     .buttonStyle(BrandButtonStyle())
-                Button { model.openDetail(item) } label: { Label("More info", systemImage: "info.circle") }
+                Button {
+                    if let trailer, let url = URL(string: "https://www.youtube.com/watch?v=\(trailer)") { NSWorkspace.shared.open(url) }
+                } label: { Label("Trailer", systemImage: "theatermasks") }
                     .buttonStyle(GlassButtonStyle())
+                    .disabled(trailer == nil)
+                    .help(trailer == nil ? "No trailer found for this title" : "Watch the trailer on YouTube")
+                HeroIconButton(icon: model.isSaved(item.id) ? "checkmark" : "plus", label: "My List") { Task { await model.toggleSaved(item.asDetail) } }
+                HeroIconButton(icon: "info", label: "Info") { model.openDetail(item) }
             }
-            .padding(.top, 4)
+            .padding(.top, 8)
         }
     }
 
@@ -144,19 +201,40 @@ struct HeroBanner: View {
     }
 }
 
+/// A round button with a small label under it (the banner's My List and Info).
+private struct HeroIconButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Button(action: action) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.white.opacity(0.16)))
+            }
+            .buttonStyle(.plain)
+            Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.85))
+        }
+    }
+}
+
 struct HomeRowView: View {
     @EnvironmentObject private var model: AppModel
-    let row: HomeRow
+    let row: HomeSection
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(row.spec.title)
+            Text(row.title)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.horizontal, 44)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) {
-                    ForEach(row.items.withoutBlocked(model.blockedGenres)) { item in
+                    ForEach(row.items) { item in
                         PosterCard(item: item, width: 156)
                     }
                 }

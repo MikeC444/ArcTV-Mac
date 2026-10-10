@@ -55,10 +55,11 @@ struct MainView: View {
                 }
             }
             .task {
-                await model.loadHome()
                 await model.loadAddons()
-                await model.loadAccountData()
                 await model.loadSettings()
+                async let home: Void = model.loadHome()
+                async let account: Void = model.loadAccountData()
+                _ = await (home, account)
             }
 
             TopNavBar()

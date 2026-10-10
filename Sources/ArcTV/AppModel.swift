@@ -62,7 +62,7 @@ final class AppModel: ObservableObject {
     enum HomeState: Equatable {
         case idle
         case loading
-        case loaded([HomeRow])
+        case loaded
         case empty
     }
 
@@ -72,6 +72,14 @@ final class AppModel: ObservableObject {
         didSet { UserDefaults.standard.set(playerEngine.rawValue, forKey: "ArcTVPlayerEngine") }
     }
     @Published var home: HomeState = .idle
+    /// Every row the account's addons gave Home, as they arrived (before hiding, ordering and leaving out what has been seen).
+    @Published private(set) var homeRaw: [HomeSection] = []
+    /// The titles the Home banner rotates through, picked once per launch.
+    @Published private(set) var heroTitles: [MetaPreview] = []
+    private var homeComplete = false
+    private var homeGeneration = 0
+    private var heroKey: String?
+    private var trailers: [String: String] = [:]
     /// Which screen is open over the tabs: a title's details, then its sources, then the player (each sits on top of the one before).
     @Published var detail: MetaPreview?
     @Published var sourcesFor: PlayTarget?
@@ -168,6 +176,8 @@ final class AppModel: ObservableObject {
         store.clear()
         session = nil
         home = .idle
+        homeRaw = []
+        heroTitles = []
         myList = nil
         continueItems = []
         addons = []
@@ -186,13 +196,94 @@ final class AppModel: ObservableObject {
         selected = .home
     }
 
+    /// Fills Home from the account's addons (every enabled one that offers catalogues; Cinemeta when there is none), as the web app does.
     func loadHome() async {
-        if case .loaded = home { return }
+        guard home == .idle else { return }
         home = .loading
-        let year = Calendar.current.component(.year, from: Date())
-        let rows = await HomeRows.load(specs: HomeRows.defaultRows(year: year), manifestURL: AppInfo.cinemetaManifestURL)
-        home = rows.isEmpty ? .empty : .loaded(rows)
+        homeRaw = []
+        homeComplete = false
+        homeGeneration += 1
+        let generation = homeGeneration
+
+        var sources = addons.compactMap { addon in addon.manifestJson.map { HomeSource(manifestURL: addon.manifestUrl, manifest: $0) } }
+            .filter { !$0.catalogs.isEmpty }
+        if sources.isEmpty, let manifest = try? await AddonClient().fetchManifest(AppInfo.cinemetaManifestURL) {
+            sources = [HomeSource(manifestURL: AppInfo.cinemetaManifestURL, manifest: manifest)]
+        }
+        let seed = "\(session?.user.id ?? "guest")|\(HomeVariety.dayStamp())"
+        await withTaskGroup(of: Void.self) { group in
+            for source in sources {
+                group.addTask { await HomeSections.load(source: source, seed: seed) { batch in await self.receive(batch, generation: generation) } }
+            }
+        }
+        guard generation == homeGeneration else { return }
+        homeComplete = true
+        if homeRaw.isEmpty { home = .empty }
+        pickHero()
         schedulePicked()
+    }
+
+    private func receive(_ batch: [HomeSection], generation: Int) {
+        guard generation == homeGeneration else { return }
+        homeRaw += batch
+        home = .loaded
+        pickHero()
+        schedulePicked()
+    }
+
+    /// What Home shows below the banner: the rows without titles you have watched, saved or rated, in the order chosen in Settings, hidden rows
+    /// left out, each title once.
+    var homeSections: [HomeSection] {
+        let blocked = blockedGenres
+        var raw = homeRaw
+        if !blocked.isEmpty {
+            raw = raw.map { HomeSection(id: $0.id, title: $0.title, items: $0.items.withoutBlocked(blocked)) }.filter { !$0.items.isEmpty }
+        }
+        var seen = Set(ratings.keys)
+        for item in myList ?? [] { seen.insert(item.contentId) }
+        let unseen = raw.map { HomeSection(id: $0.id, title: $0.title, items: $0.items.filter { !seen.contains($0.id) }) }.filter { !$0.items.isEmpty }
+        let hidden = settings?.hiddenRowIds ?? []
+        let preferences = HomeRowPreferences(order: settings?.homeRowOrder ?? [], hiddenRowIds: hidden)
+        return unseen.ordered(by: preferences).filter { !hidden.contains($0.id) }.deduped()
+    }
+
+    /// Ten random titles from the rows that are switched on, chosen once per launch (again only if the hidden rows or blocked genres change).
+    private func pickHero() {
+        let key = (settings?.hiddenRowIds ?? []).joined(separator: "|") + "#" + blockedGenres.sorted().joined(separator: "|")
+        if heroKey != key {
+            heroKey = key
+            heroTitles = []
+        }
+        guard heroTitles.isEmpty else { return }
+        let pool = distinctByID(homeSections.flatMap(\.items))
+        guard pool.count >= 10 || homeComplete else { return }
+        let backup = distinctByID(homeRaw.flatMap(\.items)).withoutBlocked(blockedGenres)
+        var generator = SystemRandomNumberGenerator()
+        heroTitles = HeroPool.pickTitles(enabled: pool, backup: backup, size: 10, using: &generator)
+    }
+
+    /// Plays a title the way the poster menu and the banner do: pick up where you left off, play a movie, or open a show's page (it knows the
+    /// first episode).
+    func play(_ item: MetaPreview) {
+        let detail = item.asDetail
+        if let resume = continueItems.first(where: { $0.contentId == item.id }) {
+            openSources(PlayTarget(title: detail, season: resume.seasonNumber, episode: resume.episodeNumber, episodeTitle: resume.episodeTitle, startAt: resume.positionSeconds))
+        } else if item.type == "series" {
+            openDetail(item)
+        } else {
+            openSources(PlayTarget(title: detail))
+        }
+    }
+
+    /// The YouTube id of a title's trailer, nil when there is none. Remembered for the session.
+    func trailerID(for item: MetaPreview) async -> String? {
+        let key = "\(item.type)|\(item.name)|\(item.year ?? 0)"
+        if let known = trailers[key] { return known }
+        guard let found = try? await authorized({ client, token in
+            try await client.trailerID(accessToken: token, title: item.name, type: item.type, year: item.year)
+        }) else { return nil }
+        trailers[key] = found
+        return found
     }
 
     func openDetail(_ item: MetaPreview) { detail = item }
@@ -223,6 +314,7 @@ final class AppModel: ObservableObject {
                                        rawManifest: install.rawManifest, enabled: true, sortOrder: order)
         }
         await loadAddons()
+        await refreshHomeRows()
     }
 
     func setAddon(_ addon: SyncedAddon, enabled: Bool) async {
@@ -232,11 +324,13 @@ final class AppModel: ObservableObject {
                                        rawManifest: raw, enabled: enabled, sortOrder: addon.sortOrder)
         }
         await loadAddons()
+        await refreshHomeRows()
     }
 
     func removeAddon(_ addon: SyncedAddon) async {
         _ = try? await authorized { client, token in try await client.removeAddon(accessToken: token, manifestURL: addon.manifestUrl) }
         await loadAddons()
+        await refreshHomeRows()
     }
 
     // MARK: Settings (blocked genres)
@@ -363,6 +457,12 @@ final class AppModel: ObservableObject {
         }
         pickedSeed = Int.random(in: 0...Int(Int32.max))
         pickedKey = ""
+        await refreshHomeRows()
+    }
+
+    /// Fetches Home's rows again (after the addons change, or on a refresh).
+    func refreshHomeRows() async {
+        heroTitles = []
         home = .idle
         await loadHome()
     }
@@ -457,8 +557,8 @@ final class AppModel: ObservableObject {
             pickedResult = nil
             return
         }
-        guard accountLoaded, case let .loaded(rows) = home else { return }
-        let pool = distinctByID(rows.flatMap(\.items)).withoutBlocked(blockedGenres)
+        guard accountLoaded, home == .loaded else { return }
+        let pool = distinctByID(homeRaw.flatMap(\.items)).withoutBlocked(blockedGenres)
         let types = Dictionary((myList ?? []).map { ($0.contentId, $0.contentType == "MOVIE" ? "movie" : "series") }, uniquingKeysWith: { first, _ in first })
         var refs: [String: TitleRef] = [:]
         var rated: [String: (title: String, rating: Rating)] = [:]

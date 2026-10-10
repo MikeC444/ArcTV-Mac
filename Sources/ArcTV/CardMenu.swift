@@ -242,17 +242,7 @@ struct CardMenuView: View {
     /// Play: pick up where it was left, play a movie, or (a show not started) open its page, which knows the first episode.
     private func play() {
         close()
-        let detail = item.asDetail
-        if let resume {
-            model.openSources(PlayTarget(
-                title: detail, season: resume.seasonNumber, episode: resume.episodeNumber, episodeTitle: resume.episodeTitle,
-                startAt: resume.positionSeconds
-            ))
-        } else if item.type == "series" {
-            model.openDetail(item)
-        } else {
-            model.openSources(PlayTarget(title: detail))
-        }
+        model.play(item)
     }
 
     /// The source list from the start (or the episode in progress), whatever was last used.
