@@ -82,7 +82,12 @@ struct MainView: View {
                 }
                 .transition(.opacity)
             }
+            if let menu = model.cardMenu {
+                CardMenuView(target: menu)
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeOut(duration: 0.15), value: model.cardMenu)
         .animation(.easeOut(duration: 0.18), value: model.detail?.id)
         .animation(.easeOut(duration: 0.18), value: model.sourcesFor?.id)
         .animation(.easeOut(duration: 0.18), value: model.playing != nil)

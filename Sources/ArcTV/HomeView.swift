@@ -284,13 +284,7 @@ struct ContinueCard: View {
         .onHover { hovering = $0 }
         .contentShape(Rectangle())
         .onTapGesture { model.openDetail(item.asPreview) }
-        .contextMenu {
-            Button { model.openDetail(item.asPreview) } label: { Label("View details", systemImage: "info.circle") }
-            Divider()
-            Button(role: .destructive) { Task { await model.removeFromContinueWatching(item) } } label: {
-                Label("Remove from Continue Watching", systemImage: "trash")
-            }
-        }
+        .overlay(RightClickCatcher { model.openCardMenu(item.asPreview) })
     }
 
     @ViewBuilder

@@ -28,6 +28,12 @@ struct PlayTarget: Equatable, Identifiable {
     var heading: String { episodeTitle.map { "\(title.name) · \($0)" } ?? title.name }
 }
 
+/// What the poster menu is about, and where it was opened from.
+struct CardMenuTarget: Equatable {
+    var item: MetaPreview
+    var fromPicked = false
+}
+
 /// A source the person picked: what to play and what to call it.
 struct PlayingItem: Equatable {
     var url: URL
@@ -70,6 +76,8 @@ final class AppModel: ObservableObject {
     @Published var detail: MetaPreview?
     @Published var sourcesFor: PlayTarget?
     @Published var playing: PlayingItem?
+    /// The poster whose actions menu (right-click) is open.
+    @Published var cardMenu: CardMenuTarget?
     @Published var addons: [SyncedAddon] = []
     /// Every addon on the account, switched off ones included (for Settings > Addons); [addons] is just the enabled ones.
     @Published var allAddons: [SyncedAddon] = []
@@ -172,6 +180,7 @@ final class AppModel: ObservableObject {
         accountLoaded = false
         pickedTask?.cancel()
         detail = nil
+        cardMenu = nil
         sourcesFor = nil
         playing = nil
         selected = .home
@@ -187,6 +196,8 @@ final class AppModel: ObservableObject {
     }
 
     func openDetail(_ item: MetaPreview) { detail = item }
+
+    func openCardMenu(_ item: MetaPreview, fromPicked: Bool = false) { cardMenu = CardMenuTarget(item: item, fromPicked: fromPicked) }
 
     func openSources(_ target: PlayTarget) { sourcesFor = target }
 

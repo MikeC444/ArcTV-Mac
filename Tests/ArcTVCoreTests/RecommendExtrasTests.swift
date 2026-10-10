@@ -238,3 +238,17 @@ private final class AskedIDs: @unchecked Sendable {
     var ids: [String] { lock.lock(); defer { lock.unlock() }; return all }
     func add(_ id: String) { lock.lock(); all.append(id); lock.unlock() }
 }
+
+final class MyListSortTests: XCTestCase {
+    private func item(_ title: String, rating: Double?, year: Int?) -> WatchlistItem {
+        WatchlistItem(providerId: "p", contentId: title, contentType: "MOVIE", title: title, year: year, rating: rating, updatedAt: "2026-01-01T00:00:00.000Z")
+    }
+
+    func testListSortsOrderTitlesTheWayTheirNamesSay() {
+        let items = [item("beta", rating: 7, year: 2020), item("Alpha", rating: 9, year: 1999), item("gamma", rating: nil, year: 2024)]
+        XCTAssertEqual(ListSort.recent.apply(items).map(\.title), ["beta", "Alpha", "gamma"])
+        XCTAssertEqual(ListSort.title.apply(items).map(\.title), ["Alpha", "beta", "gamma"])
+        XCTAssertEqual(ListSort.highestRated.apply(items).map(\.title), ["Alpha", "beta", "gamma"])
+        XCTAssertEqual(ListSort.newest.apply(items).map(\.title), ["gamma", "beta", "Alpha"])
+    }
+}

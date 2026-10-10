@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The web app's top bar: the logo on the left, the places in a rounded translucent pill in the middle, and who is signed in on the right.
+/// The web app's top bar: the logo on the left and every place, Settings last, in a rounded translucent pill in the middle.
 struct TopNavBar: View {
     @EnvironmentObject private var model: AppModel
 
@@ -11,7 +11,7 @@ struct TopNavBar: View {
                 .onTapGesture { model.selected = .home }
 
             HStack(spacing: 2) {
-                ForEach(NavItem.allCases.filter { $0 != .settings }) { item in
+                ForEach(NavItem.allCases) { item in
                     NavPill(item: item, selected: model.selected == item) { model.selected = item }
                 }
             }
@@ -19,26 +19,8 @@ struct TopNavBar: View {
             .background(Capsule().fill(Color(hex: 0x141417).opacity(0.7)))
             .overlay(Capsule().stroke(Color.white.opacity(0.09), lineWidth: 1))
 
-            HStack(spacing: 10) {
-                Spacer()
-                Button {
-                    model.selected = .settings
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "gearshape.fill")
-                        Text(model.session?.user.displayName ?? model.session?.user.email ?? "Account")
-                            .lineLimit(1)
-                            .frame(maxWidth: 140, alignment: .leading)
-                    }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(model.selected == .settings ? Theme.textPrimary : Theme.textSecondary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.white.opacity(model.selected == .settings ? 0.16 : 0.08)))
-                }
-                .buttonStyle(.plain)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            // The right-hand side is where the profile picture goes once profiles are here.
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
         }
         .padding(.horizontal, 36)
         .padding(.top, 14)

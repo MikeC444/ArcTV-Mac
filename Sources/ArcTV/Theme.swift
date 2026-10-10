@@ -13,6 +13,10 @@ enum Theme {
     static let violet = Color(hex: 0x9B5CFF)
     static let accent = cyan
     static let coral = Color(hex: 0xFF3D68)
+    /// The tick on a title you have watched.
+    static let watched = Color(hex: 0x2ECC71)
+    /// Coral for text on raised surfaces (readable; the brand coral is not).
+    static let coralText = Color(hex: 0xFF6B8A)
 
     static let textPrimary = Color(hex: 0xF6F6F8)
     static let textSecondary = Color(hex: 0xAFAFB8)

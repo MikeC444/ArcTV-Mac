@@ -1,3 +1,4 @@
+import AppKit
 import ArcTVCore
 import SwiftUI
 
@@ -19,6 +20,19 @@ struct PosterCard: View {
                 .overlay { artwork }
                 .background(RoundedRectangle(cornerRadius: 10).fill(Theme.surface))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topLeading) {
+                    if model.isWatched(item.id) { WatchedTick().padding(6) }
+                }
+                .overlay(alignment: .bottom) {
+                    if hovering, let rating = item.imdbRating, !rating.isEmpty {
+                        Text("★ \(rating)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .top, endPoint: .bottom))
+                    }
+                }
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(hovering ? 0.9 : 0), lineWidth: 2))
                 .shadow(color: .black.opacity(hovering ? 0.55 : 0), radius: 14, y: 6)
                 .scaleEffect(hovering ? 1.05 : 1)
@@ -46,35 +60,7 @@ struct PosterCard: View {
         .onHover { hovering = $0 }
         .contentShape(Rectangle())
         .onTapGesture { model.openDetail(item) }
-        .contextMenu {
-            Button { model.openDetail(item) } label: { Label("View details", systemImage: "info.circle") }
-            Button { Task { await model.toggleSaved(item.asDetail) } } label: {
-                Label(model.isSaved(item.id) ? "Remove from My List" : "Add to My List", systemImage: model.isSaved(item.id) ? "minus.circle" : "plus.circle")
-            }
-            Button { Task { await model.toggleWatched(item.asDetail) } } label: {
-                Label(model.isWatched(item.id) ? "Mark as not watched" : "Mark as watched", systemImage: "checkmark.circle")
-            }
-            if model.plus.active {
-                Divider()
-                Button { Task { await model.rate(item, .like) } } label: {
-                    Label(model.rating(of: item.id) == .like ? "Remove Like" : "Like", systemImage: model.rating(of: item.id) == .like ? "hand.thumbsup.fill" : "hand.thumbsup")
-                }
-                Button { Task { await model.rate(item, .dislike) } } label: {
-                    Label(model.rating(of: item.id) == .dislike ? "Remove Not for me" : "Not for me", systemImage: model.rating(of: item.id) == .dislike ? "hand.thumbsdown.fill" : "hand.thumbsdown")
-                }
-            }
-            if fromPicked {
-                Button(role: .destructive) { Task { await model.removeFromPicked(item.id) } } label: {
-                    Label("Remove from Picked for you", systemImage: "xmark.circle")
-                }
-            }
-            if let entry = model.continueItems.first(where: { $0.contentId == item.id }) {
-                Divider()
-                Button(role: .destructive) { Task { await model.removeFromContinueWatching(entry) } } label: {
-                    Label("Remove from Continue Watching", systemImage: "trash")
-                }
-            }
-        }
+        .overlay(RightClickCatcher { model.openCardMenu(item, fromPicked: fromPicked) })
     }
 
     @ViewBuilder
@@ -97,6 +83,48 @@ struct PosterCard: View {
         Text(String(item.name.prefix(1)))
             .font(.system(size: 44, weight: .bold))
             .foregroundStyle(Theme.textTertiary)
+    }
+}
+
+/// The green tick on a title you have watched.
+struct WatchedTick: View {
+    var size: CGFloat = 20
+
+    var body: some View {
+        Image(systemName: "checkmark")
+            .font(.system(size: size * 0.55, weight: .heavy))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(Circle().fill(Theme.watched))
+    }
+}
+
+/// Opens a closure on a right-click (or control-click) without getting in the way of anything else: every other mouse event goes to what is underneath.
+struct RightClickCatcher: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> CatcherView {
+        let view = CatcherView()
+        view.action = action
+        return view
+    }
+
+    func updateNSView(_ view: CatcherView, context: Context) { view.action = action }
+
+    final class CatcherView: NSView {
+        var action: (() -> Void)?
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard let event = NSApp.currentEvent else { return nil }
+            let secondary = event.type == .rightMouseDown || (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+            return secondary ? super.hitTest(point) : nil
+        }
+
+        override func rightMouseDown(with event: NSEvent) { action?() }
+
+        override func mouseDown(with event: NSEvent) {
+            if event.modifierFlags.contains(.control) { action?() } else { super.mouseDown(with: event) }
+        }
     }
 }
 
