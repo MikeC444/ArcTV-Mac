@@ -26,6 +26,8 @@ struct PlayTarget: Equatable, Identifiable {
     var startAt: Double = 0
     /// Show the source list even when this title was watched on a source before (Choose source).
     var chooseSource = false
+    /// Play the best source that plays straight away without asking (the next episode of a binge).
+    var autoPick = false
 
     var id: String { streamID }
     var streamID: String { ArcTVCore.streamID(titleID: title.id, season: season, episode: episode) }

@@ -423,3 +423,21 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the cause of the lag was not measured. If it is still slow, the next step is to time it on your Mac (which file, which Mac, how much CPU and GPU).
 
 **Issues fixed:** none confirmed.
+
+## 22 -- Player menus, next episode and autoplay, torrent buffer and storage settings, the app icon
+
+**Status:** Written; see the build result below. Nothing was seen on screen or run.
+
+**Context:** The system pop-up lists for Audio and Subtitles looked plain; Next episode, the torrent buffer and storage settings (from the Fire TV app) and an app icon were asked for.
+
+**Changes:**
+- Player menus: Audio, Subtitles, Speed, Episodes and Player now open a dark card above their pill (title, a tick on the chosen row, the language as a small tag at the right, a highlight under the pointer). Subtitles starts with Off. Episodes shows the seasons as numbers with the chosen season's episodes under them. A click anywhere else closes it; the controls stay up while one is open.
+- Next episode: for a show, a white "Next episode" button (with its S/E and title) shows in the last minute and starts it; when an episode ends, the next one starts by itself if Settings > Player > Auto play next episode is on (it is by default, and is the account's `autoplayNextEpisode`), else the player goes back. The next episode takes the best source that plays at once (a direct link) without asking, and shows the list only when there is none (`PlayTarget.autoPick`). Next is the following episode of the season, else the first of the next season (`MetaDetail.episode(after:)`).
+- Torrent buffer (Small, Normal, Large) sets how much must arrive before the video starts (3, 6 or 16 MB) and how many pieces ahead are asked for first (12, 24 or 64). Torrent storage limit (5, 10, 20, 50 GB or no limit, 50 by default): a file bigger than the limit won't start, and says so. Both are in Settings > Player and kept on this Mac. `ct_stream_from` takes the number of pieces.
+- App icon: the logo's mark on a dark rounded square (`Resources/AppIcon-1024.png`, `AppIcon.icns` built from it, 16 to 1024 points); the package script copies it in and names it in the Info file.
+
+**Tests performed:** unit tests for the next episode (same season, next season, none, specials skipped) and the torrent settings. The Mac code could not be compiled or run here; the Build and test workflow is the check. The icon was looked at as an image only, not in the Dock or Finder.
+
+**Issues discovered:** the logo file is small (121 pixels high), so the mark is enlarged in the icon and its edges are a little soft at the largest sizes. A sharper copy of the logo would fix that.
+
+**Issues fixed:** none.

@@ -33,6 +33,8 @@ struct MPVPlayerScreen: View {
     @State private var scrubValue: Double = 0
     @State private var fullScreen = false
     @State private var lastHover = Date.distantPast
+    @State private var openMenu: PlayerMenu?
+    @State private var menuSeason: Int?
 
     private var loading: Bool { (model.buffering || model.seeking) && model.failure == nil }
 
@@ -55,9 +57,14 @@ struct MPVPlayerScreen: View {
                 ProgressView().controlSize(.large).allowsHitTesting(false)
             }
 
-            if controlsVisible || model.paused || scrubbing {
+            if controlsVisible || model.paused || scrubbing || openMenu != nil {
                 controls.transition(.opacity)
             }
+
+            nextEpisodeButton
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(.trailing, 40)
+                .padding(.bottom, 130)
 
             if let reason = model.failure {
                 failurePanel(reason)
@@ -74,8 +81,11 @@ struct MPVPlayerScreen: View {
             }
         }
         .onChange(of: model.ended) { ended in
-            if ended { appModel.goBack() }
+            guard ended else { return }
+            // The video finished: carry on with the next episode when Auto Play Next Episode is on, else go back.
+            if let next = nextEpisode, appModel.settings?.autoplayNextEpisode ?? true { playEpisode(next, auto: true) } else { appModel.goBack() }
         }
+        .onChange(of: openMenu) { open in if open == nil { showControls() } }
         .onAppear {
             showControls()
             fullScreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
@@ -110,6 +120,10 @@ struct MPVPlayerScreen: View {
             }
             .allowsHitTesting(false)
             .ignoresSafeArea()
+
+            if openMenu != nil {
+                Color.black.opacity(0.001).contentShape(Rectangle()).onTapGesture { openMenu = nil }
+            }
 
             VStack(spacing: 0) {
                 HStack(alignment: .top) {
@@ -199,19 +213,17 @@ struct MPVPlayerScreen: View {
         .help(help)
     }
 
-    // MARK: Pills
+    // MARK: Pills and their menus
+
+    enum PlayerMenu: Hashable { case audio, subtitles, speed, episodes, player }
 
     private var pills: some View {
         HStack(spacing: 10) {
-            if !model.audioTracks.isEmpty {
-                trackPill("Audio", "speaker.wave.2.fill", tracks: model.audioTracks, none: nil) { model.selectAudio($0) }
-            }
-            if !model.subtitleTracks.isEmpty {
-                trackPill("Subtitles", "captions.bubble.fill", tracks: model.subtitleTracks, none: "Off") { model.selectSubtitle($0) }
-            }
-            speedPill
-            if !item.target.title.seasonNumbers.isEmpty { episodesPill }
-            playerPill
+            if !model.audioTracks.isEmpty { pill(.audio, "Audio", "speaker.wave.2.fill") }
+            if !model.subtitleTracks.isEmpty { pill(.subtitles, "Subtitles", "captions.bubble.fill") }
+            pill(.speed, model.speed == model.speed.rounded() ? "\(Int(model.speed))x" : "\(model.speed)x", "speedometer")
+            if !item.target.title.seasonNumbers.isEmpty { pill(.episodes, "Episodes", "rectangle.stack.fill") }
+            pill(.player, "Player", "square.and.arrow.up")
             Button { appModel.goBack() } label: { PillLabel(text: "Sources", symbol: "arrow.left.arrow.right") }
                 .buttonStyle(.plain)
         }
@@ -229,73 +241,176 @@ struct MPVPlayerScreen: View {
         }
     }
 
-    private func trackPill(_ title: String, _ symbol: String, tracks: [MediaTrack], none: String?, select: @escaping (MediaTrack?) -> Void) -> some View {
-        Menu {
-            if let none { Button(none) { select(nil) } }
-            ForEach(tracks) { track in
-                Button { select(track) } label: {
-                    if track.selected { Label(track.label, systemImage: "checkmark") } else { Text(track.label) }
+    /// A pill that opens its menu above itself; the menu is a dark card, not the system's pop-up list.
+    private func pill(_ kind: PlayerMenu, _ text: String, _ symbol: String) -> some View {
+        Button { openMenu = openMenu == kind ? nil : kind } label: { PillLabel(text: text, symbol: symbol, active: openMenu == kind) }
+            .buttonStyle(.plain)
+            .overlay(alignment: .bottom) {
+                if openMenu == kind {
+                    menuCard(kind).fixedSize().offset(y: -44)
                 }
             }
-        } label: { PillLabel(text: title, symbol: symbol) }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+            .zIndex(openMenu == kind ? 1 : 0)
     }
 
-    private var speedPill: some View {
-        Menu {
-            ForEach([0.5, 0.75, 1, 1.25, 1.5, 2], id: \.self) { value in
-                Button { model.setSpeed(value) } label: {
-                    let label = value == value.rounded() ? "\(Int(value))x" : "\(value)x"
-                    if model.speed == value { Label(label, systemImage: "checkmark") } else { Text(label) }
-                }
-            }
-        } label: { PillLabel(text: model.speed == model.speed.rounded() ? "\(Int(model.speed))x" : "\(model.speed)x", symbol: "speedometer") }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-    }
-
-    /// Episodes of a show: pick one and its sources open.
-    private var episodesPill: some View {
-        let title = item.target.title
-        return Menu {
-            ForEach(title.seasonNumbers, id: \.self) { number in
-                Menu("Season \(number)") {
-                    ForEach(title.seasons[number] ?? []) { episode in
-                        Button("\(episode.episode ?? 0). \(episode.displayTitle)") { playEpisode(episode) }
+    @ViewBuilder
+    private func menuCard(_ kind: PlayerMenu) -> some View {
+        switch kind {
+        case .audio:
+            card("Audio") {
+                ForEach(model.audioTracks) { track in
+                    MenuRow(main: track.title.isEmpty ? "Track \(track.id)" : track.title, side: track.language?.uppercased(), selected: track.selected) {
+                        model.selectAudio(track)
+                        openMenu = nil
                     }
                 }
             }
-        } label: { PillLabel(text: "Episodes", symbol: "rectangle.stack.fill") }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-    }
-
-    /// Switch between the Arc TV player and the Mac's own, carrying on from the same spot.
-    private var playerPill: some View {
-        Menu {
-            ForEach(PlayerEngine.allCases) { engine in
-                Button {
-                    appModel.playing?.target.startAt = model.position
-                    appModel.playerEngine = engine
-                } label: {
-                    if appModel.playerEngine == engine { Label(engine.title, systemImage: "checkmark") } else { Text(engine.title) }
+        case .subtitles:
+            card("Subtitles") {
+                MenuRow(main: "Off", side: nil, selected: !model.subtitleTracks.contains { $0.selected }) {
+                    model.selectSubtitle(nil)
+                    openMenu = nil
+                }
+                ForEach(model.subtitleTracks) { track in
+                    MenuRow(main: track.title.isEmpty ? "Track \(track.id)" : track.title, side: track.language?.uppercased(), selected: track.selected) {
+                        model.selectSubtitle(track)
+                        openMenu = nil
+                    }
                 }
             }
-        } label: { PillLabel(text: "Player", symbol: "square.and.arrow.up") }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+        case .speed:
+            card("Playback speed") {
+                ForEach([0.5, 0.75, 1, 1.25, 1.5, 2], id: \.self) { value in
+                    MenuRow(main: value == value.rounded() ? "\(Int(value))x" : "\(value)x", side: value == 1 ? "Normal" : nil, selected: model.speed == value) {
+                        model.setSpeed(value)
+                        openMenu = nil
+                    }
+                }
+            }
+        case .player:
+            card("Player") {
+                ForEach(PlayerEngine.allCases) { engine in
+                    MenuRow(main: engine.title, side: nil, selected: appModel.playerEngine == engine) {
+                        openMenu = nil
+                        appModel.playing?.target.startAt = model.position
+                        appModel.playerEngine = engine
+                    }
+                }
+            }
+        case .episodes:
+            episodesCard
+        }
     }
 
-    private func playEpisode(_ episode: EpisodeInfo) {
+    private func card<Content: View>(_ title: String, @ViewBuilder _ rows: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .bold))
+                .tracking(1.2)
+                .foregroundStyle(Theme.textTertiary)
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
+            ScrollView { VStack(alignment: .leading, spacing: 2) { rows() } }
+                .frame(maxHeight: 300)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(8)
+        .frame(minWidth: 260, maxWidth: 380, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16).fill(Theme.elevated.opacity(0.98)))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.divider, lineWidth: 1))
+        .shadow(color: .black.opacity(0.55), radius: 22, y: 8)
+    }
+
+    /// Seasons as numbers along the top and the chosen season's episodes under them.
+    private var episodesCard: some View {
+        let title = item.target.title
+        let shown = menuSeason ?? item.target.season ?? title.seasonNumbers.first ?? 1
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("EPISODES")
+                .font(.system(size: 11, weight: .bold))
+                .tracking(1.2)
+                .foregroundStyle(Theme.textTertiary)
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(title.seasonNumbers, id: \.self) { number in
+                        Button { menuSeason = number } label: {
+                            Text("\(number)")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(number == shown ? Color.black : Theme.textSecondary)
+                                .frame(width: 32, height: 32)
+                                .background(Circle().fill(number == shown ? Color.white : Color.white.opacity(0.12)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(title.seasons[shown] ?? []) { episode in
+                        MenuRow(
+                            main: "\(episode.episode ?? 0). \(episode.displayTitle)", side: nil,
+                            selected: episode.season == item.target.season && episode.episode == item.target.episode
+                        ) {
+                            openMenu = nil
+                            playEpisode(episode)
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 260)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(8)
+        .frame(width: 380, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16).fill(Theme.elevated.opacity(0.98)))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.divider, lineWidth: 1))
+        .shadow(color: .black.opacity(0.55), radius: 22, y: 8)
+    }
+
+    // MARK: Next episode
+
+    private var nextEpisode: EpisodeInfo? {
+        guard let season = item.target.season, let episode = item.target.episode else { return nil }
+        return item.target.title.episode(after: season, episode)
+    }
+
+    private var inLastMinute: Bool { model.duration > 120 && model.duration - model.position <= 60 }
+
+    private var nextEpisodeButton: some View {
+        Group {
+            if let next = nextEpisode, inLastMinute {
+                Button { playEpisode(next, auto: true) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "forward.end.fill").font(.system(size: 18))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Next episode").font(.system(size: 15, weight: .bold))
+                            Text("S\(next.season ?? 0) E\(next.episode ?? 0) \u{2022} \(next.displayTitle)")
+                                .font(.system(size: 12))
+                                .lineLimit(1)
+                        }
+                    }
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Capsule().fill(Color.white))
+                }
+                .buttonStyle(.plain)
+                .shadow(color: .black.opacity(0.5), radius: 14, y: 4)
+                .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
+        }
+        .animation(.easeOut(duration: 0.25), value: inLastMinute)
+    }
+
+    private func playEpisode(_ episode: EpisodeInfo, auto: Bool = false) {
         let title = item.target.title
         let target = PlayTarget(
             title: title, season: episode.season, episode: episode.episode,
-            episodeTitle: "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)"
+            episodeTitle: "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)", autoPick: auto
         )
         Task {
             await appModel.reportProgress(item.target, position: model.position, duration: model.duration)
@@ -351,7 +466,7 @@ struct MPVPlayerScreen: View {
         hideTask = Task {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled else { return }
-            controlsVisible = false
+            if openMenu == nil { controlsVisible = false }
         }
     }
 
@@ -364,6 +479,7 @@ struct MPVPlayerScreen: View {
 private struct PillLabel: View {
     let text: String
     let symbol: String
+    var active = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -373,7 +489,7 @@ private struct PillLabel: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Capsule().fill(Color(hex: 0x5A5A5A).opacity(0.85)))
+        .background(Capsule().fill(active ? Color.white.opacity(0.28) : Color(hex: 0x5A5A5A).opacity(0.85)))
         .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
         .contentShape(Capsule())
     }
@@ -415,5 +531,46 @@ private struct PlayerTimeline: View {
             .onHover { hovering = $0 }
         }
         .frame(height: 24)
+    }
+}
+
+/// One line of a player menu: a tick for the chosen one, its name, and a small grey note (the language) at the right.
+private struct MenuRow: View {
+    let main: String
+    let side: String?
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 16)
+                    .opacity(selected ? 1 : 0)
+                Text(main)
+                    .font(.system(size: 14, weight: selected ? .semibold : .regular))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                Spacer(minLength: 16)
+                if let side {
+                    Text(side)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.white.opacity(0.1)))
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 9).fill(hovering ? Color.white.opacity(0.1) : (selected ? Color.white.opacity(0.05) : .clear)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }

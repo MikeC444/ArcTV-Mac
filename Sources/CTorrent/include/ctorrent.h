@@ -35,8 +35,8 @@ int ct_file_path(ct_engine *engine, int index, char *path, int path_len);
 int ct_select_file(ct_engine *engine, int index);
 /// 1 if every piece covering bytes [offset, offset + length) of the file has arrived.
 int ct_have_range(ct_engine *engine, int index, long long offset, long long length);
-/// Asks for the pieces from this byte on first (the player jumped there).
-void ct_stream_from(ct_engine *engine, int index, long long offset);
+/// Asks for the next `pieces` pieces from this byte on first (the player jumped there).
+void ct_stream_from(ct_engine *engine, int index, long long offset, int pieces);
 
 #ifdef __cplusplus
 }

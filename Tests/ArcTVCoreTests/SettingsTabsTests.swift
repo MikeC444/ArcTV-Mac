@@ -159,3 +159,29 @@ final class DownloadChoicesTests: XCTestCase {
         XCTAssertEqual(DownloadChoices.fileName(release: "???", url: url), "Arc TV download.mp4")
     }
 }
+
+final class PlaybackExtrasTests: XCTestCase {
+    private func show() -> MetaDetail {
+        var detail = MetaDetail(id: "tt1", type: "series", name: "S")
+        detail.videos = [
+            EpisodeInfo(id: "a", season: 0, episode: 1), EpisodeInfo(id: "b", season: 1, episode: 1), EpisodeInfo(id: "c", season: 1, episode: 2),
+            EpisodeInfo(id: "d", season: 2, episode: 1)
+        ]
+        return detail
+    }
+
+    func testNextEpisode() {
+        XCTAssertEqual(show().episode(after: 1, 1)?.id, "c")
+        XCTAssertEqual(show().episode(after: 1, 2)?.id, "d")
+        XCTAssertNil(show().episode(after: 2, 1))
+        XCTAssertNil(show().episode(after: 9, 1))
+    }
+
+    func testTorrentSettings() {
+        XCTAssertTrue(TorrentStorage.allows(size: 5_000_000_000, gigabytes: 10))
+        XCTAssertFalse(TorrentStorage.allows(size: 21_000_000_000, gigabytes: 10))
+        XCTAssertTrue(TorrentStorage.allows(size: 999_000_000_000, gigabytes: 0))
+        XCTAssertLessThan(TorrentBuffer.small.startBytes, TorrentBuffer.large.startBytes)
+        XCTAssertEqual(TorrentStorage.label(0), "No limit")
+    }
+}

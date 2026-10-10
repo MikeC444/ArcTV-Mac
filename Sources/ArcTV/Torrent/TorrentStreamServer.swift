@@ -27,6 +27,7 @@ struct TorrentVideo: Sendable {
     var index: Int32
     var size: Int64
     var path: String
+    var piecesAhead: Int
 }
 
 /// A tiny web server on this Mac only (127.0.0.1) that hands the player the torrent's video as the pieces arrive. The player asks for byte
@@ -131,7 +132,7 @@ final class TorrentStreamServer: @unchecked Sendable {
         head += "Connection: close\r\n\r\n"
         guard await send(connection, Data(head.utf8)), method == "GET" else { return }
 
-        ct_stream_from(video.engine.pointer, video.index, start)
+        ct_stream_from(video.engine.pointer, video.index, start, Int32(video.piecesAhead))
         var handle: FileHandle?
         defer { try? handle?.close() }
         var position = start
@@ -143,7 +144,7 @@ final class TorrentStreamServer: @unchecked Sendable {
                 if isStopped { return }
                 try? await Task.sleep(nanoseconds: 100_000_000)
                 waited += 1
-                if waited % 20 == 0 { ct_stream_from(video.engine.pointer, video.index, position) }
+                if waited % 20 == 0 { ct_stream_from(video.engine.pointer, video.index, position, Int32(video.piecesAhead)) }
             }
             if handle == nil { handle = try? FileHandle(forReadingFrom: URL(fileURLWithPath: video.path)) }
             guard let file = handle else { try? await Task.sleep(nanoseconds: 200_000_000); continue }
@@ -160,7 +161,7 @@ final class TorrentStreamServer: @unchecked Sendable {
             chunksSincePush += 1
             if chunksSincePush >= 4 {
                 chunksSincePush = 0
-                ct_stream_from(video.engine.pointer, video.index, position)
+                ct_stream_from(video.engine.pointer, video.index, position, Int32(video.piecesAhead))
             }
         }
     }

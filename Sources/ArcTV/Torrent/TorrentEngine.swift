@@ -8,6 +8,7 @@ enum TorrentError: LocalizedError {
     case noVideo
     case noData
     case serverFailed
+    case tooBig(size: Int64, limitGB: Int)
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +17,8 @@ enum TorrentError: LocalizedError {
         case .noVideo: return "This torrent has no video file in it."
         case .noData: return "The video did not start downloading in time. It may have too few people sharing it. Try another source."
         case .serverFailed: return "The player could not be given the video."
+        case let .tooBig(size, limit):
+            return String(format: "This file is %.1f GB, more than your torrent storage limit (%d GB). Raise the limit in Settings > Player, or pick a smaller source.", Double(size) / 1_073_741_824, limit)
         }
     }
 }
@@ -83,11 +86,14 @@ final class TorrentEngine: ObservableObject {
         }
         guard let chosen = TorrentFileChoice.pick(from: files, hint: fileIndex, season: season, episode: episode),
               let file = files.first(where: { $0.index == chosen }) else { throw TorrentError.noVideo }
+        let limit = TorrentStorage.currentGB
+        guard TorrentStorage.allows(size: file.size, gigabytes: limit) else { throw TorrentError.tooBig(size: file.size, limitGB: limit) }
         guard ct_select_file(engine.pointer, Int32(chosen)) == 0 else { throw TorrentError.couldNotStart }
-        ct_stream_from(engine.pointer, Int32(chosen), 0)
+        let buffer = TorrentBuffer.current
+        ct_stream_from(engine.pointer, Int32(chosen), 0, Int32(buffer.piecesAhead))
         var pathBuffer = [CChar](repeating: 0, count: 4096)
         guard ct_file_path(engine.pointer, Int32(chosen), &pathBuffer, 4096) == 0 else { throw TorrentError.couldNotStart }
-        let video = TorrentVideo(engine: engine, index: Int32(chosen), size: file.size, path: String(cString: pathBuffer))
+        let video = TorrentVideo(engine: engine, index: Int32(chosen), size: file.size, path: String(cString: pathBuffer), piecesAhead: buffer.piecesAhead)
 
         // 3. A local address for the player.
         let server = try TorrentStreamServer(video: video)
@@ -95,7 +101,7 @@ final class TorrentEngine: ObservableObject {
         let url = try await server.start()
 
         // 4. Wait for the first few megabytes, so the player has something to start on.
-        let wanted = min(file.size, 6 * 1024 * 1024)
+        let wanted = min(file.size, buffer.startBytes)
         let dataDeadline = Date().addingTimeInterval(180)
         while ct_have_range(engine.pointer, Int32(chosen), 0, wanted) == 0 {
             try Task.checkCancellation()

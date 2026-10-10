@@ -163,7 +163,7 @@ int ct_have_range(ct_engine *engine, int index, long long offset, long long leng
     }
 }
 
-void ct_stream_from(ct_engine *engine, int index, long long offset) {
+void ct_stream_from(ct_engine *engine, int index, long long offset, int pieces) {
     try {
         auto info = info_of(engine);
         if (!info || index < 0 || index >= info->files().num_files()) return;
@@ -173,7 +173,8 @@ void ct_stream_from(ct_engine *engine, int index, long long offset) {
         int first_piece = static_cast<int>(info->map_file(file, offset, 1).piece);
         int last_piece = static_cast<int>(info->map_file(file, size - 1, 1).piece);
         engine->handle.clear_piece_deadlines();
-        for (int k = 0; k < 24 && first_piece + k <= last_piece; k++) {
+        if (pieces < 4) pieces = 4;
+        for (int k = 0; k < pieces && first_piece + k <= last_piece; k++) {
             engine->handle.set_piece_deadline(lt::piece_index_t{first_piece + k}, 150 + k * 100);
         }
     } catch (...) {

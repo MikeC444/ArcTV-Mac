@@ -27,6 +27,7 @@ APP="build/ArcTV.app"
 rm -rf build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/ArcTV" "$APP/Contents/MacOS/ArcTV"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # The torrent engine (libtorrent) and the libraries it needs (OpenSSL, whichever version Homebrew has) come from Homebrew: copy them inside the
 # app and point everything at the copies, so the app runs on a Mac that has no Homebrew. Dependencies are found by reading each library's own
@@ -75,6 +76,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
   <key>CFBundleExecutable</key><string>ArcTV</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleIdentifier</key><string>tv.arc.mac</string>
   <key>CFBundleName</key><string>Arc TV</string>
   <key>CFBundleDisplayName</key><string>Arc TV</string>
