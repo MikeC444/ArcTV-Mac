@@ -12,21 +12,52 @@ VERSION="${1:-0.0.0-dev}"
 API_BASE_URL="${API_BASE_URL:-}"
 cd "$(dirname "$0")/.."
 
-echo "Building ArcTV $VERSION (universal: arm64 + x86_64)"
+echo "Building ArcTV $VERSION (Apple Silicon; the torrent engine is built for it only)"
 # The final link sometimes fails on libsmbclient symbols (the cause is not known); the same build works the next time, so it is tried again.
 built=no
 for attempt in 1 2 3 4 5; do
-  if swift build -c release --arch arm64 --arch x86_64; then built=yes; break; fi
+  if swift build -c release --arch arm64; then built=yes; break; fi
   echo "Build failed (attempt $attempt of 5); trying again from a clean build with freshly downloaded libraries"
   rm -rf .build "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/Library/org.swift.swiftpm"
 done
 [ "$built" = yes ] || exit 1
-BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+BIN_DIR="$(swift build -c release --arch arm64 --show-bin-path)"
 
 APP="build/ArcTV.app"
 rm -rf build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/ArcTV" "$APP/Contents/MacOS/ArcTV"
+
+# The torrent engine (libtorrent) and the OpenSSL it needs come from Homebrew: copy them inside the app and point the program at the copies, so
+# the app runs on a Mac that has no Homebrew.
+FW="$APP/Contents/Frameworks"
+mkdir -p "$FW"
+TORRENT_LIB="$(brew --prefix libtorrent-rasterbar)/lib/libtorrent-rasterbar.2.1.dylib"
+SSL_DIR="$(brew --prefix openssl@3)/lib"
+cp -L "$TORRENT_LIB" "$FW/libtorrent-rasterbar.2.1.dylib"
+cp -L "$SSL_DIR/libssl.3.dylib" "$FW/libssl.3.dylib"
+cp -L "$SSL_DIR/libcrypto.3.dylib" "$FW/libcrypto.3.dylib"
+chmod u+w "$FW"/*.dylib
+for lib in libtorrent-rasterbar.2.1.dylib libssl.3.dylib libcrypto.3.dylib; do
+  install_name_tool -id "@rpath/$lib" "$FW/$lib"
+done
+# Every reference to a Homebrew copy of these three becomes a reference to the copy inside the app.
+fix_refs() {
+  local file="$1"
+  otool -L "$file" | tail -n +2 | awk '{print $1}' | while read -r dep; do
+    case "$dep" in
+      */libtorrent-rasterbar.2.1.dylib|*/libssl.3.dylib|*/libcrypto.3.dylib)
+        install_name_tool -change "$dep" "@rpath/$(basename "$dep")" "$file" ;;
+    esac
+  done
+}
+fix_refs "$APP/Contents/MacOS/ArcTV"
+for lib in "$FW"/*.dylib; do fix_refs "$lib"; done
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/ArcTV" 2>/dev/null || true
+echo "Frameworks inside the app:"; otool -L "$APP/Contents/MacOS/ArcTV" | grep -E "torrent|ssl|crypto" || true
+if otool -L "$APP/Contents/MacOS/ArcTV" "$FW"/*.dylib | grep -q "/opt/homebrew"; then
+  echo "A Homebrew path is still referenced:"; otool -L "$APP/Contents/MacOS/ArcTV" "$FW"/*.dylib | grep "/opt/homebrew"; exit 1
+fi
 
 # CFBundleVersion must be a plain number-ish string; the marketing version can be anything.
 cat > "$APP/Contents/Info.plist" <<PLIST
@@ -41,7 +72,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleVersion</key><string>${VERSION}</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>LSApplicationCategoryType</key><string>public.app-category.entertainment</string>
   <key>ArcTVAPIBaseURL</key><string>${API_BASE_URL}</string>

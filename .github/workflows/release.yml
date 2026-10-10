@@ -60,6 +60,10 @@ jobs:
             echo "Bug fixes and improvements." > "$RUNNER_TEMP/release_notes.md"
           fi
 
+      # The torrent engine (libtorrent) comes from Homebrew; the package script copies it into the app.
+      - name: Install the torrent engine
+        run: brew install libtorrent-rasterbar
+
       - name: Build
         run: |
           set +e

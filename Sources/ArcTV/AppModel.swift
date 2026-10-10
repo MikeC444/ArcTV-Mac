@@ -94,7 +94,9 @@ final class AppModel: ObservableObject {
     /// Which screen is open over the tabs: a title's details, then its sources, then the player (each sits on top of the one before).
     @Published var detail: MetaPreview?
     @Published var sourcesFor: PlayTarget?
-    @Published var playing: PlayingItem?
+    @Published var playing: PlayingItem? {
+        didSet { if playing == nil { TorrentEngine.shared.stop() } }
+    }
     /// The poster whose actions menu (right-click) is open.
     @Published var cardMenu: CardMenuTarget?
     /// The account's profiles (Arc TV Plus), the one in use, and whether "Who's watching?" is open.
@@ -364,9 +366,36 @@ final class AppModel: ObservableObject {
 
     func play(_ item: PlayingItem) { playing = item }
 
+    private var torrentTask: Task<Void, Never>?
+
+    /// Streams a torrent source in the app's own torrent engine, then plays it. The engine reports how it is getting on.
+    func startTorrent(_ item: SourceItem, target: PlayTarget) {
+        guard let magnet = item.stream.magnetURI else { return }
+        torrentTask?.cancel()
+        torrentTask = Task { @MainActor [weak self] in
+            do {
+                let url = try await TorrentEngine.shared.prepare(
+                    magnet: magnet, fileIndex: item.stream.fileIdx, season: target.season, episode: target.episode
+                )
+                self?.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
+            } catch is CancellationError {
+                TorrentEngine.shared.stop()
+            } catch {
+                TorrentEngine.shared.stop()
+                TorrentEngine.shared.failure = (error as? LocalizedError)?.errorDescription ?? "The torrent could not be played."
+            }
+        }
+    }
+
+    func cancelTorrent() {
+        torrentTask?.cancel()
+        torrentTask = nil
+        TorrentEngine.shared.stop()
+    }
+
     /// Back one step: player, then sources, then the title's page.
     func goBack() {
-        if playing != nil { playing = nil } else if sourcesFor != nil { sourcesFor = nil } else { detail = nil }
+        if playing != nil { playing = nil } else if sourcesFor != nil { cancelTorrent(); sourcesFor = nil } else { detail = nil }
     }
 
     /// The account's installed addons: where streams come from. Loaded once after sign-in.

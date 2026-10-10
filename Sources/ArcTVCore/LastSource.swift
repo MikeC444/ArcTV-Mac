@@ -21,7 +21,7 @@ public struct LastSource: Codable, Equatable, Sendable {
     /// Finds the source in a fresh list: the same torrent (info hash), else the same release from the same addon, else the same release name. Only
     /// a source that can play here counts. Nothing is guessed beyond that.
     public func match(in items: [SourceItem]) -> SourceItem? {
-        let playable = items.filter(\.isPlayable)
+        let playable = items.filter(\.canStream)
         if let hash = infoHash?.lowercased(), !hash.isEmpty, let found = playable.first(where: { $0.stream.infoHash?.lowercased() == hash }) { return found }
         return playable.first { $0.headline == releaseTitle && $0.addonName == addonName } ?? playable.first { $0.headline == releaseTitle }
     }

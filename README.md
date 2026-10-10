@@ -13,7 +13,7 @@ Download `ArcTV-<version>.dmg` from the [Releases](../../releases) page, open it
 
 The app is **not signed with an Apple Developer ID and not notarized**, so macOS warns the first time it is opened:
 
-- **macOS 13 and 14:** right-click Arc TV, choose **Open**, then **Open** again.
+- **macOS 14:** right-click Arc TV, choose **Open**, then **Open** again.
 - **macOS 15 and later:** try to open it once, then go to **System Settings > Privacy & Security**, scroll down and click **Open Anyway**.
 - Or, in Terminal: `xattr -d com.apple.quarantine /Applications/ArcTV.app`
 
@@ -21,7 +21,7 @@ The app is **not signed with an Apple Developer ID and not notarized**, so macOS
 
 ## Build
 
-Needs macOS 13+ with Xcode's command line tools (Swift 5.9+).
+Needs an Apple Silicon Mac on macOS 14+ with Xcode's command line tools (Swift 5.9+) and `brew install libtorrent-rasterbar` (the torrent engine).
 
 ```
 swift test                              # the tests (ArcTVCore: addon protocol, account API, Home rows)

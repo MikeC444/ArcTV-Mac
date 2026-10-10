@@ -10,6 +10,8 @@ public struct AddonStream: Codable, Equatable, Sendable {
     public var name: String?
     public var description: String?
     public var behaviorHints: StreamHints?
+    /// Torrent addons list the trackers ("tracker:udp://...") and DHT nodes ("dht:<hash>") for a torrent here.
+    public var sources: [String]?
 }
 
 public struct StreamHints: Codable, Equatable, Sendable {
@@ -161,6 +163,12 @@ public struct SourceItem: Identifiable, Equatable, Sendable {
     }
 
     public var isPlayable: Bool { playURL != nil }
+
+    /// A torrent (no web link, but a torrent hash): the app's own torrent engine can stream it.
+    public var isTorrent: Bool { playURL == nil && !(stream.infoHash ?? "").isEmpty }
+
+    /// Something this app can start: a web link, or a torrent.
+    public var canStream: Bool { isPlayable || isTorrent }
 
     /// The first line addons use for the release name (their `title`, else the file name).
     public var headline: String {

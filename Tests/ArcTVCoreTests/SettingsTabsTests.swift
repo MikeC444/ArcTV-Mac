@@ -43,3 +43,48 @@ final class SettingsTabsTests: XCTestCase {
         XCTAssertThrowsError(try UpdateCheck.result(statusCode: 500, data: Data(), current: "0.1.0"))
     }
 }
+
+final class TorrentTests: XCTestCase {
+    func testMagnet() {
+        var stream = AddonStream(infoHash: "ABCDEF", title: "Movie 1080p\n👤 5")
+        stream.sources = ["tracker:udp://a.example:80/announce", "dht:ABCDEF", "tracker:udp://a.example:80/announce", "tracker:http://b.example/x"]
+        let magnet = stream.magnetURI ?? ""
+        XCTAssertTrue(magnet.hasPrefix("magnet:?xt=urn:btih:ABCDEF&dn=Movie"))
+        XCTAssertEqual(magnet.components(separatedBy: "&tr=").count, 3)
+        XCTAssertNil(AddonStream(title: "x").magnetURI)
+    }
+
+    func testTorrentIsNotPlayableButCanStream() {
+        let torrent = SourceItem(addonName: "T", stream: AddonStream(infoHash: "abc", title: "Show"), index: 0)
+        XCTAssertTrue(torrent.isTorrent)
+        XCTAssertFalse(torrent.isPlayable)
+        XCTAssertTrue(torrent.canStream)
+        let direct = SourceItem(addonName: "D", stream: AddonStream(url: "https://x/y.mkv", infoHash: "abc"), index: 1)
+        XCTAssertFalse(direct.isTorrent)
+        XCTAssertTrue(direct.canStream)
+    }
+
+    func testFileChoice() {
+        let files = [
+            TorrentFile(index: 0, name: "Show.S01E01.mkv", size: 900),
+            TorrentFile(index: 1, name: "Show.S01E02.mkv", size: 800),
+            TorrentFile(index: 2, name: "sample.mp4", size: 10),
+            TorrentFile(index: 3, name: "info.nfo", size: 1)
+        ]
+        XCTAssertEqual(TorrentFileChoice.pick(from: files, hint: 1, season: nil, episode: nil), 1)
+        XCTAssertEqual(TorrentFileChoice.pick(from: files, hint: 3, season: 1, episode: 2), 1)
+        XCTAssertEqual(TorrentFileChoice.pick(from: files, hint: nil, season: nil, episode: nil), 0)
+        XCTAssertNil(TorrentFileChoice.pick(from: [files[3]], hint: nil, season: nil, episode: nil))
+    }
+
+    func testByteRange() {
+        XCTAssertEqual(ByteRange.parse("bytes=0-99", size: 1000)?.end, 99)
+        XCTAssertEqual(ByteRange.parse("bytes=500-", size: 1000)?.start, 500)
+        XCTAssertEqual(ByteRange.parse("bytes=500-", size: 1000)?.end, 999)
+        XCTAssertEqual(ByteRange.parse("bytes=-100", size: 1000)?.start, 900)
+        XCTAssertEqual(ByteRange.parse("bytes=900-5000", size: 1000)?.end, 999)
+        XCTAssertNil(ByteRange.parse("bytes=2000-", size: 1000))
+        XCTAssertNil(ByteRange.parse(nil, size: 1000))
+        XCTAssertNil(ByteRange.parse("bytes=5-2", size: 1000))
+    }
+}

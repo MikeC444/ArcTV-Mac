@@ -7,6 +7,7 @@ struct SourcesView: View {
     let target: PlayTarget
     @State private var result = SourceResult()
     @State private var loading = true
+    @ObservedObject private var torrents = TorrentEngine.shared
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -22,6 +23,15 @@ struct SourcesView: View {
                             .foregroundStyle(Theme.textSecondary)
                     }
                     .padding(.top, 70)
+
+                    if let failure = torrents.failure {
+                        Text(failure)
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color(hex: 0xFFB020))
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0xFFB020).opacity(0.12)))
+                    }
 
                     if loading {
                         HStack(spacing: 12) {
@@ -50,9 +60,25 @@ struct SourcesView: View {
             BackButton { model.goBack() }
                 .padding(.leading, 28)
                 .padding(.top, 22)
+            if let progress = torrents.progress { torrentOverlay(progress) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await load() }
+    }
+
+    private func torrentOverlay(_ progress: TorrentProgress) -> some View {
+        ZStack {
+            Color.black.opacity(0.78).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView().controlSize(.large)
+                Text(progress.message).font(.system(size: 20, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                if let detail = progress.detail { Text(detail).font(.system(size: 14)).foregroundStyle(Theme.textSecondary) }
+                Text("Torrents take a little longer to start than other sources.").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                Button { model.cancelTorrent() } label: { Label("Cancel", systemImage: "xmark") }
+                    .buttonStyle(GlassButtonStyle())
+                    .padding(.top, 6)
+            }
+        }
     }
 
     /// Nothing came back: why, what to do next, and the beginner's guide for someone who has not set up sources yet.
@@ -128,11 +154,16 @@ struct SourcesView: View {
     }
 
     private func choose(_ item: SourceItem) {
-        guard let url = item.playURL else { return }
+        guard item.canStream else { return }
+        torrents.failure = nil
         if let user = model.scope {
             LastSourceStore(userID: user).set(LastSource(item), titleID: target.title.id, season: target.season, episode: target.episode)
         }
-        model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
+        if let url = item.playURL {
+            model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
+        } else {
+            model.startTorrent(item, target: target)
+        }
     }
 }
 
@@ -146,34 +177,34 @@ private struct SourceRow: View {
             HStack(spacing: 14) {
                 Text(item.quality.label)
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(item.isPlayable ? Color(hex: 0x04161A) : Theme.textTertiary)
+                    .foregroundStyle(item.canStream ? Color(hex: 0x04161A) : Theme.textTertiary)
                     .frame(width: 54)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(item.isPlayable ? AnyShapeStyle(Theme.brandGradient) : AnyShapeStyle(Color.white.opacity(0.08))))
+                    .background(Capsule().fill(item.canStream ? AnyShapeStyle(Theme.brandGradient) : AnyShapeStyle(Color.white.opacity(0.08))))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.headline)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(item.isPlayable ? Theme.textPrimary : Theme.textTertiary)
+                        .foregroundStyle(item.canStream ? Theme.textPrimary : Theme.textTertiary)
                         .lineLimit(2)
                     HStack(spacing: 8) {
                         Text(item.addonName)
                         if let size = item.sizeText { Text(size) }
-                        if !item.isPlayable { Text("Torrent: not supported in this app yet") }
+                        if item.isTorrent { Text("Torrent · streams inside Arc TV") }
                     }
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textTertiary)
                 }
                 Spacer(minLength: 0)
-                if item.isPlayable {
+                if item.canStream {
                     Image(systemName: "play.fill").foregroundStyle(hovering ? Theme.accent : Theme.textTertiary)
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 12).fill(hovering && item.isPlayable ? Color.white.opacity(0.09) : Theme.elevated))
+            .background(RoundedRectangle(cornerRadius: 12).fill(hovering && item.canStream ? Color.white.opacity(0.09) : Theme.elevated))
         }
         .buttonStyle(.plain)
-        .disabled(!item.isPlayable)
+        .disabled(!item.canStream)
         .onHover { hovering = $0 }
     }
 }

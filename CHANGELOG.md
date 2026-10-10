@@ -298,3 +298,23 @@ app's look, and talks to the same backend and Stremio addons.
 **Follow-up to 15 (first look):** the first Home row sat too far below the banner, with empty picture under the buttons. The banner is shorter (62% of the window, at least 500 points, was 74% and 620) and the first row overlaps it more (70 points, was 44). Not seen on screen.
 
 **Follow-up to 15 (title bar):** a black strip showed above the Home banner, where the window's title bar sits. The Home page now ignores the top safe area, so the banner picture runs to the top edge of the window under the traffic-light buttons. Only Home was changed; not seen on screen.
+
+## 16 -- A built-in torrent engine
+
+**Status:** Written; see the build result below. Never run: no torrent has been streamed, and the app was not opened.
+
+**Context:** Torrent-only streams (no web link, just a hash, which is what Torrentio gives without a debrid service) were listed greyed out ("not supported in this app yet"). The Fire TV app plays them with libtorrent (libtorrent4j); this does the same on the Mac.
+
+**Changes:**
+- `Sources/CTorrent`: a small C face on libtorrent 2.1 (`ctorrent.h`, `ctorrent.cpp`): start a magnet link, read the file list, choose the file (only that file downloads, in order), ask whether a byte range has arrived, and ask for the pieces from a byte on first (piece deadlines, used when the player seeks). Built with the flags `pkg-config --cflags libtorrent-rasterbar` prints. Homebrew supplies the library (`brew install libtorrent-rasterbar`, added to both workflows).
+- `TorrentEngine`: gets the file list (gives up after two minutes with "No one is sharing this torrent..."), picks the video (the addon's file index if it is a video; for an episode the file that names S01E02 or 1x02; else the biggest video), starts a local web server, and waits for the first 6 MB (gives up after three minutes). `TorrentStreamServer` listens on 127.0.0.1 only and answers GET/HEAD with byte ranges; each range waits until its pieces have arrived. The player is simply handed that address, so mpv and the built-in player need no changes. The files are deleted when playback stops, the source page is left, or the next torrent starts.
+- Sources page: torrents are clickable ("Torrent · streams inside Arc TV"), with a progress screen (finding peers, connected peers, speed) and Cancel; a failure is shown at the top. Direct links still sort first, and Smart source picking still only picks direct links, which surely play. Remembering the last source now includes torrents (matched by hash).
+- The magnet link is built from the stream's hash, name and the trackers the addon lists (`sources`, "tracker:" entries).
+- Packaging: the app now copies libtorrent, libssl and libcrypto into `Contents/Frameworks`, points the program at them (`install_name_tool`), and fails if any Homebrew path is left.
+- **Cost:** Homebrew's libtorrent is Apple Silicon only and built for macOS 14, so the app is no longer a universal build and now needs macOS 14 or later (`LSMinimumSystemVersion` 14.0, README and release notes say so). Intel Macs and macOS 13 are no longer supported. Building libtorrent and OpenSSL for both chips ourselves would bring them back, at the cost of a much longer build.
+
+**Tests performed:** unit tests for the magnet link (hash, name, de-duplicated trackers), which sources count as torrents, choosing the file (hint, episode, biggest, none) and reading `Range` headers. The Mac code, the C++ and the packaging script could not be compiled or run here; the Build and test workflow is the check. No torrent was streamed and nothing was seen on screen.
+
+**Issues discovered:** none yet. Open questions that only a real run answers: whether the copied libraries load inside the app, how quickly a popular and an unpopular torrent start, and whether seeking inside an MKV is quick enough. Two players asking for different ranges at once (a start and the end of an MP4) share one set of piece deadlines, so the last request wins.
+
+**Issues fixed:** none.

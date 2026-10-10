@@ -33,3 +33,5 @@ them under its version automatically.
 - Arrange Home your way: switch rows on or off and move them up or down, saved to your account.
 - Pick your subtitle and audio languages once and every video starts the way you like it.
 - Check for updates right inside Settings and see what's new.
+- Torrent sources now play right inside Arc TV, with a progress screen while your video gets ready.
+- Arc TV now needs a Mac with Apple Silicon and macOS 14 or later.
