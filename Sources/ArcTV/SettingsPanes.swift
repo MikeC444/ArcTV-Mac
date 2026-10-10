@@ -307,9 +307,9 @@ private struct LanguageList: View {
 
 /// Settings > Updates: the running version and a check against the newest published release.
 struct UpdatesPane: View {
-    @State private var state: State = .idle
+    @State private var state: CheckState = .idle
 
-    enum State: Equatable {
+    enum CheckState: Equatable {
         case idle, checking, failed
         case result(UpdateResult)
     }
