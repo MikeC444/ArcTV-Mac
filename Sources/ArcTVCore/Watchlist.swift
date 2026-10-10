@@ -45,12 +45,7 @@ struct WatchlistResponse: Decodable {
 extension AuthClient {
     /// The account's My List, newest first as the backend orders it.
     public func watchlist(accessToken: String) async throws -> [WatchlistItem] {
-        guard let url = URL(string: baseURL + "/user/watchlist") else { throw APIError.badURL(baseURL) }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 60
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(AppInfo.version, forHTTPHeaderField: "X-ArcTV-App-Version")
-        let data = try await HTTP.data(for: request)
+        let data = try await sendJSON("GET", "/user/watchlist", body: nil, accessToken: accessToken)
         guard let decoded = try? JSONDecoder().decode(WatchlistResponse.self, from: data) else { throw APIError.unreadable }
         return decoded.items
     }

@@ -188,3 +188,46 @@ final class LastSourceTests: XCTestCase {
         XCTAssertNil(LastSourceStore(defaults: suite, userID: "u2").get(titleID: "tt1", season: 1, episode: 1))
     }
 }
+
+final class ProfileTests: XCTestCase {
+    func testPinsAreFourDigits() {
+        XCTAssertTrue(Profile.isValidPin("0420"))
+        XCTAssertFalse(Profile.isValidPin("420"))
+        XCTAssertFalse(Profile.isValidPin("04200"))
+        XCTAssertFalse(Profile.isValidPin("12a4"))
+        XCTAssertFalse(Profile.isValidPin("١٢٣٤")) // not ASCII digits
+    }
+
+    func testOldAvatarIdsBecomeTheNearestPictureAndUnknownOnesTheFirst() {
+        XCTAssertEqual(Avatars.resolve("fox"), "fox")
+        XCTAssertEqual(Avatars.resolve("astro"), "astronaut")
+        XCTAssertEqual(Avatars.resolve("bolt"), "robot")
+        XCTAssertEqual(Avatars.resolve("nope"), "fox")
+        XCTAssertEqual(Avatars.ids.count, 16)
+    }
+
+    func testAccountLevelCallsGoWithoutTheProfileHeader() {
+        XCTAssertTrue(Profile.isAccountLevel("/user/plus"))
+        XCTAssertTrue(Profile.isAccountLevel("/user/profiles/abc/verify-pin"))
+        XCTAssertTrue(Profile.isAccountLevel("/user/trailer"))
+        XCTAssertFalse(Profile.isAccountLevel("/user/watchlist"))
+        XCTAssertFalse(Profile.isAccountLevel("/user/addons"))
+    }
+
+    func testAProfileDecodesFromTheBackendsAnswer() throws {
+        let json = #"{"id":"p1","name":"Sam","avatar":"cat","kind":"kids","hasPin":true,"isDefault":false}"#
+        let profile = try JSONDecoder().decode(Profile.self, from: Data(json.utf8))
+        XCTAssertTrue(profile.isKids)
+        XCTAssertTrue(profile.hasPin)
+        XCTAssertEqual(profile.name, "Sam")
+    }
+
+    func testAnUpdateSendsNullToRemoveAPinAndNothingToLeaveItAlone() throws {
+        func body(_ pin: String??) throws -> String {
+            String(data: try JSONEncoder().encode(UpdateBody(name: "N", avatar: nil, kind: nil, pin: pin)), encoding: .utf8)!
+        }
+        XCTAssertFalse(try body(nil).contains("pin"))
+        XCTAssertTrue(try body(.some(nil)).contains("\"pin\":null"))
+        XCTAssertTrue(try body(.some("1234")).contains("\"pin\":\"1234\""))
+    }
+}

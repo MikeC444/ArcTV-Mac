@@ -105,13 +105,13 @@ extension AuthClient {
     }
 
     public func feedback(accessToken: String) async throws -> [FeedbackItem] {
-        let data = try await sendJSON("GET", "/user/feedback", query: ["profileId": "main"], body: nil, accessToken: accessToken)
+        let data = try await sendJSON("GET", "/user/feedback", query: ["profileId": profileID ?? Profile.mainID], body: nil, accessToken: accessToken)
         guard let decoded = try? JSONDecoder().decode(FeedbackResponse.self, from: data) else { throw APIError.unreadable }
         return decoded.items
     }
 
     public func setFeedback(accessToken: String, item: FeedbackItem) async throws {
-        let body = FeedbackBody(profileId: item.profileId, providerId: item.providerId, contentId: item.contentId, contentType: item.contentType,
+        let body = FeedbackBody(profileId: profileID ?? item.profileId, providerId: item.providerId, contentId: item.contentId, contentType: item.contentType,
                                 title: item.title, feedback: item.feedback, updatedAt: item.updatedAt)
         _ = try await sendJSON("POST", "/user/feedback", body: try JSONEncoder().encode(body), accessToken: accessToken)
     }
@@ -119,19 +119,19 @@ extension AuthClient {
     public func clearFeedback(accessToken: String, item: FeedbackItem) async throws {
         _ = try await sendJSON(
             "DELETE", "/user/feedback",
-            query: ["profileId": item.profileId, "providerId": item.providerId, "contentId": item.contentId, "contentType": item.contentType, "updatedAt": ISODate.now()],
+            query: ["profileId": profileID ?? item.profileId, "providerId": item.providerId, "contentId": item.contentId, "contentType": item.contentType, "updatedAt": ISODate.now()],
             body: nil, accessToken: accessToken
         )
     }
 
     public func pickedDismissals(accessToken: String) async throws -> [PickedDismissal] {
-        let data = try await sendJSON("GET", "/user/picked-dismissals", query: ["profileId": "main"], body: nil, accessToken: accessToken)
+        let data = try await sendJSON("GET", "/user/picked-dismissals", query: ["profileId": profileID ?? Profile.mainID], body: nil, accessToken: accessToken)
         guard let decoded = try? JSONDecoder().decode(PickedDismissalsResponse.self, from: data) else { throw APIError.unreadable }
         return decoded.items
     }
 
     public func dismissPicked(accessToken: String, contentID: String, at date: Date) async throws {
-        let body = DismissalBody(profileId: "main", contentId: contentID, dismissedAt: ISODate.string(from: date))
+        let body = DismissalBody(profileId: profileID ?? Profile.mainID, contentId: contentID, dismissedAt: ISODate.string(from: date))
         _ = try await sendJSON("POST", "/user/picked-dismissals", body: try JSONEncoder().encode(body), accessToken: accessToken)
     }
 }

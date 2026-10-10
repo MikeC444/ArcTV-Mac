@@ -93,7 +93,7 @@ public extension MetaDetail {
 }
 
 extension AuthClient {
-    func sendJSON(_ method: String, _ path: String, query: [String: String] = [:], body: Data?, accessToken: String) async throws -> Data {
+    func sendJSON(_ method: String, _ path: String, query: [String: String] = [:], body: Data?, accessToken: String, headers: [String: String] = [:]) async throws -> Data {
         guard var components = URLComponents(string: baseURL + path) else { throw APIError.badURL(baseURL + path) }
         if !query.isEmpty { components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         guard let url = components.url else { throw APIError.badURL(baseURL + path) }
@@ -102,6 +102,8 @@ extension AuthClient {
         request.timeoutInterval = 60
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue(AppInfo.version, forHTTPHeaderField: "X-ArcTV-App-Version")
+        if let profileID, profileID != Profile.mainID, !Profile.isAccountLevel(path) { request.setValue(profileID, forHTTPHeaderField: "X-ArcTV-Profile") }
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = body

@@ -46,8 +46,11 @@ struct TokenPair: Decodable {
 /// The account backend (the same one the Android and web apps use). [baseURL] has no trailing slash.
 public struct AuthClient: Sendable {
     public let baseURL: String
+    /// The profile the library calls are for (sent as `X-ArcTV-Profile`); nil or "main" is the account's own, which needs no header.
+    public let profileID: String?
 
-    public init(baseURL: String) {
+    public init(baseURL: String, profileID: String? = nil) {
+        self.profileID = profileID
         var trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         while trimmed.hasSuffix("/") { trimmed.removeLast() }
         self.baseURL = trimmed
