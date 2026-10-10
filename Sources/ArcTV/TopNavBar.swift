@@ -68,7 +68,7 @@ struct TopNavBar: View {
             }
 
             HStack(spacing: 2) {
-                ForEach(NavItem.allCases) { item in
+                ForEach(NavItem.allCases.filter { !(model.isKids && $0 == .settings) }) { item in
                     NavPill(item: item, selected: model.selected == item, fontSize: fontSize, padding: padding) { model.selected = item }
                 }
             }
@@ -77,8 +77,14 @@ struct TopNavBar: View {
             .background(Capsule().fill(Color(hex: 0x141417).opacity(0.7)))
             .overlay(Capsule().stroke(Color.white.opacity(0.09), lineWidth: 1))
 
-            // The right-hand side is where the profile picture goes once profiles are here.
-            if logo { Color.clear.frame(minWidth: 130, maxWidth: .infinity, maxHeight: 1) }
+            // Who is watching (Arc TV Plus): the picture and name of the profile in use, which opens "Who's watching?".
+            if logo {
+                HStack {
+                    Spacer(minLength: 0)
+                    if let profile = model.activeProfile, model.plus.active { ProfileButton(profile: profile) { model.profilePickerOpen = true } }
+                }
+                .frame(minWidth: 130, maxWidth: .infinity)
+            }
         }
     }
 }
@@ -117,5 +123,27 @@ private struct NavPill: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+    }
+}
+
+/// The active profile's picture and name at the top right (the web app's switch-profile button).
+private struct ProfileButton: View {
+    let profile: Profile
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                ProfileAvatarView(avatar: profile.avatar).frame(width: 34, height: 34).clipShape(Circle())
+                Text(profile.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary).lineLimit(1).frame(maxWidth: 110)
+            }
+            .padding(3)
+            .padding(.trailing, 12)
+            .background(Capsule().fill(hovering ? Color.white.opacity(0.12) : Color(hex: 0x141417).opacity(0.58)))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Switch profile")
     }
 }

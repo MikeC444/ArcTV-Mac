@@ -110,7 +110,7 @@ struct SourcesView: View {
         if model.addons.isEmpty { await model.loadAddons() }
         result = await SourceFinder.find(addons: model.addons, type: target.title.type, id: target.streamID)
         // Watched before: carry on with the same source instead of asking (unless "Choose source" was used).
-        if !target.chooseSource, let user = model.session?.user.id,
+        if !target.chooseSource, let user = model.scope,
            let last = LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode),
            let match = last.match(in: result.items) {
             choose(match)
@@ -126,7 +126,7 @@ struct SourcesView: View {
 
     private func choose(_ item: SourceItem) {
         guard let url = item.playURL else { return }
-        if let user = model.session?.user.id {
+        if let user = model.scope {
             LastSourceStore(userID: user).set(LastSource(item), titleID: target.title.id, season: target.season, episode: target.episode)
         }
         model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))

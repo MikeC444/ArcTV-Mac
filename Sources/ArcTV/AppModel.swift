@@ -96,6 +96,12 @@ final class AppModel: ObservableObject {
     @Published var playing: PlayingItem?
     /// The poster whose actions menu (right-click) is open.
     @Published var cardMenu: CardMenuTarget?
+    /// The account's profiles (Arc TV Plus), the one in use, and whether "Who's watching?" is open.
+    @Published private(set) var profiles: [Profile] = []
+    @Published private(set) var activeProfileID = Profile.mainID
+    @Published var profilePickerOpen = false
+    private var profileChosen = false
+    private var bootstrapped = false
     /// The sources set-up guide is open.
     @Published var guideOpen = false
     /// Which place in Settings is showing.
@@ -122,7 +128,7 @@ final class AppModel: ObservableObject {
     private var accountLoaded = false
     private var pickedTask: Task<Void, Never>?
     private var pickedSeed = Int.random(in: 0...Int(Int32.max))
-    private var previousShown: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "ArcTVPickedShown") ?? [])
+    private var previousShown: Set<String> = []
     private var rememberedShown = false
     private let featureCache = FeatureCache.standard()
     @Published var signInError: String?
@@ -136,8 +142,10 @@ final class AppModel: ObservableObject {
     }
 
     private static let serverKey = "ArcTVServerURL"
-    private static let removedKey = "ArcTVPickedRemoved"
-    private static let posterKey = "ArcTVRatingPosters"
+    private static let removedBase = "ArcTVPickedRemoved"
+    private static let posterBase = "ArcTVRatingPosters"
+    private static let shownBase = "ArcTVPickedShown"
+    private static let activeProfileBase = "ArcTVActiveProfile"
     private let store = SessionStore()
 
     init() {
@@ -148,9 +156,7 @@ final class AppModel: ObservableObject {
             Task { @MainActor [weak self] in self?.online = reachable }
         }
         pathMonitor.start(queue: DispatchQueue(label: "arctv.network"))
-        let saved = UserDefaults.standard.dictionary(forKey: Self.removedKey) as? [String: Double] ?? [:]
-        pickedRemoved = saved.mapValues { Date(timeIntervalSince1970: $0) }
-        ratingPosters = UserDefaults.standard.dictionary(forKey: Self.posterKey) as? [String: String] ?? [:]
+        loadProfileLocalState()
     }
 
     /// Signs in (or, with `register`, makes the account first). Failures are put in words in `signInError`; "too many tries" sets `waitUntil`.
@@ -189,7 +195,7 @@ final class AppModel: ObservableObject {
     /// Runs a call that needs the signed-in token; if the backend says the token has run out, trades the refresh token and tries once more.
     func authorized<T>(_ call: (AuthClient, String) async throws -> T) async throws -> T {
         guard let current = session else { throw APIError.server(status: 401, message: nil) }
-        let client = AuthClient(baseURL: serverURL)
+        let client = AuthClient(baseURL: serverURL, profileID: activeProfileID)
         do {
             return try await call(client, current.accessToken)
         } catch let APIError.server(status, _) where status == 401 {
@@ -215,6 +221,11 @@ final class AppModel: ObservableObject {
         allAddons = []
         settings = nil
         plus = .none
+        profiles = []
+        activeProfileID = Profile.mainID
+        profilePickerOpen = false
+        profileChosen = false
+        bootstrapped = false
         ratings = [:]
         pickedResult = nil
         pickedKey = ""
@@ -237,7 +248,7 @@ final class AppModel: ObservableObject {
         homeGeneration += 1
         let generation = homeGeneration
         // The last launch's rows are on screen at once; the fresh ones replace them as soon as the first arrive.
-        if let userID = session?.user.id, let cached = homeCache.load(userID: userID) {
+        if let userID = scope, let cached = homeCache.load(userID: userID) {
             homeRaw = cached
             homeFromCache = true
             home = .loaded
@@ -259,7 +270,7 @@ final class AppModel: ObservableObject {
         guard generation == homeGeneration else { return }
         homeComplete = true
         if homeRaw.isEmpty { home = .empty }
-        if !homeFromCache, !homeRaw.isEmpty, let userID = session?.user.id { homeCache.save(homeRaw, userID: userID) }
+        if !homeFromCache, !homeRaw.isEmpty, let userID = scope { homeCache.save(homeRaw, userID: userID) }
         pickHero()
         schedulePicked()
     }
@@ -390,7 +401,12 @@ final class AppModel: ObservableObject {
 
     // MARK: Settings (blocked genres)
 
-    var blockedGenres: Set<String> { Set(settings?.blockedGenres ?? []) }
+    /// What is hidden everywhere: the profile's own blocked genres, and on a kids profile the kids list too.
+    var blockedGenres: Set<String> {
+        var set = Set(settings?.blockedGenres ?? [])
+        if isKids { set.formUnion(Profile.kidsBlockedGenres) }
+        return set
+    }
 
     func loadSettings() async {
         if let found = try? await authorized({ client, token in try await client.settings(accessToken: token) }) { settings = found }
@@ -508,7 +524,7 @@ final class AppModel: ObservableObject {
         // A refresh swaps most of Picked for you: what is showing now becomes "shown last time" and a new draw starts.
         if let shown = picked?.entries.map(\.id) {
             previousShown = Set(shown)
-            UserDefaults.standard.set(shown, forKey: "ArcTVPickedShown")
+            UserDefaults.standard.set(shown, forKey: shownKey)
         }
         pickedSeed = Int.random(in: 0...Int(Int32.max))
         pickedKey = ""
@@ -560,7 +576,7 @@ final class AppModel: ObservableObject {
                 ratingPosters = beforePosters
             }
         }
-        UserDefaults.standard.set(ratingPosters, forKey: Self.posterKey)
+        UserDefaults.standard.set(ratingPosters, forKey: posterKey)
         schedulePicked()
     }
 
@@ -572,7 +588,7 @@ final class AppModel: ObservableObject {
             do { try await authorized { client, token in try await client.clearFeedback(accessToken: token, item: item) } } catch { ratings[item.contentId] = item }
         }
         if ratings.isEmpty { ratingPosters = [:] }
-        UserDefaults.standard.set(ratingPosters, forKey: Self.posterKey)
+        UserDefaults.standard.set(ratingPosters, forKey: posterKey)
         schedulePicked()
     }
 
@@ -587,7 +603,7 @@ final class AppModel: ObservableObject {
     private func savePickedRemoved() {
         let live = pickedRemoved.filter { Date().timeIntervalSince($0.value) < PickedDismissals.window }
         pickedRemoved = live
-        UserDefaults.standard.set(live.mapValues { $0.timeIntervalSince1970 }, forKey: Self.removedKey)
+        UserDefaults.standard.set(live.mapValues { $0.timeIntervalSince1970 }, forKey: removedKey)
     }
 
     /// Titles that must not show in Picked for you right now: rated, finished, or already in Continue Watching.
@@ -646,8 +662,146 @@ final class AppModel: ObservableObject {
             model.pickedResult = result
             if !model.rememberedShown, result.isPersonal {
                 model.rememberedShown = true
-                UserDefaults.standard.set(result.items.map(\.id), forKey: "ArcTVPickedShown")
+                UserDefaults.standard.set(result.items.map(\.id), forKey: shownKey)
             }
         }
     }
+
+    // MARK: Profiles (Arc TV Plus)
+
+    var activeProfile: Profile? { profiles.first { $0.id == activeProfileID } }
+
+    var isKids: Bool { activeProfile?.isKids == true }
+
+    /// What this account's local copies (cached Home rows, recent searches, remembered sources) are filed under: the account, and the profile when it
+    /// is not the account's own, so the account's own profile keeps the names it always had.
+    var scope: String? {
+        guard let user = session?.user.id else { return nil }
+        return activeProfileID == Profile.mainID ? user : "\(user)-\(activeProfileID)"
+    }
+
+    private var suffix: String { activeProfileID == Profile.mainID ? "" : "-\(activeProfileID)" }
+    private var removedKey: String { Self.removedBase + suffix }
+    private var posterKey: String { Self.posterBase + suffix }
+    private var shownKey: String { Self.shownBase + suffix }
+
+    /// Reads what is kept on this Mac for the profile in use: picks taken out of Picked for you, rated titles' posters, what showed last time.
+    private func loadProfileLocalState() {
+        let defaults = UserDefaults.standard
+        pickedRemoved = (defaults.dictionary(forKey: removedKey) as? [String: Double] ?? [:]).mapValues { Date(timeIntervalSince1970: $0) }
+        ratingPosters = defaults.dictionary(forKey: posterKey) as? [String: String] ?? [:]
+        previousShown = Set(defaults.stringArray(forKey: shownKey) ?? [])
+        rememberedShown = false
+    }
+
+    /// Everything after sign-in: Plus, the profiles (and "Who's watching?" when there is more than one), then the library of the profile in use.
+    func bootstrap() async {
+        guard !bootstrapped else { return }
+        bootstrapped = true
+        await loadPlus()
+        await loadProfiles()
+        if plus.active, profiles.count > 1, !profileChosen {
+            profilePickerOpen = true
+            return
+        }
+        await loadLibrary()
+    }
+
+    private func loadLibrary() async {
+        await loadAddons()
+        await loadSettings()
+        async let home: Void = loadHome()
+        async let account: Void = loadAccountData()
+        _ = await (home, account)
+    }
+
+    /// Reads the profile list. Without Plus (or on a backend that has no profiles) there is only the account's own profile.
+    func loadProfiles() async {
+        let found = plus.active ? ((try? await authorized { client, token in try await client.profiles(accessToken: token) }) ?? []) : []
+        profiles = found.isEmpty ? [] : found
+        let user = session?.user.id ?? ""
+        let remembered = UserDefaults.standard.string(forKey: "\(Self.activeProfileBase)-\(user)") ?? Profile.mainID
+        let wanted = profiles.contains { $0.id == remembered } ? remembered : Profile.mainID
+        if wanted != activeProfileID {
+            activeProfileID = wanted
+            loadProfileLocalState()
+        }
+    }
+
+    /// Opens a profile: checks its PIN when it has one, then starts over on that profile's library (nothing of the last one stays in memory).
+    /// Returns nil when it worked, else what to tell the person.
+    func selectProfile(_ profile: Profile, pin: String?) async -> String? {
+        if profile.hasPin {
+            guard let pin, Profile.isValidPin(pin) else { return "Enter the 4-digit PIN." }
+            let result = (try? await authorized { client, token in try await client.verifyPin(accessToken: token, id: profile.id, pin: pin) })
+            switch result {
+            case .ok: break
+            case .wrong: return "That PIN is wrong."
+            case .locked: return "Too many wrong PINs. Try again in a few minutes."
+            case nil: return "Couldn't check the PIN. Check your connection and try again."
+            }
+        }
+        profileChosen = true
+        profilePickerOpen = false
+        let different = profile.id != activeProfileID
+        UserDefaults.standard.set(profile.id, forKey: "\(Self.activeProfileBase)-\(session?.user.id ?? "")")
+        if different || !bootstrappedLibrary {
+            activeProfileID = profile.id
+            resetLibrary()
+            await loadLibrary()
+        }
+        return nil
+    }
+
+    /// True once a library has been loaded (so choosing the same profile again does not load it twice).
+    private var bootstrappedLibrary: Bool { home != .idle || myList != nil }
+
+    /// Forgets the library in memory so the next profile starts clean.
+    private func resetLibrary() {
+        pickedTask?.cancel()
+        homeGeneration += 1
+        home = .idle
+        homeRaw = []
+        heroTitles = []
+        heroKey = nil
+        homeFromCache = false
+        homeComplete = false
+        catalogSources = []
+        myList = nil
+        continueItems = []
+        addons = []
+        allAddons = []
+        settings = nil
+        ratings = [:]
+        pickedResult = nil
+        pickedPool = []
+        pickedKey = ""
+        accountLoaded = false
+        trailers = [:]
+        detail = nil
+        sourcesFor = nil
+        playing = nil
+        cardMenu = nil
+        guideOpen = false
+        selected = .home
+        loadProfileLocalState()
+    }
+
+    func createProfile(name: String, avatar: String, kind: String, pin: String?) async throws {
+        _ = try await authorized { client, token in try await client.createProfile(accessToken: token, name: name, avatar: avatar, kind: kind, pin: pin) }
+        await loadProfiles()
+    }
+
+    func updateProfile(_ profile: Profile, name: String, avatar: String, kind: String, pin: String??, currentPin: String?) async throws {
+        _ = try await authorized { client, token in
+            try await client.updateProfile(accessToken: token, id: profile.id, name: name, avatar: avatar, kind: kind, pin: pin, currentPin: currentPin)
+        }
+        await loadProfiles()
+    }
+
+    func deleteProfile(_ profile: Profile, currentPin: String?) async throws {
+        try await authorized { client, token in try await client.deleteProfile(accessToken: token, id: profile.id, currentPin: currentPin) }
+        await loadProfiles()
+    }
 }
+

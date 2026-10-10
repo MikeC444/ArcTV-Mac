@@ -58,11 +58,6 @@ private struct ProfilesResponse: Decodable {
     var profiles: [Profile]
 }
 
-private struct ProfileResponse: Decodable {
-    // POST answers the profile itself; PUT too. (The web server wraps it; the backend does not.)
-    var profile: Profile?
-}
-
 private struct CreateBody: Encodable {
     var name: String
     var avatar: String
@@ -70,7 +65,7 @@ private struct CreateBody: Encodable {
     var pin: String?
 }
 
-private struct UpdateBody: Encodable {
+struct UpdateBody: Encodable {
     var name: String?
     var avatar: String?
     var kind: String?

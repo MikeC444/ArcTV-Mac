@@ -101,7 +101,7 @@ struct SearchView: View {
             }
         }
         .onAppear {
-            model.load(userID: appModel.session?.user.id)
+            model.load(userID: appModel.scope)
             focused = true
         }
         .onChange(of: query) { next in typed(next) }

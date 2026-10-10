@@ -55,11 +55,7 @@ struct MainView: View {
                 }
             }
             .task {
-                await model.loadAddons()
-                await model.loadSettings()
-                async let home: Void = model.loadHome()
-                async let account: Void = model.loadAccountData()
-                _ = await (home, account)
+                await model.bootstrap()
             }
 
             TopNavBar()
@@ -86,6 +82,10 @@ struct MainView: View {
                     }
                 }
                 .transition(.opacity)
+            }
+            if model.profilePickerOpen {
+                ProfilePickerView()
+                    .transition(.opacity)
             }
             if !model.online {
                 OfflineBanner()
