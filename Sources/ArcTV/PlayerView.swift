@@ -18,9 +18,9 @@ final class PlayerController: ObservableObject {
     func start() {
         if let item = player.currentItem {
             observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-                guard item.status == .failed else { return }
+                guard item.status == .failed, let controller = self else { return }
                 let reason = item.error?.localizedDescription ?? "unknown error"
-                Task { @MainActor in self?.failure = reason }
+                Task { @MainActor in controller.failure = reason }
             }
         }
         player.play()
