@@ -40,6 +40,7 @@ struct HomeView: View {
                     .padding(.bottom, 40)
                 }
             }
+            .ignoresSafeArea(.container, edges: .top)
             }
         }
     }

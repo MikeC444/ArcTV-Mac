@@ -296,3 +296,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up to 15 (first look):** the first Home row sat too far below the banner, with empty picture under the buttons. The banner is shorter (62% of the window, at least 500 points, was 74% and 620) and the first row overlaps it more (70 points, was 44). Not seen on screen.
+
+**Follow-up to 15 (title bar):** a black strip showed above the Home banner, where the window's title bar sits. The Home page now ignores the top safe area, so the banner picture runs to the top edge of the window under the traffic-light buttons. Only Home was changed; not seen on screen.
