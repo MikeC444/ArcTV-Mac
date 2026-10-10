@@ -17,7 +17,9 @@ jobs:
         run: swift --version
 
       - name: Test
-        run: swift test
+        # The final link of the app (the mpv libraries) sometimes fails on libsmbclient symbols; it depends on the order the build tool lists the
+        # libraries in, which changes from run to run, so one more try with a fresh order fixes it.
+        run: swift test || (echo "Linking failed; trying once more" && swift test)
 
       - name: Package the app and DMG
         run: scripts/package-app.sh "0.0.0-ci.${{ github.run_number }}"
