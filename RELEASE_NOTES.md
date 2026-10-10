@@ -26,4 +26,5 @@ them under its version automatically.
 - Play carries on with the source you used before, and the player remembers your volume and speed.
 - No sources found? A step-by-step guide now walks you through setting them up.
 - A new sign-in page, with Sign Up built in, matches the web app.
+- Profiles for everyone at home (ArcTV Plus): each gets their own My List, Continue Watching and picks, with kids profiles and optional PINs.
 

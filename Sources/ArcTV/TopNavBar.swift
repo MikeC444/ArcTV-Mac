@@ -1,4 +1,5 @@
 import AppKit
+import ArcTVCore
 import SwiftUI
 
 /// The web app's top bar: the logo on the left and every place, Settings last, in a rounded translucent pill in the middle.

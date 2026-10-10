@@ -233,3 +233,22 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
+## 13 -- Profiles (Arc TV Plus)
+
+**Status:** Written; see the build result below. Not tried against a real account with several profiles.
+
+**Context:** Stage 4c. An account with Plus can have up to five profiles, each with its own My List, Continue Watching, history, settings (Home Rows, Blocked Genres...), addons and Likes. The Mac app only knew the account's own profile.
+
+**Changes:**
+- Backend calls: `GET`/`POST /user/profiles`, `PUT`/`DELETE /user/profiles/:id` (a locked profile needs its current PIN in `X-ArcTV-Pin`), `POST /user/profiles/:id/verify-pin` (204 right, 403 wrong, 429 locked out). Every library call now carries `X-ArcTV-Profile` for a profile that is not the account's own; the account-level calls (`/user/plus`, `/user/profiles`, trailers, release dates, cast) do not.
+- "Who's watching?" opens at launch for a Plus account with more than one profile (and from the picture and name at the top right of the top bar): tiles with the picture, a lock for a PIN, "Kids"; Add profile (up to five); Manage profiles; Switch account (signs out). A locked profile asks for its PIN first, with the reason when it is wrong or locked.
+- Add / edit a profile: name (24), one of the sixteen pictures (embedded from the web app; old colour-tile ids show as the nearest picture), Adult or Kids (not for the account's own profile), a four-digit PIN (on, change, off; the current PIN is asked for before changing or removing a locked profile) and Remove (not for the account's own profile).
+- Choosing a profile starts over on its library: nothing of the last profile stays in memory. What the Mac keeps for itself is kept per profile too (the last Home rows, recent searches, remembered sources, picks taken out of Picked for you); the account's own profile keeps the names it always had.
+- A kids profile has no Settings and hides Horror, Thriller, Crime, War, Mystery, Film-Noir and Adult everywhere blocked genres apply, on top of its own list. Without Plus, or when the backend has no profiles, there is just the account's own profile and no picker.
+
+**Tests performed:** unit tests for PIN rules, the avatar ids, which calls go without the profile header, decoding a profile, and how an update sends a PIN (left alone, removed with null, set). The Mac code could not be compiled here; the Build and test workflow is the check. The screens and the real backend were not tried.
+
+**Issues discovered:** Settings > Account does not yet say "Watching as ...". A title page that a kids profile should not open (by a link) is not blocked, only hidden from the lists. Likes of a profile are still read through the profile header, which the backend treats as the authority.
+
+**Issues fixed:** none.
+
