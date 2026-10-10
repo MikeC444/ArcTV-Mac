@@ -17,11 +17,15 @@ struct SignInView: View {
         ZStack(alignment: .leading) {
             Theme.background
             if let hero = Self.hero {
-                Image(nsImage: hero)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                    .clipped()
+                // Sized from the window, not from the picture: a filled picture reports its own (larger) size and would make the page wider
+                // than the window, pushing the text off the left edge.
+                GeometryReader { geo in
+                    Image(nsImage: hero)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .trailing)
+                        .clipped()
+                }
             }
             GeometryReader { geo in
                 LinearGradient(stops: [.init(color: Theme.background, location: 0), .init(color: Theme.background, location: 0.5), .init(color: Theme.background.opacity(0), location: 1)],

@@ -352,10 +352,10 @@ app's look, and talks to the same backend and Stremio addons.
 - Update pop-up: six seconds after Home has loaded, once per launch, the app asks GitHub for the latest release (`UpdateCheck`) and, if it is newer, shows its notes with Download (the .dmg, else the release page), Later and "Skip this version" (remembered by version). Quiet when offline or when there is no release.
 - QR sign-in: "Scan a QR code to sign in from your phone" on the start page. The app asks the server for a code (`POST /auth/qr/create` with this Mac's device id), draws the activation link as a QR code (Core Image), and asks `GET /auth/qr/status` every two seconds until the phone has signed in (the tokens come back once and are kept like a normal sign-in), the code runs out ("New code") or the person goes Back.
 - Search: Up and Down move through the suggestions, Return opens the marked one (or searches, with none marked), Escape closes the list. Done with a key monitor because the SwiftUI key handler needs macOS 14.
-- Blocked titles: a title page whose genres include a blocked genre (Blocked Genres, or a kids profile's list) is replaced by "Not available on this profile", and Play does nothing. Before, such titles were only left out of lists.
 - Settings > Account: "Watching as <profile>" (with "(kids)") when the account has more than one profile.
 
 **Not done, and why:**
+- Blocked titles on a title page: this was built (a "Not available on this profile" page) and then taken out again on request: blocked genres only keep a title out of Home, Movies and TV Shows, and a search still finds it and opens it.
 - Parental controls: the web app's Plus list also says "Coming soon" (locks on genres and titles); there is nothing defined to match yet.
 - The black strip on Movies, TV Shows, Search and My List: those pages have no picture at the top, so the strip is the page's own colour and I saw no reason to change them. If it shows, a screenshot would settle it.
 
@@ -364,3 +364,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet.
 
 **Issues fixed:** none.
+
+**Follow-up to 18 (first look):** the sign-in page was pushed off the left edge of a tall window: the filled picture reported its own, larger size, which made the page wider than the window. The picture is now sized from the window. Search results no longer leave out blocked genres, and the "Not available on this profile" page is gone (see above). Settings > Updates has "Preview the update pop-up", which shows the pop-up with sample notes for version 9.9.9 so it can be seen without a release. Not seen on screen.

@@ -69,15 +69,6 @@ public extension Array where Element == MetaPreview {
     }
 }
 
-public extension MetaDetail {
-    /// True when one of the title's genres is blocked (Blocked Genres, or a kids profile's own list).
-    func isBlocked(by blocked: Set<String>) -> Bool {
-        guard !blocked.isEmpty else { return false }
-        let lowered = Set(blocked.map { $0.lowercased() })
-        return (genres ?? []).contains { lowered.contains($0.lowercased()) }
-    }
-}
-
 extension AuthClient {
     public func settings(accessToken: String) async throws -> AccountSettings {
         let data = try await sendJSON("GET", "/user/settings", body: nil, accessToken: accessToken)

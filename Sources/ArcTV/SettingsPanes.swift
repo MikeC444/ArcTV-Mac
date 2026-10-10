@@ -307,6 +307,7 @@ private struct LanguageList: View {
 
 /// Settings > Updates: the running version and a check against the newest published release.
 struct UpdatesPane: View {
+    @EnvironmentObject private var model: AppModel
     @State private var state: CheckState = .idle
 
     enum CheckState: Equatable {
@@ -352,9 +353,19 @@ struct UpdatesPane: View {
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
             }
 
-            Button { Task { await check() } } label: { Label("Check for updates", systemImage: "arrow.clockwise") }
-                .buttonStyle(GlassButtonStyle())
-                .disabled(state == .checking)
+            HStack(spacing: 12) {
+                Button { Task { await check() } } label: { Label("Check for updates", systemImage: "arrow.clockwise") }
+                    .buttonStyle(GlassButtonStyle())
+                    .disabled(state == .checking)
+                Button {
+                    model.updateOffer = ReleaseInfo(
+                        version: "9.9.9",
+                        notes: "- Your row just got smarter.\n- Switch profile in one press.\n- Torrent sources play right inside Arc TV.",
+                        pageURL: nil, downloadURL: nil
+                    )
+                } label: { Label("Preview the update pop-up", systemImage: "eye") }
+                    .buttonStyle(GlassButtonStyle())
+            }
         }
         .task { if state == .idle { await check() } }
     }

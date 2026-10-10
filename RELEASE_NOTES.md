@@ -39,5 +39,5 @@ them under its version automatically.
 - New versions are announced when you open Arc TV, with what's new and a Download button.
 - Sign in by scanning a QR code with your phone.
 - Move through search suggestions with the arrow keys, and press Return to open one.
-- Blocked genres now stay blocked everywhere, even for a title opened from a search suggestion. Account shows who is watching.
+- Account now shows which profile you are watching as.
 - Arc TV now needs a Mac with Apple Silicon and macOS 14 or later.

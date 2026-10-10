@@ -89,7 +89,7 @@ struct SearchView: View {
 
     private var shown: (movies: [MetaPreview], tvShows: [MetaPreview]) {
         guard case let .results(movies, shows, _) = model.state else { return ([], []) }
-        return (movies.withoutBlocked(appModel.blockedGenres), shows.withoutBlocked(appModel.blockedGenres))
+        return (movies, shows) // a search still finds blocked titles; only Home, Movies and TV Shows leave them out
     }
 
     private var suggestions: [MetaPreview] { Array((shown.movies + shown.tvShows).prefix(5)) }

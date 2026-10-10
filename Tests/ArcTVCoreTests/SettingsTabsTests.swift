@@ -133,13 +133,3 @@ final class QRSignInTests: XCTestCase {
         XCTAssertThrowsError(try QRPoll.read(Data("nope".utf8)))
     }
 }
-
-final class BlockedTitleTests: XCTestCase {
-    func testBlockedByGenre() {
-        var detail = MetaDetail(id: "tt1", type: "movie", name: "X")
-        detail.genres = ["Comedy", "Horror"]
-        XCTAssertTrue(detail.isBlocked(by: ["horror"]))
-        XCTAssertFalse(detail.isBlocked(by: ["Drama"]))
-        XCTAssertFalse(detail.isBlocked(by: []))
-    }
-}
