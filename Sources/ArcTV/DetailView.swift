@@ -18,6 +18,7 @@ struct DetailView: View {
     @State private var downloadTarget: PlayTarget?
     /// False until the full details (cast, episodes) have come back, so grey placeholders hold their places.
     @State private var detailLoaded = false
+    @State private var ringShown = true
 
     init(preview: MetaPreview) {
         self.preview = preview
@@ -184,24 +185,73 @@ struct DetailView: View {
                     .frame(height: 48)
                     .help("Save this to your Mac")
             }
+            moreButtons
+            RoundIconButton(icon: "ellipsis", on: expanded, rotation: expanded ? 90 : 0, help: "More options") {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) { expanded.toggle() }
+                if expanded { pulseRing() }
+            }
+            .scaleEffect(expanded ? 1.06 : 1)
+            .animation(.spring(response: 0.4, dampingFraction: 0.5), value: expanded)
+            .overlay {
+                Circle()
+                    .stroke(Theme.cyan.opacity(ringShown ? 0 : 0.8), lineWidth: 2)
+                    .scaleEffect(ringShown ? 2.1 : 1)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    /// The round buttons that fly out of the three dots one after another: Watched, My List and (for Plus) Like and Not for me.
+    private var moreButtons: some View {
+        let items = moreItems
+        return HStack(spacing: 14) {
             if expanded {
-                HStack(spacing: 14) {
-                    RoundIconButton(icon: model.isWatched(detail.id) ? "checkmark.circle.fill" : "checkmark.circle", on: model.isWatched(detail.id),
-                                    help: model.isWatched(detail.id) ? "Remove from Watched" : "Mark as watched") { Task { await model.toggleWatched(detail) } }
-                    RoundIconButton(icon: model.isSaved(detail.id) ? "checkmark" : "plus", on: model.isSaved(detail.id),
-                                    help: model.isSaved(detail.id) ? "Remove from My List" : "Add to My List") { Task { await model.toggleSaved(detail) } }
-                    if model.plus.active {
-                        RoundIconButton(icon: model.rating(of: detail.id) == .like ? "hand.thumbsup.fill" : "hand.thumbsup", on: model.rating(of: detail.id) == .like,
-                                        help: model.rating(of: detail.id) == .like ? "Remove like" : "Like") { Task { await model.rate(detail.preview, .like) } }
-                        RoundIconButton(icon: model.rating(of: detail.id) == .dislike ? "hand.thumbsdown.fill" : "hand.thumbsdown", on: model.rating(of: detail.id) == .dislike,
-                                        help: model.rating(of: detail.id) == .dislike ? "Remove Not for me" : "Not for me") { Task { await model.rate(detail.preview, .dislike) } }
-                    }
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    RoundIconButton(icon: item.icon, on: item.on, help: item.help, action: item.action)
+                        .transition(.asymmetric(
+                            insertion: AnyTransition.scale(scale: 0.15)
+                                .combined(with: .opacity)
+                                .combined(with: .offset(x: 46))
+                                .animation(.spring(response: 0.46, dampingFraction: 0.62).delay(Double(index) * 0.065)),
+                            removal: AnyTransition.scale(scale: 0.3)
+                                .combined(with: .opacity)
+                                .animation(.easeIn(duration: 0.16).delay(Double(items.count - 1 - index) * 0.03))
+                        ))
                 }
-                .transition(.opacity.combined(with: .move(edge: .leading)))
             }
-            RoundIconButton(icon: "ellipsis", on: expanded, help: "More options") {
-                withAnimation(.easeOut(duration: 0.2)) { expanded.toggle() }
-            }
+        }
+    }
+
+    private struct MoreItem {
+        var icon: String
+        var on: Bool
+        var help: String
+        var action: () -> Void
+    }
+
+    private var moreItems: [MoreItem] {
+        var items = [
+            MoreItem(icon: model.isWatched(detail.id) ? "checkmark.circle.fill" : "checkmark.circle", on: model.isWatched(detail.id),
+                     help: model.isWatched(detail.id) ? "Remove from Watched" : "Mark as watched") { Task { await model.toggleWatched(detail) } },
+            MoreItem(icon: model.isSaved(detail.id) ? "checkmark" : "plus", on: model.isSaved(detail.id),
+                     help: model.isSaved(detail.id) ? "Remove from My List" : "Add to My List") { Task { await model.toggleSaved(detail) } }
+        ]
+        if model.plus.active {
+            let rating = model.rating(of: detail.id)
+            items.append(MoreItem(icon: rating == .like ? "hand.thumbsup.fill" : "hand.thumbsup", on: rating == .like,
+                                  help: rating == .like ? "Remove like" : "Like") { Task { await model.rate(detail.preview, .like) } })
+            items.append(MoreItem(icon: rating == .dislike ? "hand.thumbsdown.fill" : "hand.thumbsdown", on: rating == .dislike,
+                                  help: rating == .dislike ? "Remove Not for me" : "Not for me") { Task { await model.rate(detail.preview, .dislike) } })
+        }
+        return items
+    }
+
+    /// A ring that spreads out from the three dots and fades, as they open.
+    private func pulseRing() {
+        ringShown = false
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 30_000_000)
+            withAnimation(.easeOut(duration: 0.65)) { ringShown = true }
         }
     }
 
