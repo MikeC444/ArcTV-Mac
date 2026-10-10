@@ -188,3 +188,25 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
+## 11 -- Parity with the web app: top bar, poster menu, Home rows, My List, title page
+
+**Status:** Written; checked by the Build and test workflow. Not seen on a Mac.
+
+**Context:** The Mac app had its own layout instead of the web app's: Settings off to the side, a plain right-click menu, five fixed Home rows, a plain My List and a text-only title page.
+
+**Changes:**
+- Top bar: Settings is the last place in the pill, as on the web; the account-name button is gone.
+- Poster menu: right-click (or control-click) a poster or a Continue Watching card opens the web app's popup: the title's wide picture with its logo, a big Play or "Resume from", a two-by-two grid of My List / Watched / Like / Not for me that stays open and shows a tick, then View details, Remove from Picked for you, Remove from Continue Watching and Choose source. (The menu is a custom view because SwiftUI's own menu cannot look like this.)
+- Posters: a green tick on every watched title and the rating on hover.
+- My List: All / Watched and the sorts Recently Added, A-Z, Highest Rated and Newest.
+- Home rows are now built the way the web app builds them (a port of `StremioAddonProvider.getHomeSections`, `homeVariety.ts` and `homeRows.ts`): from every enabled addon that offers catalogues (Cinemeta when there is none). A Cinemeta-shaped addon gets Popular, New and Top rated (movies and shows together; each reads page 1, 2 or 3 chosen by account and day, then a gentle seeded shuffle) and then Action, Comedy, Drama, Thriller, Horror, Sci-Fi, Crime, Animation and Documentary; any other addon gets its base catalogue and every genre it declares. Titles you have watched, saved or rated are left out, each title shows once, blocked genres are hidden, and the order and hidden rows from the account's settings are used (row ids are now the web app's, so they match). Changing an addon refreshes Home.
+- Banner: ten random titles from the rows that are switched on, picked once per launch, rotating every 5 seconds with a slide, dots, a pause button (it also waits while the pointer is over it), and Play (white, as on the web), Trailer (from the account's trailer lookup, opens YouTube), My List and Info.
+- Title page: the web layout: logo, release date (from the account's release-date lookup) and length, genres, description, white Play (Resume S1E3 for a show), Trailer and a "more" button that opens Watched / My List / Like / Not for me, the IMDb rating in the corner, a Seasons strip with round season buttons and episode cards (season 0 is left out, as on the web), the cast with photos (filled in from the account's cast lookup when the addon has none) and, for a movie, You May Also Like.
+- Build: the final link of the app sometimes failed on libsmbclient symbols (the order the mpv libraries are listed in changes from run to run). The test, packaging and release steps now try the link once more.
+
+**Tests performed:** unit tests for My List sorting, the seeds, pages and shuffle checked against the web app's own functions run on the same inputs, row ordering and one-row-per-title, the banner's pool, runtime and date wording, and cast merging. The sandbox cannot compile Swift, so the Build and test workflow is the check; none of the screens were seen.
+
+**Issues discovered:** the web top bar also shows a profile picture (comes with profiles) and hides on scroll (not done). Home does not keep the last session's rows for an instant first paint. The web app's "Choose source" and "Play" differ (Play goes straight to the last source); here both open the source list.
+
+**Issues fixed:** the intermittent link failure above.
+

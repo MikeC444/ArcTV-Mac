@@ -16,3 +16,8 @@ them under its version automatically.
 - Hide the genres you never want to see, on every device.
 - Like or mark Not for me on any title, and your Home gets a Picked for you row of titles chosen just for you (ArcTV Plus).
 - See what shapes your picks in Settings, and start fresh any time.
+- Right-click any poster for the web app's quick menu: Play, My List, Watched, Like and Not for me, all in one place.
+- Home now shows the same rows as the web and Fire TV apps, with a rotating banner of featured titles.
+- Watched titles get a green tick, and My List can show just what you have watched, in the order you like.
+- Title pages now match the web app: logo, release date, trailer, IMDb rating, cast photos and more like this.
+- Settings sits in the top bar with Home, Movies, TV Shows, Search and My List.
