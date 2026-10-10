@@ -1,5 +1,9 @@
 // swift-tools-version:5.9
+import Foundation
 import PackageDescription
+
+// Where Homebrew keeps its packages: /opt/homebrew on Apple Silicon, /usr/local on an Intel Mac.
+let brew = FileManager.default.fileExists(atPath: "/opt/homebrew/opt/libtorrent-rasterbar") ? "/opt/homebrew" : "/usr/local"
 
 // ArcTVCore is everything that is not on screen (the addon protocol, the account API, the Home rows), so it can be tested on its own.
 // ArcTV is the SwiftUI app. scripts/package-app.sh turns the built program into ArcTV.app and a DMG.
@@ -19,7 +23,7 @@ let package = Package(
             cxxSettings: [
                 .unsafeFlags([
                     "-std=c++17", "-fexceptions",
-                    "-I/opt/homebrew/opt/libtorrent-rasterbar/include", "-I/opt/homebrew/opt/boost/include", "-I/opt/homebrew/opt/openssl@3/include",
+                    "-I\(brew)/opt/libtorrent-rasterbar/include", "-I\(brew)/opt/boost/include", "-I\(brew)/opt/openssl@3/include",
                     "-DTORRENT_LINKING_SHARED", "-DBOOST_ASIO_ENABLE_CANCELIO", "-DBOOST_ASIO_NO_DEPRECATED", "-DBOOST_SYSTEM_USE_UTF8",
                     "-D_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING", "-DTORRENT_ABI_VERSION=2", "-DTORRENT_USE_OPENSSL",
                     "-DTORRENT_USE_LIBCRYPTO", "-DTORRENT_SSL_PEERS", "-DOPENSSL_NO_SSL2", "-DOPENSSL_NO_SSL3", "-DOPENSSL_NO_TLS1",
@@ -27,7 +31,7 @@ let package = Package(
                 ])
             ],
             linkerSettings: [
-                .unsafeFlags(["-L/opt/homebrew/opt/libtorrent-rasterbar/lib", "-L/opt/homebrew/opt/openssl@3/lib"]),
+                .unsafeFlags(["-L\(brew)/opt/libtorrent-rasterbar/lib", "-L\(brew)/opt/openssl@3/lib"]),
                 .linkedLibrary("torrent-rasterbar")
             ]
         ),
