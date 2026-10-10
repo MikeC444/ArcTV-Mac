@@ -176,7 +176,9 @@ final class LastSourceTests: XCTestCase {
 
     func testASourceThatCannotPlayIsNeverPicked() {
         let last = LastSource(addonName: "A", releaseTitle: "Movie", infoHash: "abc")
-        XCTAssertNil(last.match(in: [item("A", "Movie", hash: "abc", url: nil)]))
+        // No web link and no torrent hash: nothing to start. (A torrent can be started by the app's own engine, so it can be picked.)
+        XCTAssertNil(last.match(in: [item("A", "Movie", hash: nil, url: nil)]))
+        XCTAssertEqual(last.match(in: [item("A", "Movie", hash: "abc", url: nil)])?.id, "A#0")
     }
 
     func testTheStoreRemembersPerEpisodeAndPerAccount() {

@@ -315,6 +315,6 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Tests performed:** unit tests for the magnet link (hash, name, de-duplicated trackers), which sources count as torrents, choosing the file (hint, episode, biggest, none) and reading `Range` headers. The Mac code, the C++ and the packaging script could not be compiled or run here; the Build and test workflow is the check. No torrent was streamed and nothing was seen on screen.
 
-**Issues discovered:** none yet. Open questions that only a real run answers: whether the copied libraries load inside the app, how quickly a popular and an unpopular torrent start, and whether seeking inside an MKV is quick enough. Two players asking for different ranges at once (a start and the end of an MP4) share one set of piece deadlines, so the last request wins.
+**Issues discovered:** the C++ and Swift built on the CI Mac (the first build failed on a Swift concurrency error in the server, now fixed). One existing test assumed a torrent can never be picked as the remembered source; it now checks that only a source with neither a link nor a hash is skipped. Open questions that only a real run answers: whether the copied libraries load inside the app, how quickly a popular and an unpopular torrent start, and whether seeking inside an MKV is quick enough. Two players asking for different ranges at once (a start and the end of an MP4) share one set of piece deadlines, so the last request wins.
 
 **Issues fixed:** none.
