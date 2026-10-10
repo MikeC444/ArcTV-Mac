@@ -365,7 +365,7 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
-**Follow-up to 18 (first look):** the sign-in page was pushed off the left edge of a tall window: the filled picture reported its own, larger size, which made the page wider than the window. The picture is now sized from the window. Search results no longer leave out blocked genres, and the "Not available on this profile" page is gone (see above). Settings > Updates has "Preview the update pop-up", which shows the pop-up with sample notes for version 9.9.9 so it can be seen without a release. Not seen on screen.
+**Follow-up to 18 (first look):** the sign-in page was pushed off the left edge of a tall window: the filled picture reported its own, larger size, which made the page wider than the window. The picture is now sized from the window. Search results no longer leave out blocked genres, and the "Not available on this profile" page is gone (see above). (A "Preview the update pop-up" button was added to Settings > Updates for a look and then removed on request.) Not seen on screen.
 
 ## 19 -- Downloads (Arc TV Plus) and the revised Plus popups
 
@@ -376,7 +376,7 @@ app's look, and talks to the same backend and Stremio addons.
 **Changes:**
 - A Download button on a title's page (Plus members): a panel lists the files the account's addons give as plain web links (what a debrid service gives; torrents can't be saved this way), best quality first and the smallest file first within a quality (`DownloadChoices`). A movie downloads the movie; a show downloads the episode Play would start. Choosing a file saves it to the Downloads folder (`DownloadManager`, a URLSession download with progress, Cancel, "Show in Finder"; names are made safe and never overwrite an existing file). The panel also lists what is being saved.
 - Settings > Arc TV Plus lists "Download" with a "Web and Mac only" tag. Both Plus popups list Downloads; the welcome tour has a new id, so members see the revised tour once more.
-- Settings > Updates has "Preview the Plus invitation" and "Preview the Plus welcome" next to the update pop-up preview; closing a preview is not counted as seeing it.
+- Settings > Updates has "Preview the Plus invitation" and "Preview the Plus welcome"; closing a preview is not counted as seeing it. A demo switch (`AppModel.plusPopupDemo`, on for now) also shows the invitation by itself three seconds after Home loads, and also skips the update check while it is on; it is to be turned off before a release.
 
 **Tests performed:** unit tests for the order of choices (quality, then size; torrents left out) and for file names. The Mac code could not be compiled or run here; the Build and test workflow is the check.
 

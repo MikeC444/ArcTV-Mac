@@ -113,6 +113,11 @@ struct MainView: View {
         }
         .task(id: model.home == .loaded) {
             guard model.home == .loaded else { return }
+            if AppModel.plusPopupDemo {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if !Task.isCancelled, model.plusPopup == nil { model.previewPlusPopup(.invitation) }
+                return
+            }
             try? await Task.sleep(nanoseconds: 6_000_000_000)
             guard !Task.isCancelled else { return }
             await model.checkForUpdate()

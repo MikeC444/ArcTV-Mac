@@ -357,14 +357,6 @@ struct UpdatesPane: View {
                 Button { Task { await check() } } label: { Label("Check for updates", systemImage: "arrow.clockwise") }
                     .buttonStyle(GlassButtonStyle())
                     .disabled(state == .checking)
-                Button {
-                    model.updateOffer = ReleaseInfo(
-                        version: "9.9.9",
-                        notes: "- Your row just got smarter.\n- Switch profile in one press.\n- Torrent sources play right inside Arc TV.",
-                        pageURL: nil, downloadURL: nil
-                    )
-                } label: { Label("Preview the update pop-up", systemImage: "eye") }
-                    .buttonStyle(GlassButtonStyle())
             }
             HStack(spacing: 12) {
                 Button { model.previewPlusPopup(.invitation) } label: { Label("Preview the Plus invitation", systemImage: "eye") }
