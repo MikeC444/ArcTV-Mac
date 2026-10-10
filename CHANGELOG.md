@@ -208,5 +208,5 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues discovered:** the web top bar also shows a profile picture (comes with profiles) and hides on scroll (not done). Home does not keep the last session's rows for an instant first paint. The web app's "Choose source" and "Play" differ (Play goes straight to the last source); here both open the source list.
 
-**Issues fixed:** none yet for the intermittent link failure; the clean-directory retry is a workaround, not a diagnosis (the cause is not known).
+**Issues fixed:** none yet for the intermittent link failure; the clean-directory retry is a workaround, not a diagnosis (the cause is not known), and no run has needed it yet, so it is untried. About half of the runs on one afternoon failed this way and the rest, with identical code, passed.
 

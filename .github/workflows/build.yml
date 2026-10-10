@@ -18,7 +18,7 @@ jobs:
 
       - name: Test
         # The final link of the app (the mpv libraries) sometimes fails on libsmbclient symbols, on some build machines and not others; a second
-        # try from a clean build directory has gone through every time.
+        # try from a clean build directory is the workaround (a retry in the same directory failed again; the cause is not known).
         run: swift test || (echo "Linking failed; trying once more from a clean build" && rm -rf .build && swift test)
 
       - name: Package the app and DMG
