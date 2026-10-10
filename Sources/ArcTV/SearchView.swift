@@ -1,3 +1,4 @@
+import AppKit
 import ArcTVCore
 import SwiftUI
 
@@ -82,6 +83,8 @@ struct SearchView: View {
     @State private var query = ""
     @State private var debounce: Task<Void, Never>?
     @State private var suggestionsOpen = false
+    @State private var highlighted: Int?
+    @State private var keyMonitor: Any?
     @FocusState private var focused: Bool
 
     private var shown: (movies: [MetaPreview], tvShows: [MetaPreview]) {
@@ -103,8 +106,13 @@ struct SearchView: View {
         .onAppear {
             model.load(userID: appModel.scope)
             focused = true
+            installKeys()
         }
-        .onChange(of: query) { next in typed(next) }
+        .onDisappear { removeKeys() }
+        .onChange(of: query) { next in
+            highlighted = nil
+            typed(next)
+        }
         .onChange(of: focused) { isFocused in if isFocused { suggestionsOpen = true } }
     }
 
@@ -118,7 +126,9 @@ struct SearchView: View {
                 .font(.system(size: 18))
                 .foregroundStyle(Theme.textPrimary)
                 .focused($focused)
-                .onSubmit { runNow(query) }
+                .onSubmit {
+                    if let index = highlighted, suggestions.indices.contains(index), suggestionsOpen { pick(suggestions[index]) } else { runNow(query) }
+                }
             if !query.isEmpty {
                 Button {
                     query = ""
@@ -157,7 +167,7 @@ struct SearchView: View {
     private var suggestionList: some View {
         VStack(spacing: 2) {
             ForEach(suggestions) { item in
-                SuggestionRow(item: item) { pick(item) }
+                SuggestionRow(item: item, highlighted: highlighted == suggestions.firstIndex(where: { $0.id == item.id })) { pick(item) }
             }
         }
         .padding(8)
@@ -270,6 +280,33 @@ struct SearchView: View {
 
     // MARK: Actions
 
+    /// Up and Down move through the suggestions while the box is focused and they are showing; Return opens the one marked, Escape closes them.
+    private func installKeys() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard focused, suggestionsOpen, query.trimmingCharacters(in: .whitespaces).count >= 2, !suggestions.isEmpty else { return event }
+            switch event.keyCode {
+            case 125: // down
+                highlighted = min(suggestions.count - 1, (highlighted ?? -1) + 1)
+                return nil
+            case 126: // up
+                highlighted = (highlighted ?? 0) > 0 ? (highlighted ?? 0) - 1 : nil
+                return nil
+            case 53: // escape
+                suggestionsOpen = false
+                highlighted = nil
+                return nil
+            default:
+                return event
+            }
+        }
+    }
+
+    private func removeKeys() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
+    }
+
     /// Search as you type: wait for a short pause, and never for a single letter.
     private func typed(_ text: String) {
         debounce?.cancel()
@@ -306,6 +343,7 @@ struct SearchView: View {
 
 private struct SuggestionRow: View {
     let item: MetaPreview
+    var highlighted = false
     let action: () -> Void
     @State private var hovering = false
 
@@ -330,7 +368,7 @@ private struct SuggestionRow: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 10).fill(hovering ? Theme.surfaceHigh : .clear))
+            .background(RoundedRectangle(cornerRadius: 10).fill(hovering || highlighted ? Theme.surfaceHigh : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

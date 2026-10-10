@@ -118,3 +118,28 @@ final class SourceListingTests: XCTestCase {
         XCTAssertEqual(SourceSort.size.next, .quality)
     }
 }
+
+final class QRSignInTests: XCTestCase {
+    func testReadsTheAnswers() throws {
+        XCTAssertEqual(try QRPoll.read(Data(#"{"status":"pending"}"#.utf8)), .waiting)
+        XCTAssertEqual(try QRPoll.read(Data(#"{"status":"expired"}"#.utf8)), .expired)
+        let done = #"""
+        {"status":"completed","accessToken":"a","accessTokenExpiresAt":"x","refreshToken":"r","refreshTokenExpiresAt":"y",
+         "user":{"id":"u1","email":"e@x.com","displayName":"E"}}
+        """#
+        guard case let .signedIn(session) = try QRPoll.read(Data(done.utf8)) else { return XCTFail("not signed in") }
+        XCTAssertEqual(session.user.id, "u1")
+        XCTAssertEqual(session.accessToken, "a")
+        XCTAssertThrowsError(try QRPoll.read(Data("nope".utf8)))
+    }
+}
+
+final class BlockedTitleTests: XCTestCase {
+    func testBlockedByGenre() {
+        var detail = MetaDetail(id: "tt1", type: "movie", name: "X")
+        detail.genres = ["Comedy", "Horror"]
+        XCTAssertTrue(detail.isBlocked(by: ["horror"]))
+        XCTAssertFalse(detail.isBlocked(by: ["Drama"]))
+        XCTAssertFalse(detail.isBlocked(by: []))
+    }
+}

@@ -141,6 +141,10 @@ struct SettingsView: View {
                 row("Signed in as", model.session?.user.email ?? "-")
                 Divider().overlay(Theme.divider)
                 row("Name", model.session?.user.displayName ?? "-")
+                if let profile = model.activeProfile, model.profiles.count > 1 {
+                    Divider().overlay(Theme.divider)
+                    row("Watching as", profile.name + (profile.isKids ? " (kids)" : ""))
+                }
                 Divider().overlay(Theme.divider)
                 row("Server", model.serverURL.isEmpty ? "-" : model.serverURL)
             }

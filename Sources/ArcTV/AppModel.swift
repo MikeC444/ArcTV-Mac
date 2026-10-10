@@ -195,6 +195,13 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Finishes a sign-in that was completed on a phone (the QR code): keeps the session as if the person had typed their password.
+    func finishQRSignIn(_ next: Session) {
+        store.save(next)
+        signInError = nil
+        session = next
+    }
+
     /// Runs a call that needs the signed-in token; if the backend says the token has run out, trades the refresh token and tries once more.
     func authorized<T>(_ call: (AuthClient, String) async throws -> T) async throws -> T {
         guard let current = session else { throw APIError.server(status: 401, message: nil) }
@@ -888,6 +895,24 @@ final class AppModel: ObservableObject {
     /// Which Plus popup is on screen.
     enum PlusPopup: Equatable { case welcome, invitation }
     @Published var plusPopup: PlusPopup?
+    /// A newer version of the app than this one, offered once (until "Skip this version" or Later).
+    @Published var updateOffer: ReleaseInfo?
+    private static let skippedUpdateKey = "ArcTVSkippedUpdate"
+    private var checkedForUpdate = false
+
+    /// Asks GitHub once per launch whether a newer version is out; quiet when offline or when the person skipped that version.
+    func checkForUpdate() async {
+        guard !checkedForUpdate else { return }
+        checkedForUpdate = true
+        guard case let .available(info)? = try? await UpdateCheck.check(current: AppInfo.version) else { return }
+        if UserDefaults.standard.string(forKey: Self.skippedUpdateKey) == info.version { return }
+        updateOffer = info
+    }
+
+    func dismissUpdate(skip: Bool) {
+        if skip, let version = updateOffer?.version { UserDefaults.standard.set(version, forKey: Self.skippedUpdateKey) }
+        updateOffer = nil
+    }
     private var popupShownThisLaunch = false
     private var purchaseWatch: Task<Void, Never>?
 

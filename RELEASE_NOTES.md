@@ -36,4 +36,8 @@ them under its version automatically.
 - Torrent sources now play right inside Arc TV, with your movie's artwork and logo on screen while it gets ready.
 - Select a source looks like the web app: movie details on the left, quality filters and sorting, and richer source cards.
 - A movie's page now matches the web app: artwork behind everything, cast at the bottom, and a bigger You May Also Like row under it.
+- New versions are announced when you open Arc TV, with what's new and a Download button.
+- Sign in by scanning a QR code with your phone.
+- Move through search suggestions with the arrow keys, and press Return to open one.
+- Blocked genres now stay blocked everywhere, even for a title opened from a search suggestion. Account shows who is watching.
 - Arc TV now needs a Mac with Apple Silicon and macOS 14 or later.

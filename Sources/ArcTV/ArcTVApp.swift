@@ -87,6 +87,10 @@ struct MainView: View {
                 PlusPopupView(popup: popup)
                     .transition(.opacity)
             }
+            if let offer = model.updateOffer {
+                UpdateOfferView(offer: offer)
+                    .transition(.opacity)
+            }
             if model.profilePickerOpen {
                 ProfilePickerView()
                     .transition(.opacity)
@@ -106,6 +110,12 @@ struct MainView: View {
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }
             model.showPlusPopupIfDue()
+        }
+        .task(id: model.home == .loaded) {
+            guard model.home == .loaded else { return }
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            await model.checkForUpdate()
         }
         .onAppear { CardHover.start { target in Task { @MainActor in model.openCardMenu(target.item, fromPicked: target.fromPicked) } } }
         .animation(.easeOut(duration: 0.15), value: model.cardMenu)

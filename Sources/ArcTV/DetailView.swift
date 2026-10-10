@@ -37,6 +37,7 @@ struct DetailView: View {
                     .frame(height: isShow ? nil : max(geo.size.height, 640), alignment: .top)
                     .frame(minHeight: geo.size.height, alignment: .top)
                 }
+                if detail.isBlocked(by: model.blockedGenres) { blockedPage }
                 BackButton { model.goBack() }
                     .padding(.leading, 28)
                     .padding(.top, 22)
@@ -45,6 +46,18 @@ struct DetailView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .task { await load() }
+    }
+
+    /// A title with a blocked genre, opened some other way than from a list (a search suggestion, a link): nothing of it is shown.
+    private var blockedPage: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            VStack(spacing: 10) {
+                Image(systemName: "lock.fill").font(.system(size: 40)).foregroundStyle(Theme.textTertiary)
+                Text("Not available on this profile").font(.system(size: 24, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                Text("This title is in a genre that is blocked here.").font(.system(size: 15)).foregroundStyle(Theme.textSecondary)
+            }
+        }
     }
 
     // MARK: Artwork
@@ -314,6 +327,7 @@ struct DetailView: View {
     }
 
     private func playMain() {
+        guard !detail.isBlocked(by: model.blockedGenres) else { return }
         if let resume {
             let episode = resumeEpisode
             model.openSources(PlayTarget(
