@@ -17,7 +17,8 @@ echo "Building ArcTV $VERSION (universal: arm64 + x86_64)"
 built=no
 for attempt in 1 2 3 4 5; do
   if swift build -c release --arch arm64 --arch x86_64; then built=yes; break; fi
-  echo "Build failed (attempt $attempt of 5); trying again"
+  echo "Build failed (attempt $attempt of 5); trying again from a clean build with freshly downloaded libraries"
+  rm -rf .build "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/Library/org.swift.swiftpm"
 done
 [ "$built" = yes ] || exit 1
 BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"

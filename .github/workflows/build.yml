@@ -24,7 +24,8 @@ jobs:
           set +e
           for attempt in 1 2 3 4 5; do
             if swift build --build-tests; then exit 0; fi
-            echo "Build failed (attempt $attempt of 5); trying again"
+            echo "Build failed (attempt $attempt of 5); trying again from a clean build with freshly downloaded libraries"
+            rm -rf .build "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/Library/org.swift.swiftpm"
           done
           exit 1
 

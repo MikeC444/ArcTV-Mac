@@ -272,3 +272,5 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Follow-up to 14 (first look):** the "What Plus adds" cards were different heights (now all the same); only the text of a Settings tab was clickable (the whole row is now); and the white outline when the pointer is over a poster had gone since the right-click menu was added (the menu used a view laid over each poster, which looks like what got in the way; it now uses one event monitor and each poster only reports whether the pointer is over it).
 
+**Build, again:** one run failed to link five times in a row, so a retry in the same job does not help (a retry from a clean build folder did not either, once). When it fails, the retry now also deletes the downloaded libraries (SwiftPM's cache) so they are fetched again, in case one of them is bad on that machine. This is a guess: runs on a new machine have always gone through.
+
