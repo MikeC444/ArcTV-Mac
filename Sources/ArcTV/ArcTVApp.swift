@@ -10,6 +10,10 @@ struct ArcTVApp: App {
         // Run from Xcode or `swift run` the program is not inside an .app bundle; without this its window can open without keyboard focus.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate(ignoringOtherApps: true)
+        // The Dock icon: from the app bundle when packaged; this also covers a run from Xcode, which has no bundle to take it from.
+        if let data = Data(base64Encoded: AppIconData.base64), let icon = NSImage(data: data) {
+            NSApplication.shared.applicationIconImage = icon
+        }
     }
 
     var body: some Scene {

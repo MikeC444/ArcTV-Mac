@@ -461,3 +461,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up to 21 (full screen):** going full screen while a video was playing left the picture at its old, smaller size with black all around it. The picture was sized from OpenGL's last viewport, which does not change when the window does. It is now sized from the view itself on every draw, the OpenGL surface is told when the view is resized (`reshape`), and a new picture is drawn after a resize. Not seen on screen.
+
+**Follow-up to 22 (app icon):** the icon did not show on the app. The packaged app has the icon file and names it in its Info file (checked in the script), so the likely case is a run from Xcode or `swift run`, where there is no app bundle to carry an icon. The icon is now also embedded in the program (512 pixels) and set as the Dock icon when the app starts, so it shows either way. Not seen in the Dock; if it still doesn't show on the packaged app from the DMG, macOS may be holding an old icon: moving the app out of Applications and back, or `killall Dock Finder`, refreshes it.
