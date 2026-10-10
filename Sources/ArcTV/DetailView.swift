@@ -204,22 +204,16 @@ struct DetailView: View {
         .padding(.bottom, 48)
     }
 
-    /// A movie's bottom row, as on the web app: the cast on the left, and on the right (from about a third of the way across) the IMDb rating
-    /// with "You May Also Like" under it.
+    /// A movie's bottom area: the cast on the left with the IMDb rating at the far right, and "You May Also Like" under them across the whole window.
     private func movieBottom(width: CGFloat) -> some View {
-        HStack(alignment: .bottom, spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 22) {
+            HStack(alignment: .top) {
                 if !cast.isEmpty { castSection(inset: 0) }
+                Spacer(minLength: 24)
+                if let rating = detail.imdbRating, !rating.isEmpty { ratingBox(rating) }
             }
-            .frame(width: width * 0.365 - 44, alignment: .leading)
-            .padding(.leading, 44)
-            VStack(alignment: .leading, spacing: 14) {
-                if let rating = detail.imdbRating, !rating.isEmpty {
-                    HStack { Spacer(); ratingBox(rating) }.padding(.trailing, 22)
-                }
-                if !similar.isEmpty { similarSection(inset: 0) }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 44)
+            if !similar.isEmpty { similarSection(inset: 44) }
         }
         .frame(maxHeight: .infinity, alignment: .bottom)
         .padding(.top, 20)
@@ -481,17 +475,17 @@ private struct SimilarCard: View {
                 AsyncImage(url: url) { phase in
                     if case let .success(image) = phase { image.resizable().aspectRatio(contentMode: .fill) }
                 }
-                .frame(width: 176, height: 106)
+                .frame(width: 250, height: 150)
                 .clipped()
             }
             LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white).lineLimit(2)
-                if let year = item.releaseInfo { Text(year).font(.system(size: 11)).foregroundStyle(Theme.textTertiary) }
+                Text(item.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).lineLimit(2)
+                if let year = item.releaseInfo { Text(year).font(.system(size: 12)).foregroundStyle(Theme.textTertiary) }
             }
             .padding(8)
         }
-        .frame(width: 176, height: 106)
+        .frame(width: 250, height: 150)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(hovering ? 0.9 : 0), lineWidth: 2))
         .scaleEffect(hovering ? 1.04 : 1)

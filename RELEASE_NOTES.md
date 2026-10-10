@@ -35,5 +35,5 @@ them under its version automatically.
 - Check for updates right inside Settings and see what's new.
 - Torrent sources now play right inside Arc TV, with your movie's artwork and logo on screen while it gets ready.
 - Select a source looks like the web app: movie details on the left, quality filters and sorting, and richer source cards.
-- A movie's page now matches the web app: artwork behind everything, cast bottom left, similar movies bottom right.
+- A movie's page now matches the web app: artwork behind everything, cast at the bottom, and a bigger You May Also Like row under it.
 - Arc TV now needs a Mac with Apple Silicon and macOS 14 or later.
