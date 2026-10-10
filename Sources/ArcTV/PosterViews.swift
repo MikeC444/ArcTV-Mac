@@ -57,10 +57,12 @@ struct PosterCard: View {
             }
         }
         .frame(width: width)
-        .onHover { hovering = $0 }
+        .onHover { inside in
+            hovering = inside
+            CardHover.update(CardMenuTarget(item: item, fromPicked: fromPicked), hovering: inside)
+        }
         .contentShape(Rectangle())
         .onTapGesture { model.openDetail(item) }
-        .overlay(RightClickCatcher { model.openCardMenu(item, fromPicked: fromPicked) })
     }
 
     @ViewBuilder
@@ -99,31 +101,33 @@ struct WatchedTick: View {
     }
 }
 
-/// Opens a closure on a right-click (or control-click) without getting in the way of anything else: every other mouse event goes to what is underneath.
-struct RightClickCatcher: NSViewRepresentable {
-    let action: () -> Void
+/// Which poster the pointer is over, so a right-click anywhere can open that poster's menu. (Each poster reports in with `.onHover`; one event
+/// monitor, started once, does the rest. This replaced a view laid over every poster, which got in the way of the poster's own hover outline.)
+enum CardHover {
+    private static let lock = NSLock()
+    private static var current: CardMenuTarget?
+    private static var monitor: Any?
 
-    func makeNSView(context: Context) -> CatcherView {
-        let view = CatcherView()
-        view.action = action
-        return view
+    static func update(_ target: CardMenuTarget, hovering: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        if hovering { current = target } else if current?.item.id == target.item.id { current = nil }
     }
 
-    func updateNSView(_ view: CatcherView, context: Context) { view.action = action }
+    private static func target() -> CardMenuTarget? {
+        lock.lock()
+        defer { lock.unlock() }
+        return current
+    }
 
-    final class CatcherView: NSView {
-        var action: (() -> Void)?
-
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            guard let event = NSApp.currentEvent else { return nil }
-            let secondary = event.type == .rightMouseDown || (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
-            return secondary ? super.hitTest(point) : nil
-        }
-
-        override func rightMouseDown(with event: NSEvent) { action?() }
-
-        override func mouseDown(with event: NSEvent) {
-            if event.modifierFlags.contains(.control) { action?() } else { super.mouseDown(with: event) }
+    /// Right-click (or control-click) while over a poster opens its menu instead of doing anything else.
+    static func start(open: @escaping (CardMenuTarget) -> Void) {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown, .leftMouseDown]) { event in
+            let secondary = event.type == .rightMouseDown || event.modifierFlags.contains(.control)
+            guard secondary, let target = target() else { return event }
+            DispatchQueue.main.async { open(target) }
+            return nil
         }
     }
 }

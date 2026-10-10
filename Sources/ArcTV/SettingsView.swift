@@ -239,7 +239,9 @@ private struct SidebarRow: View {
             .opacity(locked ? 0.55 : 1)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(selected ? 0.1 : (hovering ? 0.05 : 0))))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(locked)

@@ -107,6 +107,7 @@ struct MainView: View {
             guard !Task.isCancelled else { return }
             model.showPlusPopupIfDue()
         }
+        .onAppear { CardHover.start { target in Task { @MainActor in model.openCardMenu(target.item, fromPicked: target.fromPicked) } } }
         .animation(.easeOut(duration: 0.15), value: model.cardMenu)
         .animation(.easeOut(duration: 0.18), value: model.detail?.id)
         .animation(.easeOut(duration: 0.18), value: model.sourcesFor?.id)

@@ -470,10 +470,12 @@ private struct SimilarCard: View {
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(hovering ? 0.9 : 0), lineWidth: 2))
         .scaleEffect(hovering ? 1.04 : 1)
         .animation(.easeOut(duration: 0.15), value: hovering)
-        .onHover { hovering = $0 }
+        .onHover { inside in
+            hovering = inside
+            CardHover.update(CardMenuTarget(item: item), hovering: inside)
+        }
         .contentShape(Rectangle())
         .onTapGesture { model.openDetail(item) }
-        .overlay(RightClickCatcher { model.openCardMenu(item) })
     }
 }
 

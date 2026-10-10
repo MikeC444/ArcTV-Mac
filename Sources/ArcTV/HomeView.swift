@@ -358,10 +358,12 @@ struct ContinueCard: View {
                 .lineLimit(1)
         }
         .frame(width: 270)
-        .onHover { hovering = $0 }
+        .onHover { inside in
+            hovering = inside
+            CardHover.update(CardMenuTarget(item: item.asPreview), hovering: inside)
+        }
         .contentShape(Rectangle())
         .onTapGesture { model.openDetail(item.asPreview) }
-        .overlay(RightClickCatcher { model.openCardMenu(item.asPreview) })
     }
 
     @ViewBuilder

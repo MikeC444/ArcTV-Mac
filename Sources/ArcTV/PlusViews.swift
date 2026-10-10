@@ -52,7 +52,7 @@ struct PlusPane: View {
             proceeds
 
             Text("What Plus adds").font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.textPrimary).padding(.top, 8)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 14, alignment: .top)], spacing: 14) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14, alignment: .top), GridItem(.flexible(), spacing: 14, alignment: .top)], spacing: 14) {
                 ForEach(PlusCopy.perks) { perk in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
@@ -62,7 +62,7 @@ struct PlusPane: View {
                         Text(perk.detail).font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                     }
                     .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: 150, maxHeight: 150, alignment: .topLeading)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Theme.surface))
                 }
             }
