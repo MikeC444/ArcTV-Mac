@@ -388,8 +388,8 @@ private struct StatsBody: View {
             Text("Last 13 weeks").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary)
             HStack(alignment: .top, spacing: 8) {
                 VStack(spacing: 4) {
-                    ForEach(["Mon", "", "Wed", "", "Fri", "", "Sun"], id: \.self) { label in
-                        Text(label).font(.system(size: 10)).foregroundStyle(Theme.textTertiary).frame(height: 18, alignment: .center)
+                    ForEach(0..<7, id: \.self) { row in
+                        Text(["Mon", "", "Wed", "", "Fri", "", "Sun"][row]).font(.system(size: 10)).foregroundStyle(Theme.textTertiary).frame(height: 18, alignment: .center)
                     }
                 }
                 // Column by column (a week each), Monday first.

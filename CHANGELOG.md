@@ -252,3 +252,21 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
+## 14 -- Arc TV Plus: the Plus tab, Plus settings, Your stats and the Plus popups
+
+**Status:** Written; see the build result below. Not tried against the real account, Stripe or a paywall that is switched on.
+
+**Context:** Stage 4d. These Settings tabs showed "coming in a later update".
+
+**Changes:**
+- Settings > Arc TV Plus: the status (Early access while the paywall is off, "You have Arc TV Plus (Yearly). Your current period runs to ...", or the free plan), for a monthly or yearly subscriber when it renews and Cancel subscription with a confirmation (`POST /user/plus/cancel`: it stops at the end of the period paid for), what Plus adds (Picked for you, Profiles, Smart source picking, Your stats; Parental controls marked Coming soon), and, with the paywall on and no Plus, the three plans. A plan opens Stripe's checkout page in the browser (`POST /user/plus/checkout`, https only) and the app then asks `GET /user/plus` every four seconds for ten minutes, so Plus switches on by itself. The yearly plan says how many free days the account is offered. Prices are shown on Stripe's page ("Price at checkout"), as on the web.
+- Settings > Plus settings: Smart source picking (kept on this Mac). When on, a title with no remembered source skips the source list and plays the best source that can play here (the list is best-first and playable first); "Choose source" always shows the list. The tabs that need Plus (Plus settings, Recommendations, Your stats) are greyed with a Plus tag without it, and say so if reached.
+- Settings > Your stats: the web app's stats from the profile's watch history (`GET /user/history`, read 200 rows at a time, up to 5,000): total time and how this week compares, last 7 and 30 days, day streak (and the best), time per day you watch, movies finished, episodes watched, the movies-or-shows split, a 13-week activity grid and a busiest-weekday chart.
+- Plus popups, a few seconds after landing on Home, never on a kids profile and never twice in one launch: for members "Everything in Arc TV Plus", once ever (Close and "See my Plus settings" both count as seen); for everyone else once Plus is paid, the invitation, which comes back five days after it was closed or followed ("Take me there") and never after "Don't show me again". Both are remembered per account on this Mac.
+
+**Tests performed:** unit tests for when each popup is due (including the five days), what counts as watched, how durations are written, the week-on-week change, the stats from a small history (totals, last seven days, the split, streak, busiest weekday), the activity grid's padding to a Monday and its shading, and the plan and perk lists. The Mac code could not be compiled here; the workflow is the check. Nothing was seen on screen and no payment was made.
+
+**Issues discovered:** the web app snoozes the invitation for a week; this app uses five days, as asked. The popups are kept per account on this Mac, not on the account.
+
+**Issues fixed:** none.
+

@@ -27,4 +27,7 @@ them under its version automatically.
 - No sources found? A step-by-step guide now walks you through setting them up.
 - A new sign-in page, with Sign Up built in, matches the web app.
 - Profiles for everyone at home (ArcTV Plus): each gets their own My List, Continue Watching and picks, with kids profiles and optional PINs.
+- The Arc TV Plus tab shows the plans and opens secure checkout in your browser, and lets you cancel any time.
+- Your stats at a glance: total watch time, streak, a 13-week activity map and your busiest day.
+- Smart source picking starts the best source for you, and a short Plus welcome tells members what they get.
 
