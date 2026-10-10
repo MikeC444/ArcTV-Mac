@@ -88,3 +88,39 @@ struct GlassButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.4)
     }
 }
+
+/// A white pill with dark text: the web app's main "Play" button.
+struct LightButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(.black)
+            .padding(.horizontal, 26)
+            .frame(height: 48)
+            .background(Color.white.opacity(configuration.isPressed ? 0.8 : 1), in: Capsule())
+            .opacity(isEnabled ? 1 : 0.4)
+    }
+}
+
+/// A round translucent icon button (the web app's icon button); `on` tints it when what it stands for is set.
+struct RoundIconButton: View {
+    let icon: String
+    var on = false
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(on ? Theme.cyan : Theme.textPrimary)
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(on ? Theme.cyan.opacity(0.2) : Color.white.opacity(0.14)))
+                .overlay(Circle().stroke(on ? Theme.cyan : .clear, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+}

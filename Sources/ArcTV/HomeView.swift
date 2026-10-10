@@ -178,11 +178,12 @@ private struct HeroSlide: View {
 
             HStack(spacing: 14) {
                 Button { model.play(item) } label: { Label("Play", systemImage: "play.fill") }
-                    .buttonStyle(BrandButtonStyle())
+                    .buttonStyle(LightButtonStyle())
                 Button {
                     if let trailer, let url = URL(string: "https://www.youtube.com/watch?v=\(trailer)") { NSWorkspace.shared.open(url) }
                 } label: { Label("Trailer", systemImage: "theatermasks") }
                     .buttonStyle(GlassButtonStyle())
+                    .frame(height: 48)
                     .disabled(trailer == nil)
                     .help(trailer == nil ? "No trailer found for this title" : "Watch the trailer on YouTube")
                 HeroIconButton(icon: model.isSaved(item.id) ? "checkmark" : "plus", label: "My List") { Task { await model.toggleSaved(item.asDetail) } }
