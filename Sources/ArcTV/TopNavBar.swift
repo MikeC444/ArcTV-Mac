@@ -25,7 +25,7 @@ struct TopNavBar: View {
             if logo {
                 LogoView(height: 30)
                     .fixedSize()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minWidth: 130, maxWidth: .infinity, alignment: .leading)
                     .onTapGesture { model.selected = .home }
             }
 
@@ -40,7 +40,7 @@ struct TopNavBar: View {
             .overlay(Capsule().stroke(Color.white.opacity(0.09), lineWidth: 1))
 
             // The right-hand side is where the profile picture goes once profiles are here.
-            if logo { Color.clear.frame(maxWidth: .infinity, maxHeight: 1) }
+            if logo { Color.clear.frame(minWidth: 130, maxWidth: .infinity, maxHeight: 1) }
         }
     }
 }

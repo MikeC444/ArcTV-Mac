@@ -206,6 +206,8 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Tests performed:** unit tests for My List sorting, the seeds, pages and shuffle checked against the web app's own functions run on the same inputs, row ordering and one-row-per-title, the banner's pool, runtime and date wording, and cast merging. The sandbox cannot compile Swift, so the Build and test workflow is the check; none of the screens were seen.
 
+**Follow-up (from the first look at it on a Mac):** the top bar wrapped its names onto two lines when the window was resized (it now drops the logo, then tightens the pills, and never wraps); the title page was wider than the window because its picture was not cropped (it is now cropped to the window); banner logos popped in after the slide (the banner now loads all its pictures ahead and keeps them in memory); My List was in the opposite order to the other apps (the account sends the oldest first and every order now starts from newest-added first); cast names showed HTML entities such as &apos; (now decoded).
+
 **Issues discovered:** the web top bar also shows a profile picture (comes with profiles) and hides on scroll (not done). Home does not keep the last session's rows for an instant first paint. The web app's "Choose source" and "Play" differ (Play goes straight to the last source); here both open the source list.
 
 **Issues fixed:** none yet for the intermittent link failure; the clean-directory retry is a workaround, not a diagnosis (the cause is not known), and no run has needed it yet, so it is untried. About half of the runs on one afternoon failed this way and the rest, with identical code, passed.
