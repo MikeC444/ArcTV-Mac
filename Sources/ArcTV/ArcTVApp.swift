@@ -38,7 +38,7 @@ struct RootView: View {
     }
 }
 
-/// The signed-in app: the top bar over whichever place is selected.
+/// The signed-in app: the top bar over whichever place is selected, with a title's page, its sources and the player opening over it.
 struct MainView: View {
     @EnvironmentObject private var model: AppModel
 
@@ -54,9 +54,30 @@ struct MainView: View {
                 case .settings: SettingsView()
                 }
             }
-            .task { await model.loadHome() }
+            .task {
+                await model.loadHome()
+                await model.loadAddons()
+            }
 
             TopNavBar()
+
+            if let item = model.detail {
+                DetailView(preview: item)
+                    .id(item.id)
+                    .transition(.opacity)
+            }
+            if let target = model.sourcesFor {
+                SourcesView(target: target)
+                    .id(target.id)
+                    .transition(.opacity)
+            }
+            if let playing = model.playing {
+                PlayerView(item: playing)
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeOut(duration: 0.18), value: model.detail?.id)
+        .animation(.easeOut(duration: 0.18), value: model.sourcesFor?.id)
+        .animation(.easeOut(duration: 0.18), value: model.playing != nil)
     }
 }

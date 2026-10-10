@@ -54,6 +54,7 @@ struct RowsStack: View {
 }
 
 struct HeroBanner: View {
+    @EnvironmentObject private var model: AppModel
     let item: MetaPreview
     private let height: CGFloat = 470
 
@@ -116,15 +117,10 @@ struct HeroBanner: View {
             }
 
             HStack(spacing: 12) {
-                Button { } label: { Label("Play", systemImage: "play.fill") }
+                Button { model.openDetail(item) } label: { Label("Play", systemImage: "play.fill") }
                     .buttonStyle(BrandButtonStyle())
-                    .disabled(true)
-                Button { } label: { Label("More info", systemImage: "info.circle") }
+                Button { model.openDetail(item) } label: { Label("More info", systemImage: "info.circle") }
                     .buttonStyle(GlassButtonStyle())
-                    .disabled(true)
-                Text("Playback is coming soon")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.textTertiary)
             }
             .padding(.top, 4)
         }

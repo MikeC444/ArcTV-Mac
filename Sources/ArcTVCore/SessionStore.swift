@@ -1,38 +1,31 @@
 import Foundation
-import Security
 
-/// Keeps the signed-in session in the macOS Keychain (an ordinary generic-password item, which works for an ad-hoc-signed app).
+/// Keeps the signed-in session in a private file in the app's own folder (~/Library/Application Support/ArcTV/session.json, readable only by
+/// this Mac account). Not the Keychain: an unsigned app's signature changes with every build and update, and macOS then asks for the login
+/// password each time it touches the Keychain item.
 public struct SessionStore: Sendable {
-    private let service = "tv.arc.mac"
-    private let account = "session"
+    private let fileURL: URL
 
-    public init() {}
+    public init(directory: URL? = nil) {
+        let base = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!.appendingPathComponent("ArcTV", isDirectory: true)
+        fileURL = base.appendingPathComponent("session.json")
+    }
 
     public func load() -> Session? {
-        var query = baseQuery()
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: AnyObject?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let data = result as? Data else { return nil }
+        guard let data = try? Data(contentsOf: fileURL) else { return nil }
         return try? JSONDecoder().decode(Session.self, from: data)
     }
 
     public func save(_ session: Session) {
         guard let data = try? JSONEncoder().encode(session) else { return }
-        let update = [kSecValueData as String: data]
-        if SecItemUpdate(baseQuery() as CFDictionary, update as CFDictionary) == errSecItemNotFound {
-            var add = baseQuery()
-            add[kSecValueData as String] = data
-            SecItemAdd(add as CFDictionary, nil)
-        }
+        let folder = fileURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        try? data.write(to: fileURL, options: .atomic)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
     }
 
     public func clear() {
-        SecItemDelete(baseQuery() as CFDictionary)
-    }
-
-    private func baseQuery() -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account]
+        try? FileManager.default.removeItem(at: fileURL)
     }
 }
 

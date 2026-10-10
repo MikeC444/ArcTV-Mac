@@ -14,6 +14,25 @@ enum NavItem: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// What is being played: the title, which episode if any, and the id addons are asked for streams with.
+struct PlayTarget: Equatable, Identifiable {
+    var title: MetaDetail
+    var season: Int?
+    var episode: Int?
+    var episodeTitle: String?
+
+    var id: String { streamID }
+    var streamID: String { ArcTVCore.streamID(titleID: title.id, season: season, episode: episode) }
+    var heading: String { episodeTitle.map { "\(title.name) · \($0)" } ?? title.name }
+}
+
+/// A source the person picked: what to play and what to call it.
+struct PlayingItem: Equatable {
+    var url: URL
+    var heading: String
+    var sourceName: String
+}
+
 /// What the whole app knows: who is signed in, which server it talks to, and what Home shows.
 @MainActor
 final class AppModel: ObservableObject {
@@ -27,6 +46,11 @@ final class AppModel: ObservableObject {
     @Published var session: Session?
     @Published var selected: NavItem = .home
     @Published var home: HomeState = .idle
+    /// Which screen is open over the tabs: a title's details, then its sources, then the player (each sits on top of the one before).
+    @Published var detail: MetaPreview?
+    @Published var sourcesFor: PlayTarget?
+    @Published var playing: PlayingItem?
+    @Published var addons: [SyncedAddon] = []
     @Published var myList: [MetaPreview]?
     @Published var myListError: String?
     @Published var signInError: String?
@@ -90,6 +114,10 @@ final class AppModel: ObservableObject {
         session = nil
         home = .idle
         myList = nil
+        addons = []
+        detail = nil
+        sourcesFor = nil
+        playing = nil
         selected = .home
     }
 
@@ -99,6 +127,24 @@ final class AppModel: ObservableObject {
         let year = Calendar.current.component(.year, from: Date())
         let rows = await HomeRows.load(specs: HomeRows.defaultRows(year: year), manifestURL: AppInfo.cinemetaManifestURL)
         home = rows.isEmpty ? .empty : .loaded(rows)
+    }
+
+    func openDetail(_ item: MetaPreview) { detail = item }
+
+    func openSources(_ target: PlayTarget) { sourcesFor = target }
+
+    func play(_ item: PlayingItem) { playing = item }
+
+    /// Back one step: player, then sources, then the title's page.
+    func goBack() {
+        if playing != nil { playing = nil } else if sourcesFor != nil { sourcesFor = nil } else { detail = nil }
+    }
+
+    /// The account's installed addons: where streams come from. Loaded once after sign-in.
+    func loadAddons() async {
+        if let found = try? await authorized({ client, token in try await client.addons(accessToken: token) }) {
+            addons = found
+        }
     }
 
     func loadMyList() async {

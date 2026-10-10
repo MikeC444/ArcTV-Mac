@@ -3,6 +3,7 @@ import SwiftUI
 
 /// A poster with its title and year under it. Give it a [width] in a row; in a grid it fills its column.
 struct PosterCard: View {
+    @EnvironmentObject private var model: AppModel
     let item: MetaPreview
     var width: CGFloat? = nil
     @State private var hovering = false
@@ -32,6 +33,8 @@ struct PosterCard: View {
         }
         .frame(width: width)
         .onHover { hovering = $0 }
+        .contentShape(Rectangle())
+        .onTapGesture { model.openDetail(item) }
     }
 
     @ViewBuilder
