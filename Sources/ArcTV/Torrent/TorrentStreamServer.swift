@@ -9,6 +9,18 @@ final class EngineRef: @unchecked Sendable {
     init(_ pointer: OpaquePointer) { self.pointer = pointer }
 }
 
+/// True once, for the first caller: guards a continuation that more than one callback could resume.
+final class OnceFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var used = false
+    func first() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if used { return false }
+        used = true
+        return true
+    }
+}
+
 /// The video file being streamed out of a torrent.
 struct TorrentVideo: Sendable {
     var engine: EngineRef
@@ -50,16 +62,13 @@ final class TorrentStreamServer: @unchecked Sendable {
             }
         }
         let port: UInt16 = try await withCheckedThrowingContinuation { continuation in
-            var finished = false
+            let once = OnceFlag()
             listener.stateUpdateHandler = { [listener] state in
-                guard !finished else { return }
                 switch state {
                 case .ready:
-                    finished = true
-                    continuation.resume(returning: listener.port?.rawValue ?? 0)
+                    if once.first() { continuation.resume(returning: listener.port?.rawValue ?? 0) }
                 case .failed(let error):
-                    finished = true
-                    continuation.resume(throwing: error)
+                    if once.first() { continuation.resume(throwing: error) }
                 default:
                     break
                 }
