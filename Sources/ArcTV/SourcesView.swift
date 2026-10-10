@@ -5,7 +5,7 @@ import SwiftUI
 struct SourcesView: View {
     @EnvironmentObject private var model: AppModel
     let target: PlayTarget
-    @State private var items: [SourceItem] = []
+    @State private var result = SourceResult()
     @State private var loading = true
 
     var body: some View {
@@ -29,17 +29,20 @@ struct SourcesView: View {
                             Text("Asking your addons…").foregroundStyle(Theme.textSecondary)
                         }
                         .padding(.top, 20)
-                    } else if items.isEmpty {
-                        Text(emptyMessage)
-                            .foregroundStyle(Theme.textSecondary)
-                            .frame(maxWidth: 560, alignment: .leading)
-                            .padding(.top, 12)
                     } else {
-                        VStack(spacing: 8) {
-                            ForEach(items) { item in
-                                SourceRow(item: item) { choose(item) }
+                        if result.items.isEmpty {
+                            Text(emptyMessage)
+                                .foregroundStyle(Theme.textSecondary)
+                                .frame(maxWidth: 560, alignment: .leading)
+                                .padding(.top, 12)
+                        } else {
+                            VStack(spacing: 8) {
+                                ForEach(result.items) { item in
+                                    SourceRow(item: item) { choose(item) }
+                                }
                             }
                         }
+                        statusLines
                     }
                 }
                 .frame(maxWidth: 900, alignment: .leading)
@@ -56,16 +59,37 @@ struct SourcesView: View {
     }
 
     private var emptyMessage: String {
-        let streamAddons = model.addons.filter { $0.manifestJson?.providesStreams(type: target.title.type, id: target.streamID) ?? false }
-        if model.addons.isEmpty || streamAddons.isEmpty {
-            return "Your account has no addon that gives streams. Add one (such as Torrentio) in Settings > Addons on another device, then come back."
+        if model.addons.isEmpty {
+            return "Your account has no addons yet. Add one (such as Torrentio) in Settings > Addons on another device, then come back."
         }
-        return "Your addons had no streams for this title."
+        if result.failures.count + result.items.count == 0 && !result.skipped.isEmpty {
+            return "None of your addons give streams for this title. Add one that does (such as Torrentio) in Settings > Addons on another device."
+        }
+        if !result.failures.isEmpty && result.failures.count >= model.addons.count - result.skipped.count {
+            return "No addon answered. The reasons are below."
+        }
+        return "Your addons had no streams for this title. A very new or very obscure title may not have any yet; try another."
+    }
+
+    /// Which addons did not answer and which do not give streams, so a missing source is never a mystery.
+    private var statusLines: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(result.skipped, id: \.self) { name in
+                Text("\(name): doesn't provide streams")
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            ForEach(result.failures) { failure in
+                Text("\(failure.addonName) \(failure.reason)")
+                    .foregroundStyle(Color(hex: 0xFFB020))
+            }
+        }
+        .font(.system(size: 13))
+        .padding(.top, 14)
     }
 
     private func load() async {
         if model.addons.isEmpty { await model.loadAddons() }
-        items = await SourceFinder.find(addons: model.addons, type: target.title.type, id: target.streamID)
+        result = await SourceFinder.find(addons: model.addons, type: target.title.type, id: target.streamID)
         loading = false
     }
 

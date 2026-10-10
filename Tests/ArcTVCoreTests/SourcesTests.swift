@@ -55,4 +55,12 @@ final class SourcesTests: XCTestCase {
         XCTAssertEqual(detail.seasonNumbers, [1, 2, 0])
         XCTAssertEqual(detail.seasons[1]?.map(\.displayTitle), ["One", "Two"])
     }
+
+    func testAddonErrorsReadAsSentences() {
+        XCTAssertEqual(describeAddonError(APIError.server(status: 403, message: nil)), "refused the request (HTTP 403)")
+        XCTAssertEqual(describeAddonError(APIError.server(status: 503, message: nil)), "had a problem answering (HTTP 503)")
+        XCTAssertEqual(describeAddonError(APIError.server(status: 429, message: nil)), "is limiting requests right now, try again in a moment")
+        XCTAssertEqual(describeAddonError(URLError(.timedOut)), "took too long to answer")
+        XCTAssertEqual(describeAddonError(URLError(.notConnectedToInternet)), "couldn't be reached")
+    }
 }

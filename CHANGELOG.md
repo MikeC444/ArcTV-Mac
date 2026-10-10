@@ -94,3 +94,17 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the built-in player will fail on many debrid sources because they are MKV; a libVLC or mpv player is the real fix and is a later stage. No progress saving or Continue Watching yet.
 
 **Issues fixed:** the Keychain password prompt.
+
+## 6 -- The sources page says why an addon gave nothing
+
+**Status:** Written; checked by the Build and test workflow.
+
+**Context:** A first try on a title showed only "Your addons had no streams for this title." with no way to tell an empty answer from an error (the Android apps show each addon's reason, such as "Torrentio refused the request (HTTP 403)").
+
+**Changes:** the source finder returns the streams, the addons that failed with why (timed out, refused with the HTTP status, server error, could not be reached), and the addons that do not give streams at all; the page lists failures in amber and the others in grey under the sources, and the empty message says which case it is.
+
+**Tests performed:** a unit test for the wording of each error. Not tried against real addons.
+
+**Issues discovered:** none.
+
+**Issues fixed:** none.

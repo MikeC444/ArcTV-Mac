@@ -146,27 +146,61 @@ public struct SourceItem: Identifiable, Equatable, Sendable {
     }
 }
 
+/// An addon that was asked for streams and could not answer, with why (never the address, which can hold an account key).
+public struct AddonFailure: Equatable, Sendable, Identifiable {
+    public var addonName: String
+    public var reason: String
+    public var id: String { addonName + reason }
+}
+
+/// Everything one look for sources found: the streams, which addons failed, and which cannot give streams for this title at all.
+public struct SourceResult: Equatable, Sendable {
+    public var items: [SourceItem] = []
+    public var failures: [AddonFailure] = []
+    public var skipped: [String] = []
+}
+
+/// Why an addon did not answer, as the end of a sentence about it ("<addon> took too long to answer").
+public func describeAddonError(_ error: Error) -> String {
+    if case let APIError.server(status, _) = error {
+        if status == 429 { return "is limiting requests right now, try again in a moment" }
+        if status >= 500 { return "had a problem answering (HTTP \(status))" }
+        return "refused the request (HTTP \(status))"
+    }
+    if (error as? URLError)?.code == .timedOut { return "took too long to answer" }
+    if error is APIError { return "sent an answer that could not be read" }
+    return "couldn't be reached"
+}
+
 public enum SourceFinder {
-    /// Every enabled addon that can stream [id] is asked at once; the playable ones come first, best quality first.
-    public static func find(addons: [SyncedAddon], type: String, id: String, client: AddonClient = AddonClient()) async -> [SourceItem] {
+    /// Every enabled addon that can stream [id] is asked at once; the playable streams come first, best quality first.
+    public static func find(addons: [SyncedAddon], type: String, id: String, client: AddonClient = AddonClient()) async -> SourceResult {
         let askable = addons.filter { $0.manifestJson?.providesStreams(type: type, id: id) ?? false }
-        let groups = await withTaskGroup(of: (Int, [SourceItem]).self) { group -> [(Int, [SourceItem])] in
+        let skipped = addons.filter { !($0.manifestJson?.providesStreams(type: type, id: id) ?? false) }.map(\.name)
+
+        struct Answer { var order: Int; var items: [SourceItem]; var failure: AddonFailure? }
+        let answers = await withTaskGroup(of: Answer.self) { group -> [Answer] in
             for (order, addon) in askable.enumerated() {
                 group.addTask {
-                    let streams = (try? await client.fetchStreams(manifestURL: addon.manifestUrl, type: type, id: id)) ?? []
-                    return (order, streams.enumerated().map { SourceItem(addonName: addon.name, stream: $0.element, index: $0.offset) })
+                    do {
+                        let streams = try await client.fetchStreams(manifestURL: addon.manifestUrl, type: type, id: id)
+                        return Answer(order: order, items: streams.enumerated().map { SourceItem(addonName: addon.name, stream: $0.element, index: $0.offset) }, failure: nil)
+                    } catch {
+                        return Answer(order: order, items: [], failure: AddonFailure(addonName: addon.name, reason: describeAddonError(error)))
+                    }
                 }
             }
-            var all: [(Int, [SourceItem])] = []
-            for await result in group { all.append(result) }
-            return all
+            var all: [Answer] = []
+            for await answer in group { all.append(answer) }
+            return all.sorted { $0.order < $1.order }
         }
-        let flat = groups.sorted { $0.0 < $1.0 }.flatMap { $0.1 }
-        return flat.enumerated().sorted { left, right in
+        let flat = answers.flatMap(\.items)
+        let sorted = flat.enumerated().sorted { left, right in
             let a = left.element, b = right.element
             if a.isPlayable != b.isPlayable { return a.isPlayable }
             if a.quality != b.quality { return a.quality > b.quality }
             return left.offset < right.offset // otherwise the addon's own order
         }.map(\.element)
+        return SourceResult(items: sorted, failures: answers.compactMap(\.failure), skipped: skipped)
     }
 }
