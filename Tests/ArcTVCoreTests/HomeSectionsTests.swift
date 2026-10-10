@@ -106,3 +106,13 @@ final class DetailExtrasTests: XCTestCase {
         XCTAssertEqual(meta.castMembers, [CastMember(name: "B", role: "Bee", photoURL: "b.jpg"), CastMember(name: "A"), CastMember(name: "C")])
     }
 }
+
+final class HTMLDecodeTests: XCTestCase {
+    func testEntitiesLeftInNamesAreTurnedBackIntoCharacters() {
+        XCTAssertEqual("Jack O&apos;Connell".htmlDecoded, "Jack O'Connell")
+        XCTAssertEqual("Tom &amp; Jerry".htmlDecoded, "Tom & Jerry")
+        XCTAssertEqual("It&#39;s &#x41;".htmlDecoded, "It's A")
+        XCTAssertEqual("&amp;apos;".htmlDecoded, "&apos;")
+        XCTAssertEqual("plain".htmlDecoded, "plain")
+    }
+}

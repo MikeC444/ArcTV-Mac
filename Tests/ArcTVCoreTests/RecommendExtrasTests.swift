@@ -245,10 +245,13 @@ final class MyListSortTests: XCTestCase {
     }
 
     func testListSortsOrderTitlesTheWayTheirNamesSay() {
+        // The account sends the oldest first: "beta" was added first and "gamma" last.
         let items = [item("beta", rating: 7, year: 2020), item("Alpha", rating: 9, year: 1999), item("gamma", rating: nil, year: 2024)]
-        XCTAssertEqual(ListSort.recent.apply(items).map(\.title), ["beta", "Alpha", "gamma"])
+        XCTAssertEqual(ListSort.recent.apply(items).map(\.title), ["gamma", "Alpha", "beta"])
         XCTAssertEqual(ListSort.title.apply(items).map(\.title), ["Alpha", "beta", "gamma"])
         XCTAssertEqual(ListSort.highestRated.apply(items).map(\.title), ["Alpha", "beta", "gamma"])
         XCTAssertEqual(ListSort.newest.apply(items).map(\.title), ["gamma", "beta", "Alpha"])
+        let tied = [item("old", rating: 8, year: 2000), item("mid", rating: 8, year: 2000), item("new", rating: 8, year: 2000)]
+        XCTAssertEqual(ListSort.highestRated.apply(tied).map(\.title), ["new", "mid", "old"])
     }
 }

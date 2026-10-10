@@ -67,6 +67,9 @@ struct HeroCarousel: View {
         .frame(height: height)
         .clipped()
         .onHover { hovering = $0 }
+        .task(id: items.map(\.id)) {
+            ImageCache.preload(items.flatMap { [$0.background, $0.logo] }.compactMap { $0.flatMap(URL.init(string:)) })
+        }
         .onReceive(timer) { _ in
             guard items.count > 1, !paused, !hovering else { return }
             go(to: (index + 1) % items.count)
@@ -118,13 +121,9 @@ private struct HeroSlide: View {
             ZStack(alignment: .bottomLeading) {
                 Theme.surface
                 if let background = item.background, let url = URL(string: background) {
-                    AsyncImage(url: url) { phase in
-                        if case let .success(image) = phase {
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        }
-                    }
-                    .frame(width: geo.size.width, height: height)
-                    .clipped()
+                    CachedImage(url: url)
+                        .frame(width: geo.size.width, height: height)
+                        .clipped()
                 }
                 // Fades into the page at the bottom and darkens the left so the text can be read, like the web app's hero.
                 LinearGradient(colors: [.clear, Theme.background], startPoint: .center, endPoint: .bottom)
@@ -143,13 +142,8 @@ private struct HeroSlide: View {
     private var details: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let logo = item.logo, let url = URL(string: logo) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case let .success(image): image.resizable().aspectRatio(contentMode: .fit)
-                    default: titleText
-                    }
-                }
-                .frame(maxWidth: 380, maxHeight: 110, alignment: .leading)
+                CachedImage(url: url, contentMode: .fit) { titleText }
+                    .frame(maxWidth: 380, maxHeight: 110, alignment: .leading)
             } else {
                 titleText
             }
@@ -168,7 +162,7 @@ private struct HeroSlide: View {
                     .foregroundStyle(.white.opacity(0.9))
             }
 
-            if let description = item.description {
+            if let description = item.description?.htmlDecoded {
                 Text(description)
                     .font(.system(size: 14))
                     .foregroundStyle(.white)

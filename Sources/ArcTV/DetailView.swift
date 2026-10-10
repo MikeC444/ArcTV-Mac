@@ -27,12 +27,13 @@ struct DetailView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
-                backdrop
+                backdrop(size: geo.size)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         hero(minHeight: isShow ? max(520, geo.size.height * 0.82) : max(380, geo.size.height - 176))
                         below
                     }
+                    .frame(width: geo.size.width, alignment: .leading)
                 }
                 BackButton { model.goBack() }
                     .padding(.leading, 28)
@@ -46,19 +47,21 @@ struct DetailView: View {
 
     // MARK: Artwork
 
-    private var backdrop: some View {
+    /// The picture is cropped to the window, never the other way round: an uncropped picture would make the whole page wider than the window.
+    private func backdrop(size: CGSize) -> some View {
         ZStack {
             Theme.surfaceHigh
             if let background = detail.background, let url = URL(string: background) {
-                AsyncImage(url: url) { phase in
-                    if case let .success(image) = phase { image.resizable().aspectRatio(contentMode: .fill) }
-                }
+                CachedImage(url: url)
+                    .frame(width: size.width, height: size.height)
+                    .clipped()
             }
             LinearGradient(colors: [Theme.background.opacity(0.55), Theme.background.opacity(0.2), .clear], startPoint: .leading, endPoint: .trailing)
             LinearGradient(colors: [.clear, .clear, Theme.background.opacity(0.75), Theme.background], startPoint: .top, endPoint: .bottom)
         }
-        .ignoresSafeArea()
+        .frame(width: size.width, height: size.height)
         .clipped()
+        .ignoresSafeArea()
     }
 
     // MARK: Hero
@@ -82,7 +85,7 @@ struct DetailView: View {
                         .shadow(color: .black.opacity(0.6), radius: 4)
                         .padding(.top, 6)
                 }
-                if let description = detail.description {
+                if let description = detail.description?.htmlDecoded {
                     Text(description)
                         .font(.system(size: isShow ? 16 : 15))
                         .foregroundStyle(.white)
@@ -119,13 +122,8 @@ struct DetailView: View {
     @ViewBuilder
     private var logoOrTitle: some View {
         if let logo = detail.logo, let url = URL(string: logo) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case let .success(image): image.resizable().aspectRatio(contentMode: .fit)
-                default: titleText
-                }
-            }
-            .frame(maxWidth: 400, maxHeight: 110, alignment: .leading)
+            CachedImage(url: url, contentMode: .fit) { titleText }
+                .frame(maxWidth: 400, maxHeight: 110, alignment: .leading)
             .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
         } else {
             titleText

@@ -62,10 +62,10 @@ public struct MetaDetail: Codable, Equatable, Identifiable, Sendable {
     public var castMembers: [CastMember] {
         let photographed = (app_extras?.cast ?? []).compactMap { extra -> CastMember? in
             guard let name = extra.name, !name.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
-            return CastMember(name: name, role: extra.character.flatMap { $0.isEmpty ? nil : $0 }, photoURL: extra.photo.flatMap { $0.isEmpty ? nil : $0 })
+            return CastMember(name: name.htmlDecoded, role: extra.character.flatMap { $0.isEmpty ? nil : $0.htmlDecoded }, photoURL: extra.photo.flatMap { $0.isEmpty ? nil : $0 })
         }
         let known = Set(photographed.map(\.name))
-        return photographed + (cast ?? []).filter { !$0.isEmpty && !known.contains($0) }.map { CastMember(name: $0) }
+        return photographed + (cast ?? []).map(\.htmlDecoded).filter { !$0.isEmpty && !known.contains($0) }.map { CastMember(name: $0) }
     }
 
     /// Episodes grouped by season, episodes in order. Empty for a movie.

@@ -1,5 +1,29 @@
 import Foundation
 
+public extension String {
+    /// Text with the HTML entities some addons leave in names and descriptions turned back into characters (&apos; &amp; &#39; ...).
+    var htmlDecoded: String {
+        guard contains("&") else { return self }
+        var text = self
+        let named = ["&apos;": "'", "&quot;": "\"", "&lt;": "<", "&gt;": ">", "&nbsp;": " "]
+        for (entity, character) in named { text = text.replacingOccurrences(of: entity, with: character) }
+        if let regex = try? NSRegularExpression(pattern: "&#(x?)([0-9a-fA-F]+);") {
+            let nsText = text as NSString
+            var out = ""
+            var last = 0
+            for match in regex.matches(in: text, range: NSRange(location: 0, length: nsText.length)) {
+                out += nsText.substring(with: NSRange(location: last, length: match.range.location - last))
+                let isHex = nsText.substring(with: match.range(at: 1)) == "x"
+                let digits = nsText.substring(with: match.range(at: 2))
+                if let value = UInt32(digits, radix: isHex ? 16 : 10), let scalar = Unicode.Scalar(value) { out += String(Character(scalar)) } else { out += nsText.substring(with: match.range) }
+                last = match.range.location + match.range.length
+            }
+            text = out + nsText.substring(from: last)
+        }
+        return text.replacingOccurrences(of: "&", with: "&")
+    }
+}
+
 /// Times and dates the way the web app writes them.
 public enum Format {
     /// "2h 17m"
