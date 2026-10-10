@@ -383,3 +383,21 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the web app's wording says "web only" in its Plus popups and perk list; it still needs changing there (a separate repository).
 
 **Issues fixed:** none.
+
+## 20 -- The player laid out like the Fire TV app's VLC player; a spinner while seeking
+
+**Status:** Written; see the build result below. Not seen on screen.
+
+**Context:** Asked for a loading symbol in the middle of the player while scrubbing, and for the player to copy the Fire TV app's VLC player layout (`VlcControlsNetflix.kt`).
+
+**Changes:**
+- Layout (from the Kotlin file): a 170 point fade at the top and a 250 point fade at the bottom; top left a row of round outlined icons (Back, back 10 seconds, forward 10 seconds); top right the title's logo (up to 280 by 56 points, else the name) with "S1 E2 • title" for an episode; along the bottom a 48 point round white Play / Pause button, the time played, a thin timeline and the time left (with a minus sign), and under it a centred row of grey pills.
+- Pills: Audio and Subtitles (shown when the video has tracks), Episodes (shows only: pick a season and episode, its sources open), Player (switch between the Arc TV player and the Mac's, carrying on from the same spot) and Sources (back to the source list), as on the Fire TV. Speed is a pill too, which the Fire TV layout does not have; the volume slider and full-screen button are gone from the bar (Up and Down change the volume, F or a double click goes full screen).
+- Spinner: it shows in the middle whenever mpv is waiting for the stream (`paused-for-cache`) or is seeking (`seeking`, new). A jump shows it at once, before mpv answers, and clears it by itself after eight seconds if mpv never reports the seek.
+- The timeline is a thin bar that thickens and shows a dot under the pointer; click or drag to jump.
+
+**Tests performed:** none new (this is screen code). The Mac code could not be compiled or run here; the Build and test workflow is the check. Nothing was seen on screen.
+
+**Issues discovered:** none yet. The Mac's built-in player (`BuiltInPlayerView`) still has its old controls.
+
+**Issues fixed:** none.

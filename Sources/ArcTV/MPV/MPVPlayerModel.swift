@@ -23,6 +23,8 @@ final class MPVPlayerModel: ObservableObject {
     @Published var duration: Double = 0
     @Published var paused = false
     @Published var buffering = true
+    /// True from the moment a jump is asked for until mpv has landed on the new spot (and kept playing); shows the spinner while the stream loads.
+    @Published var seeking = false
     @Published var failure: String?
     @Published var ended = false
     /// The volume and speed last chosen, for every title on this Mac (not part of the synced account settings).
@@ -48,6 +50,7 @@ final class MPVPlayerModel: ObservableObject {
         case let .duration(value): duration = value
         case let .paused(value): paused = value
         case let .buffering(value): buffering = value
+        case let .seeking(value): seeking = value
         case .ended: ended = true
         case let .failed(message): failure = message
         }
@@ -55,9 +58,27 @@ final class MPVPlayerModel: ObservableObject {
 
     func togglePause() { view?.setFlag("pause", !paused) }
 
-    func seek(to seconds: Double) { view?.seek(to: max(0, min(seconds, duration > 0 ? duration : seconds))) }
+    private var seekGuard: Task<Void, Never>?
 
-    func skip(_ seconds: Double) { view?.seek(by: seconds) }
+    /// Shows the loading spinner at once; mpv's own "seeking" flag takes over, and a seek that mpv never reports ends after a few seconds anyway.
+    private func markSeeking() {
+        seeking = true
+        seekGuard?.cancel()
+        seekGuard = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            if !Task.isCancelled { self?.seeking = false }
+        }
+    }
+
+    func seek(to seconds: Double) {
+        markSeeking()
+        view?.seek(to: max(0, min(seconds, duration > 0 ? duration : seconds)))
+    }
+
+    func skip(_ seconds: Double) {
+        markSeeking()
+        view?.seek(by: seconds)
+    }
 
     func setVolume(_ value: Double) {
         volume = value

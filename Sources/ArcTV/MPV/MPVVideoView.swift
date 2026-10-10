@@ -9,6 +9,7 @@ enum MPVEvent {
     case duration(Double)
     case paused(Bool)
     case buffering(Bool)
+    case seeking(Bool)
     case ended
     case failed(String)
 }
@@ -95,6 +96,7 @@ final class MPVVideoView: NSOpenGLView {
         mpv_observe_property(handle, 0, "duration", MPV_FORMAT_DOUBLE)
         mpv_observe_property(handle, 0, "pause", MPV_FORMAT_FLAG)
         mpv_observe_property(handle, 0, "paused-for-cache", MPV_FORMAT_FLAG)
+        mpv_observe_property(handle, 0, "seeking", MPV_FORMAT_FLAG)
         mpv_set_wakeup_callback(handle, mpvWakeUp, UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()))
     }
 
@@ -169,6 +171,8 @@ final class MPVVideoView: NSOpenGLView {
                         self.emit(.paused(data.assumingMemoryBound(to: Int32.self).pointee != 0))
                     case "paused-for-cache":
                         self.emit(.buffering(data.assumingMemoryBound(to: Int32.self).pointee != 0))
+                    case "seeking":
+                        self.emit(.seeking(data.assumingMemoryBound(to: Int32.self).pointee != 0))
                     default:
                         break
                     }
