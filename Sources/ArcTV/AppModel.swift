@@ -435,6 +435,42 @@ final class AppModel: ObservableObject {
         schedulePicked()
     }
 
+    /// Changes one or more of the account's settings: shown at once, saved to the account, and put back if the save fails.
+    func updateSettings(_ edit: (inout AccountSettings) -> Void) async {
+        if settings == nil { await loadSettings() }
+        guard var next = settings else { return }
+        let before = next
+        edit(&next)
+        guard next != before else { return }
+        settings = next
+        do {
+            settings = try await authorized { client, token in try await client.saveSettings(accessToken: token, next) }
+        } catch {
+            settings = before
+        }
+    }
+
+    /// Every row Home can show, in the order the person has chosen, with whether it is switched on.
+    var homeRowChoices: [(section: HomeSection, visible: Bool)] {
+        let hidden = Set(settings?.hiddenRowIds ?? [])
+        let preferences = HomeRowPreferences(order: settings?.homeRowOrder ?? [], hiddenRowIds: Array(hidden))
+        return homeRaw.ordered(by: preferences).map { ($0, !hidden.contains($0.id)) }
+    }
+
+    func setRowVisible(_ id: String, visible: Bool) async {
+        await updateSettings { value in
+            value.hiddenRowIds.removeAll { $0 == id }
+            if !visible { value.hiddenRowIds.append(id) }
+        }
+        pickHero()
+        schedulePicked()
+    }
+
+    func moveRow(_ id: String, delta: Int) async {
+        let order = homeRowChoices.map(\.section.id)
+        await updateSettings { $0.homeRowOrder = HomeRowOrder.move(order, id: id, delta: delta) }
+    }
+
     // MARK: My List, Watched and Continue Watching
 
     /// Loads everything the account keeps: My List and Continue Watching.

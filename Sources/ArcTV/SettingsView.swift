@@ -61,13 +61,12 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     static let groups: [(String, [SettingsTab])] = [
         ("You", [.account, .plus, .plusSettings, .recommendations, .stats]),
         ("Content", [.addons, .homeRows, .blockedGenres]),
-        ("Playback & sound", [.player, .subtitles, .audio, .sounds]),
+        ("Playback", [.player, .subtitles, .audio]),
         ("App", [.updates])
     ]
 }
 
-/// Settings laid out like the web app's: grouped places down the left, the chosen one on the right. Account, Recommendations, Addons, Blocked Genres, Player and
-/// Updates work; the rest say they are coming (they are built in later stages).
+/// Settings laid out like the web app's: grouped places down the left, the chosen one on the right. Sounds is left out: the Mac app has no interface sounds.
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     private var tab: SettingsTab { model.settingsTab }
@@ -121,10 +120,12 @@ struct SettingsView: View {
                 case .addons: AddonsPane()
                 case .blockedGenres: BlockedGenresPane()
                 case .player: player
-                case .updates: updates
-                default:
-                    Text("\(tab.rawValue) is coming in a later update.")
-                        .foregroundStyle(Theme.textSecondary)
+                case .homeRows: HomeRowsPane()
+                case .subtitles: SubtitlesPane()
+                case .audio: AudioPane()
+                case .updates: UpdatesPane()
+                case .sounds:
+                    Text("The Mac app has no interface sounds.").foregroundStyle(Theme.textSecondary)
                 }
             }
             .frame(maxWidth: 620, alignment: .leading)
@@ -172,16 +173,6 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
-        }
-    }
-
-    private var updates: some View {
-        card {
-            row("Version", AppInfo.version)
-            Divider().overlay(Theme.divider)
-            Text("Checking for updates from inside the app is coming later. New versions are on the GitHub releases page.")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.textSecondary)
         }
     }
 

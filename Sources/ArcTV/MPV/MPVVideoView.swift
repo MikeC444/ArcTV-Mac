@@ -13,6 +13,13 @@ enum MPVEvent {
     case failed(String)
 }
 
+/// The language choices from Settings, handed to mpv when a video starts.
+struct PlaybackLanguages {
+    var audio: String?
+    var subtitle: String?
+    var subtitlesOn = false
+}
+
 /// A view that shows an mpv video. Adapted from the MPVKit macOS demo (OpenGL): mpv draws each frame into this view's OpenGL context.
 final class MPVVideoView: NSOpenGLView {
     private var mpv: OpaquePointer?
@@ -33,15 +40,15 @@ final class MPVVideoView: NSOpenGLView {
     }
 
     /// Makes the OpenGL context ready and starts mpv.
-    func start(url: URL, startAt: Double = 0) {
+    func start(url: URL, startAt: Double = 0, languages: PlaybackLanguages = PlaybackLanguages()) {
         wantsBestResolutionOpenGLSurface = true
         autoresizingMask = [.width, .height]
         openGLContext?.makeCurrentContext()
-        setupMpv(startAt: startAt)
+        setupMpv(startAt: startAt, languages: languages)
         command("loadfile", args: [url.absoluteString, "replace"])
     }
 
-    private func setupMpv(startAt: Double) {
+    private func setupMpv(startAt: Double, languages: PlaybackLanguages) {
         guard let handle = mpv_create() else {
             onEvent?(.failed("The player could not be started."))
             return
@@ -50,6 +57,9 @@ final class MPVVideoView: NSOpenGLView {
         _ = mpv_request_log_messages(handle, "no")
         _ = mpv_set_option_string(handle, "subs-match-os-language", "yes")
         _ = mpv_set_option_string(handle, "subs-fallback", "yes")
+        if let audio = languages.audio { _ = mpv_set_option_string(handle, "alang", audio) }
+        if let subtitle = languages.subtitle { _ = mpv_set_option_string(handle, "slang", subtitle) }
+        if !languages.subtitlesOn { _ = mpv_set_option_string(handle, "sid", "no") }
         _ = mpv_set_option_string(handle, "hwdec", "auto-safe")
         _ = mpv_set_option_string(handle, "vo", "libmpv")
         _ = mpv_set_option_string(handle, "ytdl", "no")

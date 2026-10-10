@@ -157,3 +157,228 @@ struct BlockedGenresPane: View {
         .task { await model.loadSettings() }
     }
 }
+
+// MARK: Home Rows
+
+/// Settings > Home Rows: switch each row of Home on or off and move it up or down. Saved to the account as you go.
+struct HomeRowsPane: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        let choices = model.homeRowChoices
+        VStack(alignment: .leading, spacing: 14) {
+            if choices.isEmpty {
+                Text(model.homeRaw.isEmpty
+                     ? "Home has no rows yet. Install an addon first, then come back to arrange them."
+                     : "Loading your rows...")
+                    .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+            } else {
+                Text("Choose which rows appear on Home and the order they come in. Changes are saved automatically.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                VStack(spacing: 8) {
+                    ForEach(Array(choices.enumerated()), id: \.element.section.id) { index, choice in
+                        HStack(spacing: 12) {
+                            Toggle("", isOn: Binding(
+                                get: { choice.visible },
+                                set: { value in Task { await model.setRowVisible(choice.section.id, visible: value) } }
+                            ))
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(Theme.accent)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(choice.section.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                                Text("\(choice.section.items.count) titles").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                            }
+                            .opacity(choice.visible ? 1 : 0.5)
+                            Spacer(minLength: 0)
+                            arrow("chevron.up", enabled: index > 0) { Task { await model.moveRow(choice.section.id, delta: -1) } }
+                            arrow("chevron.down", enabled: index < choices.count - 1) { Task { await model.moveRow(choice.section.id, delta: 1) } }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+                    }
+                }
+            }
+        }
+        .task { if model.settings == nil { await model.loadSettings() } }
+    }
+
+    private func arrow(_ name: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: name)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Theme.textPrimary)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(Color.white.opacity(0.08)))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.3)
+    }
+}
+
+// MARK: Subtitles and Audio
+
+/// Settings > Subtitles: whether subtitles start on, and the language to look for.
+struct SubtitlesPane: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 0) {
+                Toggle(isOn: Binding(
+                    get: { model.settings?.subtitlesEnabled ?? false },
+                    set: { value in Task { await model.updateSettings { $0.subtitlesEnabled = value } } }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Subtitles").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                        Text("Start playback with subtitles on. You can still switch them in the player.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .tint(Theme.accent)
+                .padding(16)
+            }
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+
+            Text("Default language").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+            LanguageList(
+                choices: LanguageChoices.subtitles(),
+                selected: model.settings?.defaultSubtitleLanguage
+            ) { code in Task { await model.updateSettings { $0.defaultSubtitleLanguage = code } } }
+        }
+        .task { if model.settings == nil { await model.loadSettings() } }
+    }
+}
+
+/// Settings > Audio: the language to prefer when a video has several audio tracks.
+struct AudioPane: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Preferred audio language").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+            Text("Used when a video has more than one audio track. Automatic leaves it to the video.")
+                .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+            LanguageList(
+                choices: LanguageChoices.audio(),
+                selected: model.settings?.defaultAudioLanguage
+            ) { code in Task { await model.updateSettings { $0.defaultAudioLanguage = code } } }
+        }
+        .task { if model.settings == nil { await model.loadSettings() } }
+    }
+}
+
+private struct LanguageList: View {
+    let choices: [LanguageChoice]
+    let selected: String?
+    let pick: (String?) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
+                if index > 0 { Divider().overlay(Theme.divider) }
+                Button { pick(choice.code) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: selected == choice.code ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(selected == choice.code ? Theme.accent : Theme.textTertiary)
+                        Text(choice.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.textPrimary)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 11)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+    }
+}
+
+// MARK: Updates
+
+/// Settings > Updates: the running version and a check against the newest published release.
+struct UpdatesPane: View {
+    @State private var state: State = .idle
+
+    enum State: Equatable {
+        case idle, checking, failed
+        case result(UpdateResult)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Version").foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text(AppInfo.version).foregroundStyle(Theme.textPrimary)
+                }
+                .font(.system(size: 14))
+                Divider().overlay(Theme.divider)
+                status
+            }
+            .padding(18)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+
+            if case .result(.available(let info)) = state {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("What's new in \(info.version)").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                    Text(info.notes.isEmpty ? "No notes for this version." : info.notes)
+                        .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 12) {
+                        if let url = info.downloadURL {
+                            Link(destination: url) { Label("Download", systemImage: "arrow.down.circle") }
+                        }
+                        if let url = info.pageURL {
+                            Link(destination: url) { Label("Release page", systemImage: "safari") }
+                        }
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+            }
+
+            Button { Task { await check() } } label: { Label("Check for updates", systemImage: "arrow.clockwise") }
+                .buttonStyle(GlassButtonStyle())
+                .disabled(state == .checking)
+        }
+        .task { if state == .idle { await check() } }
+    }
+
+    @ViewBuilder
+    private var status: some View {
+        switch state {
+        case .idle, .checking:
+            Text("Checking for updates...").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+        case .failed:
+            Text("Couldn't check for updates. Check your connection and try again.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+        case .result(.upToDate):
+            Text("You're up to date.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+        case .result(.available(let info)):
+            Text("Version \(info.version) is available.").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.accent)
+        }
+    }
+
+    private func check() async {
+        state = .checking
+        do {
+            state = .result(try await UpdateCheck.check(current: AppInfo.version))
+        } catch {
+            state = .failed
+        }
+    }
+}

@@ -30,4 +30,6 @@ them under its version automatically.
 - The Arc TV Plus tab shows the plans and opens secure checkout in your browser, and lets you cancel any time.
 - Your stats at a glance: total watch time, streak, a 13-week activity map and your busiest day.
 - Smart source picking starts the best source for you, and a short Plus welcome tells members what they get.
-
+- Arrange Home your way: switch rows on or off and move them up or down, saved to your account.
+- Pick your subtitle and audio languages once and every video starts the way you like it.
+- Check for updates right inside Settings and see what's new.

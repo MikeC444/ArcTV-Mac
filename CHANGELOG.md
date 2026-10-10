@@ -276,3 +276,21 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Follow-up to 14 (second look):** the poster outline only showed while scrolling, which means the pointer's movement was not being reported. The likely cause is the top bar having told the window to deliver every mouse movement (to bring the bar back when the pointer reaches the top); that is gone. The bar now comes back through an invisible strip along the top that only exists while the bar is hidden, and scrolling still hides it. The top bar is bigger too (logo 42 points, pills at 17 points, a 46 point profile picture) and shrinks only when the window is narrow.
 
+
+## 15 -- The remaining Settings tabs: Home Rows, Subtitles, Audio, Updates
+
+**Status:** Written; see the build result below. Not tried against the real account or on screen.
+
+**Context:** These Settings tabs showed "coming in a later update" (Updates showed only the version).
+
+**Changes:**
+- Settings > Home Rows: every row Home can build, in the chosen order, each with a switch and "N titles" and up and down arrows (the web app's `moveRow`, as `HomeRowOrder.move`). Changes show at once and are saved to the account's settings row (whole-row PUT, as for Blocked Genres), and put back if the save fails. Switching a row changes the Home banner's pool too.
+- Settings > Subtitles: a Subtitles switch and the default language (the web app's list, System Default first). Settings > Audio: the preferred audio language (Automatic first). Both are kept on the account. The mpv player reads them when a video starts (`alang`, `slang`, and no subtitle track chosen unless the switch is on; the player's own menu still switches tracks). The Mac built-in player does not use them.
+- Settings > Updates: asks GitHub for the latest release of `MikeC444/ArcTV-Mac`, compares it with the running version and, if newer, shows the notes with Download (the .dmg) and Release page links. Until a release is published GitHub answers 404, which reads as "You're up to date".
+- Sounds is removed from the sidebar: the Mac app has no interface sounds.
+
+**Tests performed:** unit tests for moving a row (including the ends and an unknown id), the language lists, comparing versions, and reading a GitHub release reply (notes, download link, newer, same, no release, server error). The Mac code could not be compiled here; the Build and test workflow is the check. Nothing was seen on screen and the update check was not run against a real release.
+
+**Issues discovered:** the repository's releases endpoint answered 404 from this sandbox, so how the check behaves on a published release is untested. The app does not install updates itself; it links to the download.
+
+**Issues fixed:** none.

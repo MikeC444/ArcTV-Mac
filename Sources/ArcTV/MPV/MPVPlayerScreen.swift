@@ -7,12 +7,13 @@ struct MPVVideoRepresentable: NSViewRepresentable {
     let url: URL
     let startAt: Double
     let model: MPVPlayerModel
+    var languages = PlaybackLanguages()
 
     func makeNSView(context: Context) -> MPVVideoView {
         let view = MPVVideoView(frame: .zero)
         view.onEvent = { [weak model] event in model?.handle(event) }
         model.view = view
-        view.start(url: url, startAt: startAt)
+        view.start(url: url, startAt: startAt, languages: languages)
         return view
     }
 
@@ -32,7 +33,14 @@ struct MPVPlayerScreen: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            MPVVideoRepresentable(url: item.url, startAt: item.target.startAt, model: model)
+            MPVVideoRepresentable(
+                url: item.url, startAt: item.target.startAt, model: model,
+                languages: PlaybackLanguages(
+                    audio: appModel.settings?.defaultAudioLanguage,
+                    subtitle: appModel.settings?.defaultSubtitleLanguage,
+                    subtitlesOn: appModel.settings?.subtitlesEnabled ?? false
+                )
+            )
                 .ignoresSafeArea()
                 .onTapGesture { model.togglePause() }
                 .onTapGesture(count: 2) { toggleFullScreen() }
