@@ -1,8 +1,13 @@
+import AppKit
 import SwiftUI
 
 /// The web app's top bar: the logo on the left and every place, Settings last, in a rounded translucent pill in the middle.
 struct TopNavBar: View {
     @EnvironmentObject private var model: AppModel
+    /// The bar slides away as you scroll down a page and comes back when you scroll up or move the pointer to the top, as on the web app.
+    @State private var hidden = false
+    @State private var scrolled: CGFloat = 0
+    @State private var monitor: Any?
 
     var body: some View {
         // Roomy first; as the window narrows the logo goes, then the pills tighten, so a name never wraps onto two lines.
@@ -18,6 +23,39 @@ struct TopNavBar: View {
         .background(
             LinearGradient(colors: [Theme.background.opacity(0.9), Theme.background.opacity(0)], startPoint: .top, endPoint: .bottom)
         )
+        .offset(y: hidden ? -100 : 0)
+        .opacity(hidden ? 0 : 1)
+        .allowsHitTesting(!hidden)
+        .animation(.easeOut(duration: 0.3), value: hidden)
+        .onChange(of: model.selected) { _ in
+            scrolled = 0
+            hidden = false
+        }
+        .onAppear { watchScrolling() }
+        .onDisappear {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+    }
+
+    private func watchScrolling() {
+        guard monitor == nil else { return }
+        NSApp.keyWindow?.acceptsMouseMovedEvents = true
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .mouseMoved]) { event in
+            let type = event.type
+            let delta = event.scrollingDeltaY
+            let fromTop = (event.window?.contentView?.bounds.height ?? 0) - event.locationInWindow.y
+            DispatchQueue.main.async {
+                if type == .mouseMoved {
+                    if fromTop <= 60 { hidden = false }
+                } else if abs(delta) > 1 {
+                    // Going down a page makes the content move up (a negative change).
+                    scrolled = max(0, scrolled - delta)
+                    if delta < 0, scrolled > 80 { hidden = true } else if delta > 0 || scrolled <= 20 { hidden = false }
+                }
+            }
+            return event
+        }
     }
 
     private func bar(logo: Bool, fontSize: CGFloat, padding: CGFloat) -> some View {
