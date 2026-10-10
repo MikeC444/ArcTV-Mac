@@ -170,7 +170,7 @@ app's look, and talks to the same backend and Stremio addons.
 
 ## 10 -- Stage 4b: Like / Not for me, Picked for you and Settings > Recommendations
 
-**Status:** Written; not yet checked by the Build and test workflow when this entry was written. Not tried against the real account from the app.
+**Status:** Written; checked by the Build and test workflow (it compiles, all tests pass, the DMG builds). Not tried against the real account from the app.
 
 **Context:** The other apps give Arc TV Plus members a Picked for you row on Home, fed by Like / Not for me, My List and finished titles. The Mac app had none of it.
 
@@ -182,7 +182,7 @@ app's look, and talks to the same backend and Stremio addons.
 - Like and Not for me in the poster's right-click menu and on the title page (Plus only); pressing the same one again takes it off.
 - Settings > Recommendations (Plus only): Liked / Not for me lists with View and Remove, "What shapes your picks" (points per kind of title, a note when there are not enough signals yet or more than the engine reads), "How it works", and Reset preferences with a confirmation.
 
-**Tests performed:** unit tests ported from the Fire TV app (signals, preferences, scoring, ranking different profiles differently, exclusions, explanations, the cold-start fallback, the lookup bound, a title never picking itself, diversity, TV shows) and new ones for the seeded generator against reference values from the web app's generator, composition, the summary and points wording, the five-day removal window and its merge with the account's list, the Home row, the feature cache and lookup bound, and decoding the account's answers. The sandbox has no Swift, so none of this was compiled or run here; the Build and test workflow is the check. The screens were not seen.
+**Tests performed:** unit tests ported from the Fire TV app (signals, preferences, scoring, ranking different profiles differently, exclusions, explanations, the cold-start fallback, the lookup bound, a title never picking itself, diversity, TV shows) and new ones for the seeded generator against reference values from the web app's generator, composition, the summary and points wording, the five-day removal window and its merge with the account's list, the Home row, the feature cache and lookup bound, and decoding the account's answers. The sandbox has no Swift, so nothing was compiled here; the Build and test workflow compiled it and ran all the tests, and passed. The screens were not seen. (The first run of the workflow failed at the final link on unrelated libsmbclient symbols from the mpv libraries; running it again passed with no change to the code.)
 
 **Issues discovered:** Ratings are per profile on the account; this app only has the main profile until profiles are added. A title rated on another device has no poster in the Recommendations list until it is rated here.
 
