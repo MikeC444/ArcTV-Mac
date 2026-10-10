@@ -30,7 +30,7 @@ struct DetailView: View {
                 backdrop(size: geo.size)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        hero(minHeight: max(geo.size.height * 0.74, 620))
+                        hero
                         below
                     }
                     .frame(width: geo.size.width, alignment: .leading)
@@ -66,11 +66,10 @@ struct DetailView: View {
 
     // MARK: Hero
 
-    /// As on the web app: the hero is at least three quarters of the window (620 at least) and its text sits in the middle of it, with the IMDb
-    /// rating in the bottom corner.
-    private func hero(minHeight: CGFloat) -> some View {
-        ZStack(alignment: .topLeading) {
-            Color.clear.frame(height: minHeight)
+    /// The text starts below the top bar, the buttons come next with the IMDb rating at the far end of the same row, and the seasons (or the cast)
+    /// follow straight after them.
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 logoOrTitle
                 if !facts.isEmpty {
@@ -96,30 +95,33 @@ struct DetailView: View {
                         .frame(maxWidth: 640, alignment: .leading)
                         .padding(.top, 14)
                 }
-                actions.padding(.top, 24)
             }
             .frame(maxWidth: 800, alignment: .leading)
-            .padding(.horizontal, 44)
-            .frame(maxHeight: .infinity, alignment: .center)
-            .padding(.top, 60)
 
-            if let rating = detail.imdbRating, !rating.isEmpty {
-                HStack(spacing: 8) {
-                    Image(systemName: "star.fill").foregroundStyle(Theme.accent).font(.system(size: 20))
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(rating).font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.textPrimary)
-                        Text("IMDb Rating").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.textSecondary)
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.45)))
-                .padding(.trailing, 44)
-                .padding(.bottom, 32)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            HStack(alignment: .center) {
+                actions
+                Spacer(minLength: 24)
+                if let rating = detail.imdbRating, !rating.isEmpty { ratingBox(rating) }
+            }
+            .padding(.top, 24)
+        }
+        .padding(.horizontal, 44)
+        .padding(.top, 110)
+        .padding(.bottom, 34)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private func ratingBox(_ rating: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "star.fill").foregroundStyle(Theme.accent).font(.system(size: 20))
+            VStack(alignment: .leading, spacing: 0) {
+                Text(rating).font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                Text("IMDb Rating").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.textSecondary)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.45)))
     }
 
     @ViewBuilder
