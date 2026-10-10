@@ -11,16 +11,20 @@ final class PlayerController: ObservableObject {
     private var observation: NSKeyValueObservation?
 
     init(url: URL) {
-        let item = AVPlayerItem(url: url)
-        player = AVPlayer(playerItem: item)
-        observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            guard item.status == .failed else { return }
-            let reason = item.error?.localizedDescription ?? "unknown error"
-            Task { @MainActor in self?.failure = reason }
-        }
+        player = AVPlayer(playerItem: AVPlayerItem(url: url))
     }
 
-    func start() { player.play() }
+    /// Starts playing and begins watching for a failure (done here, not in `init`, so `self` is fully made before a closure keeps it).
+    func start() {
+        if let item = player.currentItem {
+            observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+                guard item.status == .failed else { return }
+                let reason = item.error?.localizedDescription ?? "unknown error"
+                Task { @MainActor in self?.failure = reason }
+            }
+        }
+        player.play()
+    }
 
     func stop() {
         player.pause()

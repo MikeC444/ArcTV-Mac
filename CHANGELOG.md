@@ -108,3 +108,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none.
 
 **Issues fixed:** none.
+
+**Follow-up (same entry):** the Stage 2 build failed on the macOS runner with "reference to captured var 'self' in concurrently-executing code" in the player (a closure kept `self` inside `init`); the failure watcher is now set up in `start()`. Xcode on the user's Mac had built the same code, so the compiler versions differ.
