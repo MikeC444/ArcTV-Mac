@@ -43,7 +43,7 @@ Same account, same list, same addons on every device:
 
 ## 💻 Installing
 
-1. Download **`ArcTV-0.1.0.dmg`** (or the newest `ArcTV-<version>.dmg`) from [the latest release](https://github.com/MikeC444/ArcTV-Mac/releases/latest), open it and drag Arc TV into Applications.
+1. Download **`ArcTV-0.2.0.dmg`** (or the newest `ArcTV-<version>.dmg`) from [the latest release](https://github.com/MikeC444/ArcTV-Mac/releases/latest), open it and drag Arc TV into Applications.
 2. The app is **not signed with an Apple Developer ID and not notarized**, so macOS warns the first time you open it:
    - **macOS 14:** right-click Arc TV, choose **Open**, then **Open** again.
    - **macOS 15 and later:** try to open it once, then go to **System Settings > Privacy & Security**, scroll down and click **Open Anyway**.
