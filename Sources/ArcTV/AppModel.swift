@@ -46,6 +46,8 @@ struct PlayingItem: Equatable {
     var heading: String
     var sourceName: String
     var target: PlayTarget
+    /// The release's file name when the addon gave one (addons match subtitles to it).
+    var filename: String?
 }
 
 /// Which player plays video: mpv (plays almost anything) or the Mac's built-in player.
@@ -386,7 +388,7 @@ final class AppModel: ObservableObject {
                 let url = try await TorrentEngine.shared.prepare(
                     magnet: magnet, fileIndex: item.stream.fileIdx, season: target.season, episode: target.episode
                 )
-                self?.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
+                self?.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target, filename: item.stream.behaviorHints?.filename))
             } catch is CancellationError {
                 TorrentEngine.shared.stop()
             } catch {

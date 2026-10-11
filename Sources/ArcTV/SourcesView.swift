@@ -226,7 +226,7 @@ struct SourcesView: View {
             LastSourceStore(userID: user).set(LastSource(item), titleID: target.title.id, season: target.season, episode: target.episode)
         }
         if let url = item.playURL {
-            model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
+            model.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target, filename: item.stream.behaviorHints?.filename))
         } else {
             model.startTorrent(item, target: target)
         }
