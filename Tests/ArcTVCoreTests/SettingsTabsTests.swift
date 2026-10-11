@@ -18,6 +18,16 @@ final class SettingsTabsTests: XCTestCase {
         XCTAssertEqual(LanguageChoices.all.first?.code, "en")
     }
 
+    func testSubtitleLanguagesAreSystemThenEnglishThenAToZ() {
+        let list = LanguageChoices.subtitles()
+        XCTAssertNil(list[0].code)
+        XCTAssertEqual(list[1].code, "en")
+        let rest = list.dropFirst(2).map(\.name)
+        XCTAssertEqual(rest, rest.sorted { $0.localizedCompare($1) == .orderedAscending })
+        XCTAssertEqual(rest.first, "Arabic")
+        XCTAssertEqual(list.count, 16)
+    }
+
     func testVersionCompare() {
         XCTAssertTrue(UpdateCheck.isNewer("0.1.3", than: "0.1.2"))
         XCTAssertTrue(UpdateCheck.isNewer("v0.2.0", than: "0.1.9"))

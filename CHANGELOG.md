@@ -534,3 +534,17 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none.
 
 **Issues fixed:** none.
+
+## 29 -- Subtitle languages listed A to Z
+
+**Status:** Done, on main.
+
+**Context:** The subtitle language list was in a hand-picked order. It is now System Default, English, then the other languages A to Z (the web app and both Android apps got the same change).
+
+**Changes:** `LanguageChoices.subtitles()` returns the system choice, English, then every other language sorted by name; `all` and the audio list are unchanged. New test `testSubtitleLanguagesAreSystemThenEnglishThenAToZ`.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the test and the build are left to the Build and test workflow. Code re-read.
+
+**Issues discovered:** none.
+
+**Issues fixed:** none.

@@ -13,9 +13,11 @@ public struct LanguageChoice: Equatable, Identifiable, Sendable {
 }
 
 public enum LanguageChoices {
-    /// The same list the web app offers, in the same order.
+    /// The same list the web app offers, in the same order: the system choice, then English, then every other language A to Z.
     public static func subtitles(systemName: String = "System Default") -> [LanguageChoice] {
-        [LanguageChoice(code: nil, name: systemName)] + all
+        let english = all.filter { $0.code == "en" }
+        let others = all.filter { $0.code != "en" }.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+        return [LanguageChoice(code: nil, name: systemName)] + english + others
     }
 
     public static func audio() -> [LanguageChoice] {
