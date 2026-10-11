@@ -22,6 +22,9 @@ final class AddonSubtitlesTests: XCTestCase {
         for raw in ["eng", "en", "en-US", "English", "ENG"] { XCTAssertEqual(SubtitleLanguage.key(raw), "en", raw) }
         XCTAssertEqual(SubtitleLanguage.key("fre"), "fr")
         XCTAssertEqual(SubtitleLanguage.key("pt-BR"), "pt")
+        for (raw, key) in [("srp", "sr"), ("hrv", "hr"), ("bos", "bs"), ("mkd", "mk"), ("mac", "mk"), ("Serbian", "sr"), ("Croatian", "hr"), ("Bosnian", "bs"), ("Macedonian", "mk"), ("hr-HR", "hr")] {
+            XCTAssertEqual(SubtitleLanguage.key(raw), key, raw)
+        }
         XCTAssertNil(SubtitleLanguage.key("zzz"))
         XCTAssertEqual(SubtitleLanguage.displayName("spa"), "Spanish")
         XCTAssertEqual(SubtitleLanguage.displayName("zzz"), "ZZZ")

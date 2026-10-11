@@ -37,7 +37,11 @@ public enum LanguageChoices {
         LanguageChoice(code: "hi", name: "Hindi"),
         LanguageChoice(code: "ja", name: "Japanese"),
         LanguageChoice(code: "ko", name: "Korean"),
-        LanguageChoice(code: "zh", name: "Chinese")
+        LanguageChoice(code: "zh", name: "Chinese"),
+        LanguageChoice(code: "sr", name: "Serbian"),
+        LanguageChoice(code: "hr", name: "Croatian"),
+        LanguageChoice(code: "bs", name: "Bosnian"),
+        LanguageChoice(code: "mk", name: "Macedonian")
     ]
 }
 

@@ -534,3 +534,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the Mac built-in player (AVPlayer) has no subtitle menu at all, so addon subtitles are only in the mpv player. The loaded file's track is found by reading mpv's track list right after `sub-add`; if mpv reports it late the file still shows but picking it again from the menu would load it a second time.
 
 **Issues fixed:** none.
+
+**Subtitle languages:** Serbian, Croatian, Bosnian and Macedonian (sr, hr, bs, mk) are added to the Settings > Subtitles language list, and their three-letter codes (srp, hrv, bos, mkd) are recognised when matching addon subtitles and subtitle file names. Not built or run here.

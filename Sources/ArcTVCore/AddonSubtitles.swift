@@ -69,7 +69,7 @@ public enum SubtitleLanguage {
         let pairs = """
         eng en,spa es,fra fr,fre fr,deu de,ger de,ita it,por pt,nld nl,dut nl,swe sv,pol pl,tur tr,ara ar,hin hi,jpn ja,kor ko,zho zh,chi zh,rus ru,\
         ukr uk,ces cs,cze cs,slk sk,slo sk,hun hu,ron ro,rum ro,bul bg,ell el,gre el,heb he,fas fa,per fa,tha th,vie vi,ind id,msa ms,may ms,fin fi,\
-        dan da,nor no,nob nb,isl is,ice is,hrv hr,srp sr,slv sl,lit lt,lav lv,est et,cat ca,eus eu,baq eu,glg gl,ben bn,tam ta,tel te,urd ur,fil tl,sqi sq,alb sq,mkd mk,mac mk,hye hy,arm hy,kat ka,geo ka
+        dan da,nor no,nob nb,isl is,ice is,hrv hr,srp sr,bos bs,scc sr,scr hr,slv sl,lit lt,lav lv,est et,cat ca,eus eu,baq eu,glg gl,ben bn,tam ta,tel te,urd ur,fil tl,sqi sq,alb sq,mkd mk,mac mk,hye hy,arm hy,kat ka,geo ka
         """
         var map: [String: String] = [:]
         for pair in pairs.split(separator: ",") {
