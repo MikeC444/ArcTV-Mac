@@ -61,6 +61,9 @@ final class MPVPlayerModel: ObservableObject {
                 buffering = false
                 view?.setString("volume", String(Int(volume)))
                 if speed != 1 { view?.setString("speed", String(speed)) }
+                // Subtitle size and colour from Settings > Subtitles.
+                view?.setString("sub-font-size", String(SubtitleStyleStore.size().mpvFontSize))
+                view?.setString("sub-color", SubtitleStyleStore.color().hex)
                 refreshTracks()
                 autoPickAddonSubtitle()
             }

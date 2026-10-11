@@ -10,6 +10,8 @@ them under its version automatically.
 - Serbian, Croatian, Bosnian and Macedonian are now subtitle languages you can pick.
 - Pick any season and episode right inside Download, and get its files without leaving the panel.
 - Subtitle languages are now listed A to Z.
+- Customise your subtitles! Pick a size and colour, and preview them before you press play.
+- Download any single episode straight from its picture.
 
 ## 0.1.1
 

@@ -16,6 +16,8 @@ struct DetailView: View {
     @State private var releaseDate: String?
     @State private var cast: [CastMember]
     @State private var downloadTarget: PlayTarget?
+    /// Episodes a file was chosen for in the Download panel (this visit): only their Download button takes the accent colour.
+    @State private var downloadedEpisodes: Set<String> = []
     /// False until the full details (cast, episodes) have come back, so grey placeholders hold their places.
     @State private var detailLoaded = false
     @State private var ringShown = true
@@ -45,7 +47,7 @@ struct DetailView: View {
                     .padding(.leading, 28)
                     .padding(.top, 22)
                 if let target = downloadTarget {
-                    DownloadPanel(target: target, seasons: detail.seasons) { downloadTarget = nil }
+                    DownloadPanel(target: target, seasons: detail.seasons, onSaved: { downloadedEpisodes.insert($0.streamID) }) { downloadTarget = nil }
                         .transition(.opacity)
                 }
             }
@@ -313,7 +315,12 @@ struct DetailView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(episodes) { episode in
-                        EpisodeCard(episode: episode) { playEpisode(episode) }
+                        EpisodeCard(
+                            episode: episode,
+                            canDownload: model.plus.active,
+                            downloaded: downloadedEpisodes.contains(ArcTVCore.streamID(titleID: detail.id, season: episode.season, episode: episode.episode)),
+                            onDownload: { downloadTarget = episodeDownloadTarget(for: episode) }
+                        ) { playEpisode(episode) }
                     }
                 }
                 .padding(.horizontal, 44)
@@ -401,6 +408,11 @@ struct DetailView: View {
                           episodeTitle: "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)")
     }
 
+    /// What an episode's own Download button opens the Download panel on.
+    private func episodeDownloadTarget(for episode: EpisodeInfo) -> PlayTarget {
+        PlayTarget(title: detail, season: episode.season, episode: episode.episode, episodeTitle: DownloadChoices.episodeHeading(episode))
+    }
+
     private func playEpisode(_ episode: EpisodeInfo) {
         let start = model.resumeItem(titleID: detail.id, season: episode.season, episode: episode.episode)?.positionSeconds ?? 0
         model.openSources(PlayTarget(
@@ -451,10 +463,33 @@ struct DetailView: View {
 
 private struct EpisodeCard: View {
     let episode: EpisodeInfo
+    let canDownload: Bool
+    let downloaded: Bool
+    let onDownload: () -> Void
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
+        // The Download button sits over the picture's corner, beside (not inside) the card's own button, so each is its own click.
+        ZStack(alignment: .topTrailing) {
+            cardButton
+            if canDownload {
+                Button(action: onDownload) {
+                    Image(systemName: downloaded ? "arrow.down.circle.fill" : "arrow.down.circle")
+                        .font(.system(size: 18))
+                        .foregroundStyle(downloaded ? Theme.accent : Theme.textPrimary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Color.black.opacity(0.55)))
+                }
+                .buttonStyle(.plain)
+                .padding(8)
+                .help(downloaded ? "Download again" : "Download this episode")
+            }
+        }
+        .frame(width: 270)
+    }
+
+    private var cardButton: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 8) {
                 Color.clear

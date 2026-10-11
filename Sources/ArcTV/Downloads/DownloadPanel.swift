@@ -7,14 +7,17 @@ struct DownloadPanel: View {
     @ObservedObject private var manager = DownloadManager.shared
     /// The season and episode shown in the pickers (a show), starting on the one the Download button opened; empty for a movie.
     let seasons: [Int: [EpisodeInfo]]
+    /// Called with what was being shown when a file was chosen (the title page marks that episode's Download button as used).
+    let onSaved: (PlayTarget) -> Void
     let close: () -> Void
     @State private var target: PlayTarget
     @State private var choices: [SourceItem] = []
     @State private var loading = true
 
-    init(target: PlayTarget, seasons: [Int: [EpisodeInfo]] = [:], close: @escaping () -> Void) {
+    init(target: PlayTarget, seasons: [Int: [EpisodeInfo]] = [:], onSaved: @escaping (PlayTarget) -> Void = { _ in }, close: @escaping () -> Void) {
         _target = State(initialValue: target)
         self.seasons = seasons
+        self.onSaved = onSaved
         self.close = close
     }
 
@@ -154,5 +157,6 @@ struct DownloadPanel: View {
     private func save(_ item: SourceItem) {
         guard let url = item.playURL else { return }
         manager.start(url: url, fileName: DownloadChoices.fileName(release: item.headline, url: url))
+        onSaved(target)
     }
 }

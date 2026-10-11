@@ -567,3 +567,22 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Subtitle languages:** Serbian, Croatian, Bosnian and Macedonian (sr, hr, bs, mk) are added to the Settings > Subtitles language list, and their three-letter codes (srp, hrv, bos, mkd) are recognised when matching addon subtitles and subtitle file names. Not built or run here.
+
+## 31 -- Subtitle size and colour, and a Download button on each episode
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The phone and TV apps gained Settings > Subtitles > Size and Colour with a preview; the web app has a Download button on each episode. This brings both to the Mac app.
+
+**Changes:**
+- `ArcTVCore/SubtitleStyle.swift`: `SubtitleSize` (small, medium, large, extra large: mpv `sub-font-size` 40, 55, 75, 100, where 55 is mpv's own default) and `SubtitleColor` (white, yellow, cyan, green: mpv `sub-color` hex), and `SubtitleStyleStore` keeping both in `UserDefaults` on this Mac (not synced).
+- Settings > Subtitles: Size and Colour lists beside a preview (a 16:9 frame from the open film Tears of Steel, CC-BY, Blender Foundation, credited under it, with a two-line sample subtitle at the same share of the frame's height the player uses). The picture is embedded like the sign-in photo (`SubtitlePreviewData.swift`, about 80 KB).
+- mpv player: `sub-font-size` and `sub-color` are set when playback starts.
+- Show page: for Arc TV Plus, each episode card has a Download button over the picture's corner that opens the Download panel on that episode (with the Season and Episode pickers). The button stays plain until a file was chosen in the panel for that episode, then takes the accent colour (for this visit), as on the web.
+- `DownloadPanel` reports the episode being shown when a file is chosen (`onSaved`).
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `SubtitleStyleTests` and the build are left to the Build and test workflow. Code re-read, braces and parentheses checked. No screen was seen: the preview layout and the button's place over the picture were not looked at on a Mac, and mpv's `sub-font-size` and `sub-color` were not tried against a real video.
+
+**Issues discovered:** the built-in Mac player (AVPlayer) has no subtitle menu, so the size and colour only apply to the mpv player.
+
+**Issues fixed:** none.

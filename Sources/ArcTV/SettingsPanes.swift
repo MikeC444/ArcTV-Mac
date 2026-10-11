@@ -1,5 +1,6 @@
 import ArcTVCore
 import SwiftUI
+import AppKit
 
 /// Settings > Addons: what is installed on the account, switch each on or off, remove it, or add one from a link.
 struct AddonsPane: View {
@@ -222,9 +223,11 @@ struct HomeRowsPane: View {
 
 // MARK: Subtitles and Audio
 
-/// Settings > Subtitles: whether subtitles start on, and the language to look for.
+/// Settings > Subtitles: whether subtitles start on, how they look (size and colour, with a preview), and the language to look for.
 struct SubtitlesPane: View {
     @EnvironmentObject private var model: AppModel
+    @State private var size = SubtitleStyleStore.size()
+    @State private var color = SubtitleStyleStore.color()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -245,6 +248,33 @@ struct SubtitlesPane: View {
             }
             .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+
+            // Size and colour sit beside a preview, so the effect of each choice is seen as it is made.
+            HStack(alignment: .top, spacing: 24) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Size").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                    LanguageList(
+                        choices: SubtitleSize.allCases.map { LanguageChoice(code: $0.rawValue, name: $0.label) },
+                        selected: size.rawValue
+                    ) { code in
+                        let chosen = SubtitleSize.from(code)
+                        size = chosen
+                        SubtitleStyleStore.setSize(chosen)
+                    }
+                    Text("Colour").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                    Text("Applies from the next video you start, on this Mac.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+                    LanguageList(
+                        choices: SubtitleColor.allCases.map { LanguageChoice(code: $0.rawValue, name: $0.label) },
+                        selected: color.rawValue
+                    ) { code in
+                        let chosen = SubtitleColor.from(code)
+                        color = chosen
+                        SubtitleStyleStore.setColor(chosen)
+                    }
+                }
+                SubtitlePreviewFrame(size: size, color: color)
+            }
 
             Text("Default language").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
             LanguageList(
@@ -389,5 +419,39 @@ struct UpdatesPane: View {
         } catch {
             state = .failed
         }
+    }
+}
+
+/// A 16:9 frame from a film with a sample subtitle on it, at the chosen size and colour. The text is the same share of the frame's height the
+/// player draws it at, so what is seen here matches playback.
+private struct SubtitlePreviewFrame: View {
+    let size: SubtitleSize
+    let color: SubtitleColor
+    private static let picture: NSImage? = Data(base64Encoded: SubtitlePreviewData.base64).flatMap { NSImage(data: $0) }
+
+    var body: some View {
+        let rgb = color.rgb
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    Color(hex: 0x05060A)
+                    if let picture = Self.picture {
+                        Image(nsImage: picture).resizable().aspectRatio(contentMode: .fill)
+                            .frame(width: geo.size.width, height: geo.size.height).clipped()
+                    }
+                    Text("I told you we'd make it\nbefore the sun goes down.")
+                        .font(.system(size: geo.size.height * size.fraction, weight: .semibold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Color(red: rgb.red, green: rgb.green, blue: rgb.blue))
+                        .shadow(color: .black, radius: 2, x: 1, y: 1)
+                        .padding(.bottom, 8)
+                }
+            }
+            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            Text("Frame from Tears of Steel, (CC) Blender Foundation | mango.blender.org")
+                .font(.system(size: 10)).foregroundStyle(Theme.textTertiary)
+        }
+        .frame(width: 320)
     }
 }
