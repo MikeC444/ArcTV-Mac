@@ -98,19 +98,35 @@ codesign --force --deep --sign - "$APP"
 codesign --verify --verbose=2 "$APP"
 
 echo "Making the DMG"
-STAGE="build/dmg"
-mkdir -p "$STAGE"
-cp -R "$APP" "$STAGE/"
-ln -s /Applications "$STAGE/Applications"
-
-# The app holds the mpv player's libraries, so it is large. On a build machine (CI), free the build caches first so the disk image has room,
-# and give the image an explicit size (the app's size plus a third) rather than trusting hdiutil's guess.
+# The app holds the mpv player's libraries, so it is large. On a build machine (CI), free the build caches first so the disk image has room.
 if [ -n "${CI:-}" ]; then
   rm -rf .build "$HOME/Library/Caches/org.swift.swiftpm" "$HOME/Library/org.swift.swiftpm" 2>/dev/null || true
 fi
-APP_KB=$(du -sk "$STAGE" | cut -f1)
-SIZE_MB=$(( APP_KB / 1024 * 4 / 3 + 64 ))
-echo "App is $((APP_KB / 1024)) MB; making a ${SIZE_MB} MB image"
-hdiutil create -volname "Arc TV" -srcfolder "$STAGE" -size "${SIZE_MB}m" -ov -format UDZO "build/ArcTV-${VERSION}.dmg"
-rm -rf "$STAGE"
+DMG="build/ArcTV-${VERSION}.dmg"
+
+# The styled disk image: a dark window with the app on the left, Applications on the right and an arrow between them (dmgbuild writes the
+# window's look without scripting Finder). If anything in it fails, the plain image below is made instead, so a release is never held up by it.
+STYLED=no
+if python3 -m venv build/dmgenv >/dev/null 2>&1 && build/dmgenv/bin/pip install --quiet dmgbuild >/dev/null 2>&1; then
+  if tiffutil -cathidpicheck Resources/dmg-background.png Resources/dmg-background@2x.png -out build/dmg-background.tiff \
+     && build/dmgenv/bin/dmgbuild -s scripts/dmg-settings.py -D app="$APP" -D background=build/dmg-background.tiff -D icon=Resources/AppIcon.icns "Arc TV" "$DMG"; then
+    STYLED=yes
+  fi
+fi
+
+if [ "$STYLED" != yes ]; then
+  echo "The styled disk image could not be made; making a plain one"
+  rm -f "$DMG"
+  STAGE="build/dmg"
+  mkdir -p "$STAGE"
+  cp -R "$APP" "$STAGE/"
+  ln -s /Applications "$STAGE/Applications"
+  APP_KB=$(du -sk "$STAGE" | cut -f1)
+  SIZE_MB=$(( APP_KB / 1024 * 4 / 3 + 64 ))
+  echo "App is $((APP_KB / 1024)) MB; making a ${SIZE_MB} MB image"
+  hdiutil create -volname "Arc TV" -srcfolder "$STAGE" -size "${SIZE_MB}m" -ov -format UDZO "$DMG"
+  rm -rf "$STAGE"
+fi
+rm -rf build/dmgenv build/dmg-background.tiff
+echo "Disk image: $([ "$STYLED" = yes ] && echo styled || echo plain)"
 echo "Done: build/ArcTV-${VERSION}.dmg"

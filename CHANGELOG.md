@@ -491,3 +491,15 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the default address is also written in `AppInfo.swift` and in older changelog entries of a public repository.
 
 **Issues fixed:** none.
+
+## 26 -- A styled disk image (drag Arc TV into Applications)
+
+**Status:** Written; see the build result below. The disk image was not opened, here or on a Mac: the picture shown to the user was a drawing of the intended window, not a screenshot.
+
+**Changes:** the DMG now opens as a 660 by 400 dark window with the app on the left, the Applications shortcut on the right, an arrow between them and "Drag Arc TV into Applications" under it, with the logo as the disk's icon. It is made with dmgbuild (a Python tool that writes the window's look directly, with no Finder scripting; `scripts/dmg-settings.py`, the background in `Resources/dmg-background.png` and `@2x`, joined into one Retina picture with `tiffutil`). If any step fails, the script falls back to the plain image (the app and the Applications shortcut) and says so in its output, so a release is never held up.
+
+**Tests performed:** the script was syntax-checked only. The Build and test workflow runs the packaging, and its log says "Disk image: styled" or "plain".
+
+**Issues discovered:** none yet.
+
+**Issues fixed:** none.
