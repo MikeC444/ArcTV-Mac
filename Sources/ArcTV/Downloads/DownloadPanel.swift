@@ -5,10 +5,49 @@ import SwiftUI
 struct DownloadPanel: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject private var manager = DownloadManager.shared
-    let target: PlayTarget
+    /// The season and episode shown in the pickers (a show), starting on the one the Download button opened; empty for a movie.
+    let seasons: [Int: [EpisodeInfo]]
     let close: () -> Void
+    @State private var target: PlayTarget
     @State private var choices: [SourceItem] = []
     @State private var loading = true
+
+    init(target: PlayTarget, seasons: [Int: [EpisodeInfo]] = [:], close: @escaping () -> Void) {
+        _target = State(initialValue: target)
+        self.seasons = seasons
+        self.close = close
+    }
+
+    private var seasonNumbers: [Int] { seasons.keys.filter { $0 > 0 }.sorted() }
+    private var episodesInSeason: [EpisodeInfo] { seasons[target.season ?? 0] ?? [] }
+    private var showsPickers: Bool { target.title.type == "series" && !seasonNumbers.isEmpty }
+
+    private func pick(_ episode: EpisodeInfo) {
+        target = PlayTarget(title: target.title, season: episode.season, episode: episode.episode, episodeTitle: DownloadChoices.episodeHeading(episode))
+    }
+
+    /// Season and Episode drop-downs: any episode's files can be found without going back to the page. Another season starts at its first episode.
+    private var pickers: some View {
+        HStack(spacing: 12) {
+            Picker("Season", selection: Binding(
+                get: { target.season ?? seasonNumbers.first ?? 1 },
+                set: { number in if let first = seasons[number]?.first { pick(first) } }
+            )) {
+                ForEach(seasonNumbers, id: \.self) { number in
+                    Text(DownloadChoices.seasonLabel(season: number, episodes: seasons[number]?.count ?? 0)).tag(number)
+                }
+            }
+            Picker("Episode", selection: Binding(
+                get: { target.episode ?? episodesInSeason.first?.episode ?? 1 },
+                set: { number in if let episode = episodesInSeason.first(where: { $0.episode == number }) { pick(episode) } }
+            )) {
+                ForEach(episodesInSeason) { episode in
+                    Text(DownloadChoices.episodeLabel(episode)).tag(episode.episode ?? 0)
+                }
+            }
+        }
+        .pickerStyle(.menu)
+    }
 
     var body: some View {
         ZStack {
@@ -26,6 +65,7 @@ struct DownloadPanel: View {
                     }
                     .buttonStyle(.plain)
                 }
+                if showsPickers { pickers }
                 if loading {
                     HStack(spacing: 10) { ProgressView().controlSize(.small); Text("Asking your addons…").foregroundStyle(Theme.textSecondary) }
                 } else if choices.isEmpty {
@@ -59,7 +99,7 @@ struct DownloadPanel: View {
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.divider, lineWidth: 1))
             .shadow(color: .black.opacity(0.6), radius: 30, y: 12)
         }
-        .task { await load() }
+        .task(id: target.streamID) { await load() }
     }
 
     private func row(_ item: SourceItem) -> some View {
@@ -103,6 +143,8 @@ struct DownloadPanel: View {
     }
 
     private func load() async {
+        loading = true
+        choices = []
         if model.addons.isEmpty { await model.loadAddons() }
         let result = await SourceFinder.find(addons: model.addons, type: target.title.type, id: target.streamID)
         choices = DownloadChoices.sorted(result.items)

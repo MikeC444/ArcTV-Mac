@@ -517,3 +517,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the runtime used is the title-level one from its details (an episode's own runtime isn't read); a title without a runtime is never judged.
 
 **Issues fixed:** the slate playing as the title.
+
+## 28 -- Season and Episode pickers in Download
+
+**Status:** Done on branch `claude/download-episode-picker`, not merged or released.
+
+**Context:** The Download button for a show saved the episode Play would start, and the only way to another episode was to close the panel and use the page. The web app's Download panel gained Season and Episode drop-downs; this brings the same to the Mac app.
+
+**Changes:**
+- `DownloadPanel` takes the show's seasons and, for a series, shows a Season and an Episode drop-down (menu pickers) above the file list, starting on the episode the button opened. Another season starts at its first episode; picking an episode changes the heading and looks the files up again (the list clears and shows the spinner meanwhile). Season 0 is left out, as on the title page. A movie has no pickers.
+- `DownloadChoices.seasonLabel` / `episodeLabel` / `episodeHeading` (`ArcTVCore/Downloads.swift`) make the labels ("Season 2 · 8 episodes", "3. The Title", "S2 E3 The Title"); `DetailView` passes `detail.seasons`.
+- The web change that only tints an episode's Download button once a file was clicked has no Mac equivalent: this app has no per-episode Download button.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `DownloadEpisodeLabelsTests` and the build are left to the Build and test workflow. Code re-read, braces and parentheses checked. Not run on a Mac.
+
+**Issues discovered:** none.
+
+**Issues fixed:** none.

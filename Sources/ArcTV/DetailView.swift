@@ -45,7 +45,7 @@ struct DetailView: View {
                     .padding(.leading, 28)
                     .padding(.top, 22)
                 if let target = downloadTarget {
-                    DownloadPanel(target: target) { downloadTarget = nil }
+                    DownloadPanel(target: target, seasons: detail.seasons) { downloadTarget = nil }
                         .transition(.opacity)
                 }
             }

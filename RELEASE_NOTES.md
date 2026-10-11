@@ -6,6 +6,7 @@ them under its version automatically.
 
 ## Unreleased
 
+- Pick any season and episode right inside Download, and get its files without leaving the panel.
 ## 0.1.1
 
 - Fixed a player issue.

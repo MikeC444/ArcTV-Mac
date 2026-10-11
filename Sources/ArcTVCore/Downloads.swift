@@ -26,4 +26,19 @@ public enum DownloadChoices {
         let fromLink = url.pathExtension.lowercased()
         return base + "." + (extensions.contains(fromLink) ? fromLink : "mkv")
     }
+
+    /// A Season choice in the Download panel: "Season 2 · 8 episodes".
+    public static func seasonLabel(season: Int, episodes: Int) -> String {
+        "Season \(season) · \(episodes == 1 ? "1 episode" : "\(episodes) episodes")"
+    }
+
+    /// An Episode choice in the Download panel: "3. The Title".
+    public static func episodeLabel(_ episode: EpisodeInfo) -> String {
+        "\(episode.episode ?? 0). \(episode.displayTitle)"
+    }
+
+    /// What the panel calls an episode once it is picked (the same shape the title page uses): "S2 E3 The Title".
+    public static func episodeHeading(_ episode: EpisodeInfo) -> String {
+        "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)"
+    }
 }
