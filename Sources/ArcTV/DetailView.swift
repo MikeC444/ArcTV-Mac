@@ -18,6 +18,8 @@ struct DetailView: View {
     @State private var downloadTarget: PlayTarget?
     /// Episodes a file was chosen for in the Download panel (this visit): only their Download button takes the accent colour.
     @State private var downloadedEpisodes: Set<String> = []
+    /// Which episodes are finished or part-way ("season:episode"), from the account's history; changed at once when one is marked.
+    @State private var episodeStatuses: [String: EpisodeStatus] = [:]
     /// False until the full details (cast, episodes) have come back, so grey placeholders hold their places.
     @State private var detailLoaded = false
     @State private var ringShown = true
@@ -55,6 +57,7 @@ struct DetailView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .task { await load() }
+        .task(id: model.playing == nil) { if model.playing == nil { await loadEpisodeStatuses() } }
     }
 
     // MARK: Artwork
@@ -286,7 +289,9 @@ struct DetailView: View {
         .padding(.bottom, 36)
     }
 
-    private var currentSeason: Int { season ?? resume?.seasonNumber.flatMap { detail.seasonNumbers.contains($0) ? $0 : nil } ?? detail.seasonNumbers.first ?? 1 }
+    private var currentSeason: Int {
+        season ?? (resumeEpisode ?? firstEpisode)?.season.flatMap { detail.seasonNumbers.contains($0) ? $0 : nil } ?? detail.seasonNumbers.first ?? 1
+    }
 
     private var seasonsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -311,6 +316,15 @@ struct DetailView: View {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("Season \(currentSeason)").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.textPrimary)
                 Text("\(episodes.count) Episodes").font(.system(size: 14)).foregroundStyle(Theme.textTertiary)
+                Spacer()
+                let seasonWatched = !episodes.isEmpty && episodes.allSatisfy { statusOf($0)?.watched == true }
+                Button { setWatched(episodes, !seasonWatched) } label: {
+                    Label(seasonWatched ? "Season watched" : "Mark season watched", systemImage: seasonWatched ? "checkmark.circle.fill" : "checkmark.circle")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(seasonWatched ? Theme.watched : Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help(seasonWatched ? "Mark this season as not watched" : "Mark every episode of this season as watched")
             }
             .padding(.horizontal, 44)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -318,6 +332,8 @@ struct DetailView: View {
                     ForEach(episodes) { episode in
                         EpisodeCard(
                             episode: episode,
+                            status: statusOf(episode),
+                            onToggleWatched: { setWatched([episode], statusOf(episode)?.watched != true) },
                             downloaded: downloadedEpisodes.contains(ArcTVCore.streamID(titleID: detail.id, season: episode.season, episode: episode.episode)),
                             onDownload: { if model.plus.active { downloadTarget = episodeDownloadTarget(for: episode) } else { model.showDownloadPopup() } }
                         ) { playEpisode(episode) }
@@ -381,9 +397,32 @@ struct DetailView: View {
         return detail.seasons[s]?.first { $0.episode == e }
     }
 
+    /// What Play starts when nothing is being resumed: the episode after the furthest one watched, else the first.
     private var firstEpisode: EpisodeInfo? {
+        if let next = EpisodeProgress.nextEpisode(seasons: detail.seasons, statuses: episodeStatuses) { return next }
         guard let number = detail.seasonNumbers.first else { return nil }
         return detail.seasons[number]?.first
+    }
+
+    private func statusOf(_ episode: EpisodeInfo) -> EpisodeStatus? {
+        EpisodeProgress.key(season: episode.season, episode: episode.episode).flatMap { episodeStatuses[$0] }
+    }
+
+    private func loadEpisodeStatuses() async {
+        guard isShow, let found = await model.episodeStatuses(contentID: detail.id) else { return }
+        episodeStatuses = found
+    }
+
+    /// Marks episodes watched or not watched: the tick changes at once, the account is told, and if that fails the real state is read again.
+    private func setWatched(_ episodes: [EpisodeInfo], _ watched: Bool) {
+        for episode in episodes {
+            guard let key = EpisodeProgress.key(season: episode.season, episode: episode.episode) else { continue }
+            episodeStatuses[key] = watched ? EpisodeStatus(watched: true, fraction: 1) : nil
+        }
+        Task {
+            let done = await model.setEpisodesWatched(episodes, watched: watched, title: detail)
+            if !done { await loadEpisodeStatuses() }
+        }
     }
 
     private func playMain() {
@@ -463,6 +502,8 @@ struct DetailView: View {
 
 private struct EpisodeCard: View {
     let episode: EpisodeInfo
+    let status: EpisodeStatus?
+    let onToggleWatched: () -> Void
     let downloaded: Bool
     let onDownload: () -> Void
     let action: () -> Void
@@ -472,16 +513,27 @@ private struct EpisodeCard: View {
         // The Download button sits over the picture's corner, beside (not inside) the card's own button, so each is its own click.
         ZStack(alignment: .topTrailing) {
             cardButton
-            Button(action: onDownload) {
-                Image(systemName: downloaded ? "arrow.down.circle.fill" : "arrow.down.circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(downloaded ? Theme.accent : Theme.textPrimary)
-                    .frame(width: 34, height: 34)
-                    .background(Circle().fill(Color.black.opacity(0.55)))
+            HStack(spacing: 6) {
+                Button(action: onToggleWatched) {
+                    Image(systemName: status?.watched == true ? "checkmark.circle.fill" : "checkmark.circle")
+                        .font(.system(size: 18))
+                        .foregroundStyle(status?.watched == true ? Theme.watched : Theme.textPrimary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Color.black.opacity(0.55)))
+                }
+                .buttonStyle(.plain)
+                .help(status?.watched == true ? "Mark as not watched" : "Mark as watched")
+                Button(action: onDownload) {
+                    Image(systemName: downloaded ? "arrow.down.circle.fill" : "arrow.down.circle")
+                        .font(.system(size: 18))
+                        .foregroundStyle(downloaded ? Theme.accent : Theme.textPrimary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Color.black.opacity(0.55)))
+                }
+                .buttonStyle(.plain)
+                .help(downloaded ? "Download again" : "Download this episode")
             }
-            .buttonStyle(.plain)
             .padding(8)
-            .help(downloaded ? "Download again" : "Download this episode")
         }
         .frame(width: 270)
     }
@@ -504,6 +556,24 @@ private struct EpisodeCard: View {
                             .foregroundStyle(Theme.textPrimary)
                             .frame(width: 44, height: 44)
                             .background(Circle().fill(Color.black.opacity(0.55)))
+                    }
+                    .overlay(alignment: .bottom) {
+                        // How far in an unfinished episode got.
+                        if let status, !status.watched, status.fraction > 0 {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Rectangle().fill(Color.white.opacity(0.25))
+                                    Rectangle().fill(Theme.accent).frame(width: geo.size.width * status.fraction)
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                    }
+                    .overlay(alignment: .topLeading) {
+                        if status?.watched == true {
+                            Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.black)
+                                .frame(width: 22, height: 22).background(Circle().fill(Theme.watched)).padding(8)
+                        }
                     }
                     .background(Theme.surfaceHigh)
                     .clipShape(RoundedRectangle(cornerRadius: 10))

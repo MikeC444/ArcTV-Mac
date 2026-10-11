@@ -607,3 +607,21 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Download feedback (added to the entry above, same unshipped work):** after the redesign the running downloads list sat at the very end of the scrolling panel, so with many files above it a click on a file appeared to do nothing. The downloads list is now pinned under the files (the latest three, with Cancel and Show in Finder), and a file's button turns into a filled tick as soon as it is chosen. Not compiled or seen here.
+
+## 33 -- Watched ticks, progress and "Mark watched" on episodes
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The title page's episode cards said nothing about what had been watched, and there was no way to mark an episode or a season watched; the web and phone apps have both, and Play there starts the next unwatched episode.
+
+**Changes:**
+- `ArcTVCore/EpisodeProgress.swift`: `EpisodeStatus` (finished, or how far in), `EpisodeProgress.statuses(from:contentId:)` (one status per episode from the watch history), `nextEpisode` (the episode after the furthest one watched; a caught-up season moves on to the next; nothing when none is watched) and `AuthClient.episodeStatuses`; `EpisodeProgressTests`.
+- Show page: each episode card shows a green tick for a finished episode and a progress bar along the bottom of the picture for one part-way; a tick button (beside Download) marks it watched or not watched; the season header has "Mark season watched" / "Season watched". The statuses are read when the page opens and again when the player closes, and change at once when something is marked.
+- `AppModel.setEpisodesWatched`: watched is a finished report for each episode (a completed row in the watch history); not watched writes it back to the start. Because the account has one Continue Watching pointer per show and a finished report clears it, the episode the person is partway through (when it is not one of these) is reported again afterwards, or, when un-marking with nothing to put back, the pointer the report made is removed. The reports run one after another so each is stamped later than the last.
+- Play (and the Download button's default episode) starts the episode after the furthest one watched, with Continue Watching still first and the first episode when nothing is watched; the season list opens on that episode's season.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `EpisodeProgressTests` and the build are left to the Build and test workflow. Code re-read, braces and parentheses checked. Not seen on a Mac: where the tick buttons sit over the picture, the progress bar and the season button were not looked at, and marking was not tried against the live account.
+
+**Issues discovered:** the account has no "forget this episode" call, so marking not watched stores the episode as not finished at the start (it still counts in Your stats as an episode at 0 minutes). An episode marked watched without a listed length is recorded as 45 minutes.
+
+**Issues fixed:** none.

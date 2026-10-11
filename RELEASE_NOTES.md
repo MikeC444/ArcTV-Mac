@@ -10,6 +10,7 @@ them under its version automatically.
 - Serbian, Croatian, Bosnian and Macedonian join the subtitle languages, now listed A to Z.
 - Customise your subtitles! Pick a size and colour, and preview them before you press play.
 - Download got better: grab any episode from its picture, switch episodes inside, and enjoy the big-picture look.
+- See which episodes you've finished, tick any episode or season as watched, and Play jumps to what's next.
 
 ## 0.1.1
 

@@ -589,6 +589,59 @@ final class AppModel: ObservableObject {
         return item.seasonNumber == season && item.episodeNumber == episode ? item : nil
     }
 
+    /// Which episodes of a show are finished or part-way, from the account's watch history.
+    func episodeStatuses(contentID: String) async -> [String: EpisodeStatus]? {
+        try? await authorized { client, token in try await client.episodeStatuses(accessToken: token, contentId: contentID) }
+    }
+
+    /// Marks episodes watched or not watched from the episode list. Watched is a finished report for each episode (it lands in the watch history
+    /// as completed); not watched writes it back to the start. The account keeps one Continue Watching pointer per show and a finished report
+    /// clears it, so the episode the person is actually partway through (when it is not one of these) is put back afterwards; un-marking with
+    /// nothing to put back clears the pointer the report just made. The steps run one after another, each report stamped later than the last.
+    /// Returns false when any step failed (the caller then reads the real state again).
+    @discardableResult
+    func setEpisodesWatched(_ episodes: [EpisodeInfo], watched: Bool, title: MetaDetail) async -> Bool {
+        let minutes = Format.runtimeMinutes(title.runtime) ?? EpisodeProgress.fallbackRuntimeMinutes
+        let duration = Double(minutes) * 60
+        let keys = Set(episodes.compactMap { EpisodeProgress.key(season: $0.season, episode: $0.episode) })
+        let restore = continueItems.first { item in
+            item.contentId == title.id && !(EpisodeProgress.key(season: item.seasonNumber, episode: item.episodeNumber).map(keys.contains) ?? false)
+                && item.seasonNumber != nil && item.episodeNumber != nil
+        }
+        do {
+            for episode in episodes {
+                try await authorized { client, token in
+                    try await client.reportProgress(
+                        accessToken: token, title: title, season: episode.season, episode: episode.episode,
+                        episodeTitle: DownloadChoices.episodeHeading(episode), positionSeconds: watched ? duration : 0,
+                        durationSeconds: duration, completed: watched
+                    )
+                }
+            }
+            if let restore {
+                try await authorized { client, token in
+                    try await client.reportProgress(
+                        accessToken: token, title: title, season: restore.seasonNumber, episode: restore.episodeNumber,
+                        episodeTitle: restore.episodeTitle, positionSeconds: restore.positionSeconds,
+                        durationSeconds: max(Double(restore.durationMs) / 1000, 1), completed: false
+                    )
+                }
+            } else if !watched {
+                try await authorized { client, token in
+                    let current = try await client.continueWatching(accessToken: token)
+                    if let pointer = current.first(where: { $0.contentId == title.id }) {
+                        try await client.removeContinueWatching(accessToken: token, item: pointer)
+                    }
+                }
+            }
+            await loadContinueWatching()
+            return true
+        } catch {
+            await loadContinueWatching()
+            return false
+        }
+    }
+
     /// Tells the account where playback is (called now and then while playing, and when leaving the player).
     func reportProgress(_ target: PlayTarget, position: Double, duration: Double) async {
         guard duration > 30, position > 5 else { return }
