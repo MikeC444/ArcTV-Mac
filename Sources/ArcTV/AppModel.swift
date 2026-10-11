@@ -169,7 +169,7 @@ final class AppModel: ObservableObject {
         signInError = nil
         let address = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !address.isEmpty, address.lowercased().hasPrefix("http") else {
-            signInError = "Enter the server address first (it starts with https://)."
+            signInError = "This build has no server set, so it can't sign in."
             return
         }
         if let problem = Credentials.problem(email: email, password: password) {

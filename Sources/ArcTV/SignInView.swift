@@ -128,7 +128,7 @@ private struct QRSignInPanel: View {
         message = nil
         let address = model.serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard address.lowercased().hasPrefix("http") else {
-            message = "Enter the server address first (Log In > Server address)."
+            message = "This build has no server set, so it can't sign in."
             return
         }
         let client = AuthClient(baseURL: address)
@@ -182,6 +182,7 @@ private struct SignInForm: View {
             Text(registering ? "Create Your Account" : "Log In")
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
+                .onTapGesture { if NSEvent.modifierFlags.contains(.option) { showServer.toggle() } }
             AuthField(placeholder: "Email", text: $email)
             if registering { AuthField(placeholder: "Display name (optional)", text: $displayName) }
             AuthField(placeholder: "Password", text: $password, secure: !visible, onSubmit: submit)
@@ -216,11 +217,7 @@ private struct SignInForm: View {
             }
             smallButton("Back", icon: "arrow.left", action: back)
 
-            Button(showServer ? "Hide server address" : "Server address") { showServer.toggle() }
-                .buttonStyle(.plain)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.textTertiary)
-                .padding(.top, 10)
+            // The server address is not shown to people using the app. For testing against another server, Option-click the heading above.
             if showServer { AuthField(placeholder: "Server address (https://…)", text: $model.serverURL) }
         }
     }

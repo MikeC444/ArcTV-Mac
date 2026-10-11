@@ -147,8 +147,6 @@ struct SettingsView: View {
                     Divider().overlay(Theme.divider)
                     row("Watching as", profile.name + (profile.isKids ? " (kids)" : ""))
                 }
-                Divider().overlay(Theme.divider)
-                row("Server", model.serverURL.isEmpty ? "-" : model.serverURL)
             }
             HStack(spacing: 12) {
                 Button { Task { await model.reloadHome() } } label: { Label("Refresh Home", systemImage: "arrow.clockwise") }

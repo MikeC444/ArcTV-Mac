@@ -479,3 +479,15 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up to 24 (episodes):** the episode cards on a show's page were cut off: the row showed the pictures with their bottoms sliced and no titles or descriptions. The sideways scroll view settled on too small a height for its lazily built cards. The row now has a fixed height (252 points) that holds the picture, the title and two lines of description. Not seen on screen.
+
+## 25 -- The server address is no longer shown in the app
+
+**Status:** Written; see the build result below. Not seen on screen.
+
+**Changes:** Settings > Account no longer has the "Server" row, and the sign-in screen no longer has the "Server address" link and field. For testing against another server, Option-click the "Log In" or "Create Your Account" heading to show the field. The messages that said to enter the server address now say the build has no server set. The address is still baked into the app's Info file (read from the `API_BASE_URL` secret at packaging) and into the source as the default, so this hides it from people using the app, not from someone who opens the file or watches its network traffic.
+
+**Tests performed:** none (screen text). The Mac code could not be compiled or run here; the Build and test workflow is the check.
+
+**Issues discovered:** the default address is also written in `AppInfo.swift` and in older changelog entries of a public repository.
+
+**Issues fixed:** none.
