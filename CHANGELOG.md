@@ -605,3 +605,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the Mac stream model does not carry the codec or the cached state as fields, so both are read from the release name and the stream's tag; an addon that marks cached files another way shows no cached chip. The order of the files is unchanged (best quality, then smallest): the web's "stored first, camera recordings last" is not applied here yet.
 
 **Issues fixed:** none.
+
+**Download feedback (added to the entry above, same unshipped work):** after the redesign the running downloads list sat at the very end of the scrolling panel, so with many files above it a click on a file appeared to do nothing. The downloads list is now pinned under the files (the latest three, with Cancel and Show in Finder), and a file's button turns into a filled tick as soon as it is chosen. Not compiled or seen here.

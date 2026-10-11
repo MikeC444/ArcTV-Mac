@@ -13,6 +13,8 @@ struct DownloadPanel: View {
     @State private var target: PlayTarget
     @State private var choices: [SourceItem] = []
     @State private var loading = true
+    /// Files chosen in this panel: their button turns into a tick at once, so a click always visibly does something.
+    @State private var startedIDs: Set<String> = []
 
     init(target: PlayTarget, seasons: [Int: [EpisodeInfo]] = [:], onSaved: @escaping (PlayTarget) -> Void = { _ in }, close: @escaping () -> Void) {
         _target = State(initialValue: target)
@@ -61,19 +63,10 @@ struct DownloadPanel: View {
                     VStack(alignment: .leading, spacing: 14) {
                         if showsPickers { pickers }
                         sources
-                        if !manager.jobs.isEmpty {
-                            Divider().overlay(Theme.divider)
-                            HStack {
-                                Text("Downloads").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
-                                Spacer()
-                                Button("Clear finished") { manager.clearFinished() }
-                                    .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.textTertiary).underline()
-                            }
-                            ForEach(manager.jobs.prefix(5)) { job in jobRow(job) }
-                        }
                     }
                     .padding(24)
                 }
+                if !manager.jobs.isEmpty { downloadsBar }
             }
             .frame(width: 720)
             .frame(maxHeight: 700)
@@ -124,6 +117,24 @@ struct DownloadPanel: View {
             .padding(16)
         }
         .clipped()
+    }
+
+    /// What is being saved, pinned under the files (not at the end of a long list) so starting a download is seen straight away.
+    private var downloadsBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Downloads").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                Spacer()
+                Button("Clear finished") { manager.clearFinished() }
+                    .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.textTertiary).underline()
+            }
+            ForEach(manager.jobs.prefix(3)) { job in jobRow(job) }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
     }
 
     private var subtitle: String {
@@ -188,16 +199,17 @@ struct DownloadPanel: View {
                 .padding(.top, 2)
             }
             Spacer(minLength: 8)
-            Image(systemName: "arrow.down.to.line")
-                .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.accent)
+            let started = startedIDs.contains(item.id)
+            Image(systemName: started ? "checkmark" : "arrow.down.to.line")
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(started ? Theme.background : Theme.accent)
                 .frame(width: 44, height: 44)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Theme.accent.opacity(0.08)))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.accent.opacity(0.35), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: 12).fill(started ? Theme.accent : Theme.accent.opacity(0.08)))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.accent.opacity(started ? 1 : 0.35), lineWidth: 1))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(startedIDs.contains(item.id) ? Theme.accent.opacity(0.6) : Theme.divider, lineWidth: 1))
         .contentShape(Rectangle())
     }
 
@@ -250,6 +262,7 @@ struct DownloadPanel: View {
     private func save(_ item: SourceItem) {
         guard let url = item.playURL else { return }
         manager.start(url: url, fileName: DownloadChoices.fileName(release: item.headline, url: url))
+        startedIDs.insert(item.id)
         onSaved(target)
     }
 }
