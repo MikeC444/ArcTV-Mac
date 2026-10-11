@@ -12,7 +12,7 @@ final class SettingsTabsTests: XCTestCase {
     }
 
     func testLanguageLists() {
-        XCTAssertEqual(LanguageChoices.subtitles().count, 16)
+        XCTAssertEqual(LanguageChoices.subtitles().count, 20)
         XCTAssertNil(LanguageChoices.subtitles()[0].code)
         XCTAssertEqual(LanguageChoices.audio()[0].name, "Automatic")
         XCTAssertEqual(LanguageChoices.all.first?.code, "en")
@@ -25,7 +25,7 @@ final class SettingsTabsTests: XCTestCase {
         let rest = list.dropFirst(2).map(\.name)
         XCTAssertEqual(rest, rest.sorted { $0.localizedCompare($1) == .orderedAscending })
         XCTAssertEqual(rest.first, "Arabic")
-        XCTAssertEqual(list.count, 16)
+        XCTAssertEqual(list.count, 20)
     }
 
     func testVersionCompare() {

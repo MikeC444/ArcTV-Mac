@@ -39,6 +39,13 @@ final class MPVPlayerModel: ObservableObject {
     @Published var speed: Double = UserDefaults.standard.object(forKey: "ArcTVPlayerSpeed") as? Double ?? 1
     @Published var audioTracks: [MediaTrack] = []
     @Published var subtitleTracks: [MediaTrack] = []
+    /// Subtitle files the person's addons offer for this video, and the mpv track each one became once it was loaded (so choosing it again just switches to it).
+    @Published private(set) var addonSubtitles: [AddonSubtitle] = []
+    @Published private(set) var loadedAddonTracks: [String: Int] = [:]
+    /// The language from Settings, and whether subtitles are on: when the video has no subtitle of its own in that language, an addon's file is used.
+    var preferredSubtitleLanguage: String?
+    var subtitlesEnabled = false
+    private var addonAutoPicked = false
 
     weak var view: MPVVideoView?
     private var started = false
@@ -55,6 +62,7 @@ final class MPVPlayerModel: ObservableObject {
                 view?.setString("volume", String(Int(volume)))
                 if speed != 1 { view?.setString("speed", String(speed)) }
                 refreshTracks()
+                autoPickAddonSubtitle()
             }
         case let .duration(value):
             duration = value
@@ -119,6 +127,35 @@ final class MPVPlayerModel: ObservableObject {
     func selectSubtitle(_ track: MediaTrack?) {
         view?.setString("sid", track.map { String($0.id) } ?? "no")
         refreshTracks()
+    }
+
+    func setAddonSubtitles(_ files: [AddonSubtitle]) {
+        addonSubtitles = files
+        if started { autoPickAddonSubtitle() }
+    }
+
+    /// Loads an addon's subtitle file next to the video and shows it (or, if it was loaded before, just switches back to it).
+    func selectAddonSubtitle(_ file: AddonSubtitle) {
+        if let known = loadedAddonTracks[file.url] {
+            view?.setString("sid", String(known))
+            refreshTracks()
+            return
+        }
+        // mpv fetches the file itself and, with "select", shows it at once.
+        let language = SubtitleLanguage.key(file.languageCode) ?? file.languageCode
+        view?.command("sub-add", args: [file.url, "select", file.menuTitle, language])
+        refreshTracks()
+        if let selected = subtitleTracks.first(where: { $0.selected }), loadedAddonTracks.values.contains(selected.id) == false {
+            loadedAddonTracks[file.url] = selected.id
+        }
+    }
+
+    /// The preferred subtitle language is wanted but the video has none of its own showing: use the addons' file in that language, once.
+    private func autoPickAddonSubtitle() {
+        guard !addonAutoPicked, started, !addonSubtitles.isEmpty, subtitlesEnabled, !subtitleTracks.contains(where: { $0.selected }),
+              let wanted = SubtitleLanguage.key(preferredSubtitleLanguage) else { return }
+        addonAutoPicked = true
+        if let file = addonSubtitles.first(where: { SubtitleLanguage.key($0.languageCode) == wanted }) { selectAddonSubtitle(file) }
     }
 
     /// Reads mpv's track list (a JSON array) so the menus can list the audio and subtitle tracks.

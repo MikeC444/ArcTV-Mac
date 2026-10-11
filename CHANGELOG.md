@@ -548,3 +548,22 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none.
 
 **Issues fixed:** none.
+
+## 30 -- Subtitles from addons in the player
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The player only offered the subtitle tracks inside the video file. Addons that offer subtitles (the Stremio protocol's "subtitles" resource) were never asked. The phone app already has this; this follows it.
+
+**Changes:**
+- `ArcTVCore/AddonSubtitles.swift`: `AddonManifest.offersSubtitles` (the resource's own types and id prefixes, else the manifest's), `AddonClient.fetchSubtitles` (`/subtitles/{type}/{id}.json`, with the file name as a `filename` extra), language codes ("eng", "en", "pt-BR", "English") reduced to one two-letter key, and `SubtitleFinder.find`, which asks every enabled addon that offers subtitles at once (8 s each), keeps web addresses once each and ranks the preferred language first.
+- mpv player: the Subtitles menu lists the file's own tracks then the addons' files ("English - Addon name"); choosing one loads it with mpv's `sub-add` and shows it, and choosing it again switches back to it. With subtitles on and a preferred language, when the video has no subtitle showing, the addons' file in that language is loaded once. `PlayingItem` now carries the release's file name for the lookup.
+- The account's server adds the official OpenSubtitles addon to every profile once (see the Fire TV repo's CHANGELOG, `addonService.seedSubtitlesAddon`); the Mac app just reads it from the addon list, so a removal sticks on every device. Needs that server change deployed.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). The new `AddonSubtitlesTests` and the build are left to the Build and test workflow. Code re-read; no screen was seen, and `sub-add` was not tried against a real subtitle file.
+
+**Issues discovered:** the Mac built-in player (AVPlayer) has no subtitle menu at all, so addon subtitles are only in the mpv player. The loaded file's track is found by reading mpv's track list right after `sub-add`; if mpv reports it late the file still shows but picking it again from the menu would load it a second time.
+
+**Issues fixed:** none.
+
+**Subtitle languages:** Serbian, Croatian, Bosnian and Macedonian (sr, hr, bs, mk) are added to the Settings > Subtitles language list, and their three-letter codes (srp, hrv, bos, mkd) are recognised when matching addon subtitles and subtitle file names. Not built or run here.

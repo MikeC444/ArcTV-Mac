@@ -46,6 +46,8 @@ struct PlayingItem: Equatable {
     var heading: String
     var sourceName: String
     var target: PlayTarget
+    /// The release's file name when the addon gave one (addons match subtitles to it).
+    var filename: String?
 }
 
 /// Which player plays video: mpv (plays almost anything) or the Mac's built-in player.
@@ -386,7 +388,7 @@ final class AppModel: ObservableObject {
                 let url = try await TorrentEngine.shared.prepare(
                     magnet: magnet, fileIndex: item.stream.fileIdx, season: target.season, episode: target.episode
                 )
-                self?.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target))
+                self?.play(PlayingItem(url: url, heading: target.heading, sourceName: item.addonName, target: target, filename: item.stream.behaviorHints?.filename))
             } catch is CancellationError {
                 TorrentEngine.shared.stop()
             } catch {
@@ -408,11 +410,12 @@ final class AppModel: ObservableObject {
     }
 
     /// The account's installed addons: where streams come from. Loaded once after sign-in.
-    func loadAddons() async {
-        if let found = try? await authorized({ client, token in try await client.addons(accessToken: token, includeDisabled: true) }) {
-            allAddons = found
-            addons = found.filter(\.enabled)
-        }
+    @discardableResult
+    func loadAddons() async -> Bool {
+        guard let found = try? await authorized({ client, token in try await client.addons(accessToken: token, includeDisabled: true) }) else { return false }
+        allAddons = found
+        addons = found.filter(\.enabled)
+        return true
     }
 
     func installAddon(_ install: AddonInstall) async throws {

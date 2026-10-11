@@ -6,8 +6,11 @@ them under its version automatically.
 
 ## Unreleased
 
+- Subtitles from your addons now show up in the player's Subtitles menu, your language first, and OpenSubtitles is added to every account for you.
+- Serbian, Croatian, Bosnian and Macedonian are now subtitle languages you can pick.
 - Pick any season and episode right inside Download, and get its files without leaving the panel.
 - Subtitle languages are now listed A to Z.
+
 ## 0.1.1
 
 - Fixed a player issue.

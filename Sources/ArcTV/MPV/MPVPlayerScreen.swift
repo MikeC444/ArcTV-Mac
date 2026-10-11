@@ -92,11 +92,21 @@ struct MPVPlayerScreen: View {
         .onChange(of: openMenu) { open in if open == nil { showControls() } }
         .onAppear {
             model.runtimeMinutes = Format.runtimeMinutes(item.target.title.runtime)
+            model.preferredSubtitleLanguage = appModel.settings?.defaultSubtitleLanguage
+            model.subtitlesEnabled = appModel.settings?.subtitlesEnabled ?? false
             showControls()
             fullScreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in fullScreen = true }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in fullScreen = false }
+        .task(id: item.url) {
+            // Ask the addons for subtitle files once per video; the list is ready (or empty) well before anyone opens the menu.
+            let found = await SubtitleFinder.find(
+                addons: appModel.addons, type: item.target.title.type, id: item.target.streamID, filename: item.filename,
+                preferredLanguage: appModel.settings?.defaultSubtitleLanguage
+            )
+            if !Task.isCancelled { model.setAddonSubtitles(found) }
+        }
         .task {
             // Tell the account where you are every half minute, so Continue Watching is right on every device.
             while !Task.isCancelled {
@@ -227,7 +237,7 @@ struct MPVPlayerScreen: View {
     private var pills: some View {
         HStack(spacing: 10) {
             if !model.audioTracks.isEmpty { pill(.audio, "Audio", "speaker.wave.2.fill") }
-            if !model.subtitleTracks.isEmpty { pill(.subtitles, "Subtitles", "captions.bubble.fill") }
+            if !model.subtitleTracks.isEmpty || !model.addonSubtitles.isEmpty { pill(.subtitles, "Subtitles", "captions.bubble.fill") }
             pill(.speed, model.speed == model.speed.rounded() ? "\(Int(model.speed))x" : "\(model.speed)x", "speedometer")
             if !item.target.title.seasonNumbers.isEmpty { pill(.episodes, "Episodes", "rectangle.stack.fill") }
             pill(.player, "Player", "square.and.arrow.up")
@@ -278,9 +288,17 @@ struct MPVPlayerScreen: View {
                     model.selectSubtitle(nil)
                     openMenu = nil
                 }
-                ForEach(model.subtitleTracks) { track in
+                // The file's own tracks first, then the addons' files ("English · Addon name"); a file already loaded is one of mpv's tracks.
+                ForEach(model.subtitleTracks.filter { !model.loadedAddonTracks.values.contains($0.id) }) { track in
                     MenuRow(main: track.title.isEmpty ? "Track \(track.id)" : track.title, side: track.language?.uppercased(), selected: track.selected) {
                         model.selectSubtitle(track)
+                        openMenu = nil
+                    }
+                }
+                ForEach(model.addonSubtitles) { file in
+                    let shown = model.loadedAddonTracks[file.url].map { id in model.subtitleTracks.contains { $0.id == id && $0.selected } } ?? false
+                    MenuRow(main: file.menuTitle, side: nil, selected: shown) {
+                        model.selectAddonSubtitle(file)
                         openMenu = nil
                     }
                 }
