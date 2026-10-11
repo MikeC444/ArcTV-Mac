@@ -6,6 +6,8 @@ them under its version automatically.
 
 ## Unreleased
 
+## 0.1.0
+
 - Arc TV on your Mac: sign in with your account and browse Popular, New and Top rated movies and shows.
 - Open any title, see its details and episodes, pick a source and watch it.
 - Your sign-in is kept in a private file, so Arc TV never asks for your Mac password.
