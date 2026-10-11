@@ -7,7 +7,7 @@ them under its version automatically.
 ## Unreleased
 
 - Pick any season and episode right inside Download, and get its files without leaving the panel.
-- Subtitle languages are now listed A to Z, with English right under System Default.
+- Subtitle languages are now listed A to Z.
 ## 0.1.1
 
 - Fixed a player issue.
