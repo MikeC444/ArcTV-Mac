@@ -29,7 +29,4 @@ public enum AppInfo {
     /// The same Cinemeta addon the other apps start with, so Home always has something to show.
     public static let cinemetaManifestURL = "https://v3-cinemeta.strem.io/manifest.json"
 
-    /// The official OpenSubtitles addon, which every account is given once so subtitles can be found.
-    public static let openSubtitlesManifestURL = "https://opensubtitles-v3.strem.io/manifest.json"
-    public static let openSubtitlesAddonID = "org.stremio.opensubtitlesv3"
 }
