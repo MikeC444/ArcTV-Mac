@@ -6,6 +6,8 @@ them under its version automatically.
 
 ## Unreleased
 
+## 0.1.1
+
 - Fixed a player issue.
 
 ## 0.1.0
