@@ -898,7 +898,7 @@ final class AppModel: ObservableObject {
     @Published var statsTruncated = false
 
     /// Which Plus popup is on screen.
-    enum PlusPopup: Equatable { case welcome, invitation }
+    enum PlusPopup: Equatable { case welcome, invitation, download }
     @Published var plusPopup: PlusPopup?
     /// A popup opened from Settings > Updates to look at it: closing it leaves no trace (it is not counted as seen).
     private var plusPopupIsPreview = false
@@ -908,6 +908,13 @@ final class AppModel: ObservableObject {
     func previewPlusPopup(_ popup: PlusPopup) {
         plusPopupIsPreview = true
         plusPopup = popup
+    }
+
+    /// Pressing a Download button without Arc TV Plus: the Plus popup, Downloads first. Closing it leaves no trace (it is not the Home invitation, so
+    /// it neither snoozes that nor counts as seen).
+    func showDownloadPopup() {
+        guard plusPopup == nil else { return }
+        previewPlusPopup(.download)
     }
     /// A newer version of the app than this one, offered once (until "Skip this version" or Later).
     @Published var updateOffer: ReleaseInfo?
@@ -992,7 +999,7 @@ final class AppModel: ObservableObject {
         switch preview ? nil : plusPopup {
         case .welcome: defaults.set(PlusPopups.welcomeID, forKey: popupKey("WelcomeSeen"))
         case .invitation: defaults.set(Date().addingTimeInterval(PlusPopups.snooze).timeIntervalSince1970, forKey: popupKey("InvitationSnoozedUntil"))
-        case nil: break
+        case .download, nil: break
         }
         plusPopup = nil
         if let tab { openSettings(tab) }

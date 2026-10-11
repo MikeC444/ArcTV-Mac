@@ -586,3 +586,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the built-in Mac player (AVPlayer) has no subtitle menu, so the size and colour only apply to the mpv player.
 
 **Issues fixed:** none.
+
+**Download buttons for everyone (added to the entry above, same unshipped work):** the title page's Download button and each episode's Download button are shown to every user. Without Arc TV Plus, pressing one shows the Plus popup (a new `download` case of `AppModel.PlusPopup`: "Downloads come with Arc TV Plus.", Downloads first, no "Don't show me again", opened through `showDownloadPopup()` as a preview so closing it neither snoozes the Home invitation nor counts anything as seen). Not compiled or seen here.

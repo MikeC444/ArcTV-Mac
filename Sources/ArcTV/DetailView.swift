@@ -181,12 +181,13 @@ struct DetailView: View {
                 .frame(height: 48)
                 .disabled(trailer == nil)
                 .help(trailer == nil ? "No trailer found for this title" : "Watch the trailer on YouTube")
-            if model.plus.active {
-                Button { downloadTarget = downloadTargetForMain() } label: { Label("Download", systemImage: "arrow.down.circle") }
-                    .buttonStyle(GlassButtonStyle())
-                    .frame(height: 48)
-                    .help("Save this to your Mac")
-            }
+            // Everyone sees Download; without Arc TV Plus, pressing it shows the Plus popup instead of the files.
+            Button {
+                if model.plus.active { downloadTarget = downloadTargetForMain() } else { model.showDownloadPopup() }
+            } label: { Label("Download", systemImage: "arrow.down.circle") }
+                .buttonStyle(GlassButtonStyle())
+                .frame(height: 48)
+                .help(model.plus.active ? "Save this to your Mac" : "Downloads are part of Arc TV Plus")
             moreButtons
             RoundIconButton(icon: "ellipsis", on: expanded, rotation: expanded ? 90 : 0, help: "More options") {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) { expanded.toggle() }
@@ -317,9 +318,8 @@ struct DetailView: View {
                     ForEach(episodes) { episode in
                         EpisodeCard(
                             episode: episode,
-                            canDownload: model.plus.active,
                             downloaded: downloadedEpisodes.contains(ArcTVCore.streamID(titleID: detail.id, season: episode.season, episode: episode.episode)),
-                            onDownload: { downloadTarget = episodeDownloadTarget(for: episode) }
+                            onDownload: { if model.plus.active { downloadTarget = episodeDownloadTarget(for: episode) } else { model.showDownloadPopup() } }
                         ) { playEpisode(episode) }
                     }
                 }
@@ -463,7 +463,6 @@ struct DetailView: View {
 
 private struct EpisodeCard: View {
     let episode: EpisodeInfo
-    let canDownload: Bool
     let downloaded: Bool
     let onDownload: () -> Void
     let action: () -> Void
@@ -473,18 +472,16 @@ private struct EpisodeCard: View {
         // The Download button sits over the picture's corner, beside (not inside) the card's own button, so each is its own click.
         ZStack(alignment: .topTrailing) {
             cardButton
-            if canDownload {
-                Button(action: onDownload) {
-                    Image(systemName: downloaded ? "arrow.down.circle.fill" : "arrow.down.circle")
-                        .font(.system(size: 18))
-                        .foregroundStyle(downloaded ? Theme.accent : Theme.textPrimary)
-                        .frame(width: 34, height: 34)
-                        .background(Circle().fill(Color.black.opacity(0.55)))
-                }
-                .buttonStyle(.plain)
-                .padding(8)
-                .help(downloaded ? "Download again" : "Download this episode")
+            Button(action: onDownload) {
+                Image(systemName: downloaded ? "arrow.down.circle.fill" : "arrow.down.circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(downloaded ? Theme.accent : Theme.textPrimary)
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(Color.black.opacity(0.55)))
             }
+            .buttonStyle(.plain)
+            .padding(8)
+            .help(downloaded ? "Download again" : "Download this episode")
         }
         .frame(width: 270)
     }

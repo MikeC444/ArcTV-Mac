@@ -11,7 +11,7 @@ them under its version automatically.
 - Pick any season and episode right inside Download, and get its files without leaving the panel.
 - Subtitle languages are now listed A to Z.
 - Customise your subtitles! Pick a size and colour, and preview them before you press play.
-- Download any single episode straight from its picture.
+- Download any single episode straight from its picture. The Download buttons now show for everyone, with a peek at Plus if you don't have it yet.
 
 ## 0.1.1
 

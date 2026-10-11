@@ -472,8 +472,20 @@ struct PlusPopupView: View {
         var id: String { title }
     }
 
-    private var title: String { popup == .welcome ? "Everything in Arc TV Plus." : "Get more from every movie night." }
-    private var subtitle: String { popup == .welcome ? "Here is what your Plus membership gives you." : "Everything you use today stays free. Arc TV Plus adds extras on top." }
+    private var title: String {
+        switch popup {
+        case .welcome: return "Everything in Arc TV Plus."
+        case .download: return "Downloads come with Arc TV Plus."
+        case .invitation: return "Get more from every movie night."
+        }
+    }
+    private var subtitle: String {
+        switch popup {
+        case .welcome: return "Here is what your Plus membership gives you."
+        case .download: return "Save movies and episodes to your Mac. Everything you use today stays free."
+        case .invitation: return "Everything you use today stays free. Arc TV Plus adds extras on top."
+        }
+    }
     private var goLabel: String { popup == .welcome ? "See my Plus settings" : "Take me there" }
     private var hint: String { popup == .welcome ? "Parental controls are on the way" : "Explore plans in Settings > Arc TV Plus" }
 
@@ -487,12 +499,12 @@ struct PlusPopupView: View {
                 Benefit(icon: "arrow.down.circle.fill", title: "Downloads (web and Mac)", detail: "Save movies and episodes to your Mac from the Download button on a title's page.")
             ]
         }
-        return [
-            Benefit(icon: "heart.fill", title: "Picked for you", detail: "A Home row chosen from the movies and shows you like, with the reason under each poster."),
-            Benefit(icon: "person.2.fill", title: "Up to 5 profiles", detail: "Their own My List, Continue Watching and recommendations. Add kids profiles and PIN locks."),
-            Benefit(icon: "arrow.down.circle.fill", title: "Downloads on the web and Mac", detail: "Save movies and episodes to your Mac, best quality at the smallest size first."),
-            Benefit(icon: "rosette", title: "And more", detail: "Smart source picking and your watch stats, with parental controls on the way.")
-        ]
+        let picked = Benefit(icon: "heart.fill", title: "Picked for you", detail: "A Home row chosen from the movies and shows you like, with the reason under each poster.")
+        let profiles = Benefit(icon: "person.2.fill", title: "Up to 5 profiles", detail: "Their own My List, Continue Watching and recommendations. Add kids profiles and PIN locks.")
+        let downloads = Benefit(icon: "arrow.down.circle.fill", title: "Downloads on the web and Mac", detail: "Save movies and episodes to your Mac, best quality at the smallest size first.")
+        let more = Benefit(icon: "rosette", title: "And more", detail: "Smart source picking and your watch stats, with parental controls on the way.")
+        // From a Download button the list leads with Downloads.
+        return popup == .download ? [downloads, picked, profiles, more] : [picked, profiles, downloads, more]
     }
 
     var body: some View {
