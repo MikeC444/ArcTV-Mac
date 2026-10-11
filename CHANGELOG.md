@@ -588,3 +588,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Download buttons for everyone (added to the entry above, same unshipped work):** the title page's Download button and each episode's Download button are shown to every user. Without Arc TV Plus, pressing one shows the Plus popup (a new `download` case of `AppModel.PlusPopup`: "Downloads come with Arc TV Plus.", Downloads first, no "Don't show me again", opened through `showDownloadPopup()` as a preview so closing it neither snoozes the Home invitation nor counts anything as seen). Not compiled or seen here.
+
+## 32 -- The Download panel looks like the web's
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The Mac Download panel was a plain list; the web app's has the title's picture across the top and clearer rows. This makes the Mac one match.
+
+**Changes:**
+- `DownloadPanel`: a 720-wide panel with a banner (the title's backdrop, or its poster, across the top, fading into the panel; Back, "Downloads" and Close over it; the title's logo, or its name, over the bottom with "2024 • Show • S1E1"), then the Season and Episode pickers, "N sources" with "Best quality first, then smallest", and the rows. Only the part under the banner scrolls.
+- Each row: a bordered quality badge, what kind of release it is as the headline ("4K WEB-DL", "UHD Blu-ray REMUX"), the file name small underneath, chips for the size, codec, Dolby Vision/HDR, "Unusually small" (a 1080p or 4K file under 150 MB) and cached or not cached on the debrid service, and a round download button. The Downloads list (progress, Show in Finder) is kept under the files.
+- `ArcTVCore/DownloadLabels.swift` reads those labels from the release's name and the stream's "[RD+]" / "[RD download]" tag (the same rules as the web and phone apps), with `DownloadLabelsTests`.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `DownloadLabelsTests` and the build are left to the Build and test workflow. Code re-read, braces and parentheses checked. The panel was not seen on a Mac.
+
+**Issues discovered:** the Mac stream model does not carry the codec or the cached state as fields, so both are read from the release name and the stream's tag; an addon that marks cached files another way shows no cached chip. The order of the files is unchanged (best quality, then smallest): the web's "stored first, camera recordings last" is not applied here yet.
+
+**Issues fixed:** none.

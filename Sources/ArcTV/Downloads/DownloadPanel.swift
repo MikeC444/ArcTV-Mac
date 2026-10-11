@@ -55,69 +55,162 @@ struct DownloadPanel: View {
     var body: some View {
         ZStack {
             Color.black.opacity(0.7).ignoresSafeArea().onTapGesture(perform: close)
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Download").font(.system(size: 24, weight: .heavy)).foregroundStyle(Theme.textPrimary)
-                        Text(target.heading).font(.system(size: 14)).foregroundStyle(Theme.textSecondary).lineLimit(1)
-                    }
-                    Spacer()
-                    Button(action: close) {
-                        Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.textSecondary)
-                            .frame(width: 28, height: 28).background(Circle().fill(Theme.surfaceHigh))
-                    }
-                    .buttonStyle(.plain)
-                }
-                if showsPickers { pickers }
-                if loading {
-                    HStack(spacing: 10) { ProgressView().controlSize(.small); Text("Asking your addons…").foregroundStyle(Theme.textSecondary) }
-                } else if choices.isEmpty {
-                    Text("No files to download for this title. Downloads need a debrid addon that gives direct links; torrents can't be saved this way.")
-                        .font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
-                } else {
-                    Text("Best quality at the smallest size first.").font(.system(size: 13)).foregroundStyle(Theme.textTertiary)
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            ForEach(choices) { item in
-                                Button { save(item) } label: { row(item) }.buttonStyle(.plain)
+            VStack(spacing: 0) {
+                banner
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if showsPickers { pickers }
+                        sources
+                        if !manager.jobs.isEmpty {
+                            Divider().overlay(Theme.divider)
+                            HStack {
+                                Text("Downloads").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                                Spacer()
+                                Button("Clear finished") { manager.clearFinished() }
+                                    .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.textTertiary).underline()
                             }
+                            ForEach(manager.jobs.prefix(5)) { job in jobRow(job) }
                         }
                     }
-                    .frame(maxHeight: 280)
-                }
-                if !manager.jobs.isEmpty {
-                    Divider().overlay(Theme.divider)
-                    HStack {
-                        Text("Downloads").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
-                        Spacer()
-                        Button("Clear finished") { manager.clearFinished() }
-                            .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.textTertiary).underline()
-                    }
-                    ForEach(manager.jobs.prefix(5)) { job in jobRow(job) }
+                    .padding(24)
                 }
             }
-            .padding(24)
-            .frame(width: 620)
-            .background(RoundedRectangle(cornerRadius: 20).fill(Theme.elevated))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.divider, lineWidth: 1))
+            .frame(width: 720)
+            .frame(maxHeight: 700)
+            .background(Theme.elevated)
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.divider, lineWidth: 1))
             .shadow(color: .black.opacity(0.6), radius: 30, y: 12)
         }
         .task(id: target.streamID) { await load() }
     }
 
-    private func row(_ item: SourceItem) -> some View {
-        HStack(spacing: 12) {
-            Text(item.quality.label).font(.system(size: 12, weight: .bold)).foregroundStyle(Color(hex: 0x04161A))
-                .frame(width: 52).padding(.vertical, 5).background(Capsule().fill(Theme.brandGradient))
-            Text(item.headline).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textPrimary).lineLimit(1)
-            Spacer(minLength: 8)
-            if let size = item.sizeText { Text(size).font(.system(size: 12)).foregroundStyle(Theme.textSecondary) }
-            Image(systemName: "arrow.down.circle.fill").foregroundStyle(Theme.accent)
+    /// Like the web's: the title's backdrop picture across the top, "Downloads" with Back and Close over it, and the title's logo (or its name)
+    /// over the bottom with what it is (year, show or movie, and the episode).
+    private var banner: some View {
+        let detail = target.title
+        return ZStack(alignment: .bottomLeading) {
+            Theme.surfaceHigh
+            if let art = detail.background ?? detail.poster, let url = URL(string: art) {
+                CachedImage(url: url, contentMode: .fill).frame(width: 720, height: 230).clipped()
+            }
+            LinearGradient(
+                colors: [Color.black.opacity(0.6), Color.clear, Theme.elevated.opacity(0.6), Theme.elevated],
+                startPoint: .top, endPoint: .bottom
+            )
+            VStack(alignment: .leading, spacing: 6) {
+                if let logo = detail.logo, let url = URL(string: logo) {
+                    CachedImage(url: url, contentMode: .fit) {
+                        Text(detail.name).font(.system(size: 32, weight: .heavy)).foregroundStyle(Theme.textPrimary).lineLimit(2)
+                    }
+                    .frame(maxWidth: 320, maxHeight: 84, alignment: .leading)
+                } else {
+                    Text(detail.name).font(.system(size: 32, weight: .heavy)).foregroundStyle(Theme.textPrimary).lineLimit(2)
+                }
+                Text(subtitle).font(.system(size: 14)).foregroundStyle(Theme.textSecondary).shadow(color: .black.opacity(0.8), radius: 4)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.surface))
+        .frame(width: 720, height: 230)
+        .overlay(alignment: .top) {
+            HStack(spacing: 12) {
+                roundButton("arrow.left", label: "Back", action: close)
+                Text("Downloads").font(.system(size: 24, weight: .bold)).foregroundStyle(Theme.textPrimary).shadow(color: .black.opacity(0.8), radius: 6)
+                Spacer()
+                roundButton("xmark", label: "Close", action: close)
+            }
+            .padding(16)
+        }
+        .clipped()
+    }
+
+    private var subtitle: String {
+        let kind = target.title.type == "series" ? "Show" : "Movie"
+        let episode = target.title.type == "series" ? target.season.flatMap { s in target.episode.map { "S\(s)E\($0)" } } : nil
+        return [target.title.year.map(String.init), kind, episode].compactMap { $0 }.joined(separator: " • ")
+    }
+
+    private func roundButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(Color.black.opacity(0.5)))
+                .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .help(label)
+    }
+
+    @ViewBuilder
+    private var sources: some View {
+        if loading {
+            HStack(spacing: 10) { ProgressView().controlSize(.small); Text("Asking your addons…").foregroundStyle(Theme.textSecondary) }
+        } else if choices.isEmpty {
+            Text("No files to download for this title. Downloads need a debrid addon that gives direct links; torrents can't be saved this way.")
+                .font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
+        } else {
+            HStack {
+                Text(choices.count == 1 ? "1 source" : "\(choices.count) sources").font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Text("Best quality first, then smallest").font(.system(size: 13)).foregroundStyle(Theme.textTertiary)
+            }
+            VStack(spacing: 10) {
+                ForEach(choices) { item in
+                    Button { save(item) } label: { row(item) }.buttonStyle(.plain)
+                }
+            }
+            Text("Choose a source to download the file.").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+        }
+    }
+
+    /// One file: a quality badge, what kind of release it is (the headline), its file name small underneath, chips for the size, codec, HDR and
+    /// whether a debrid service has it cached, and a round download button.
+    private func row(_ item: SourceItem) -> some View {
+        let debrid = DownloadLabels.debrid(item)
+        return HStack(spacing: 14) {
+            Text(item.quality.label)
+                .font(.system(size: 18, weight: .heavy)).foregroundStyle(Theme.accent)
+                .frame(width: 70).padding(.vertical, 12)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.background))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.divider, lineWidth: 1))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(DownloadLabels.kind(item)).font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.textPrimary).lineLimit(1)
+                Text(item.headline).font(.system(size: 12)).foregroundStyle(Theme.textTertiary).lineLimit(1).truncationMode(.middle)
+                HStack(spacing: 8) {
+                    if let size = item.sizeText { chip(size, color: Theme.textPrimary, bold: true) }
+                    if let codec = DownloadLabels.codec(item) { chip(codec, color: Theme.textSecondary) }
+                    if let hdr = DownloadLabels.hdr(item) { chip(hdr, color: Theme.accent, outlined: true) }
+                    if DownloadLabels.isUnusuallySmall(item) { chip("Unusually small", color: Color(hex: 0xFFB020), outlined: true) }
+                    if let debrid { chip(debrid.label, color: debrid.cached ? Theme.watched : Color(hex: 0xFFB020), icon: debrid.cached ? "checkmark.circle.fill" : "hourglass") }
+                }
+                .padding(.top, 2)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "arrow.down.to.line")
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.accent)
+                .frame(width: 44, height: 44)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Theme.accent.opacity(0.08)))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.accent.opacity(0.35), lineWidth: 1))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
         .contentShape(Rectangle())
+    }
+
+    private func chip(_ text: String, color: Color, bold: Bool = false, outlined: Bool = false, icon: String? = nil) -> some View {
+        HStack(spacing: 4) {
+            if let icon { Image(systemName: icon).font(.system(size: 10)) }
+            Text(text).font(.system(size: 11, weight: bold ? .bold : .medium)).lineLimit(1)
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(RoundedRectangle(cornerRadius: 6).fill(outlined ? Color.clear : Color.white.opacity(0.1)))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(outlined ? color.opacity(0.55) : Color.clear, lineWidth: 1))
     }
 
     private func jobRow(_ job: DownloadManager.Job) -> some View {

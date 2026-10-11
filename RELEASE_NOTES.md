@@ -12,6 +12,7 @@ them under its version automatically.
 - Subtitle languages are now listed A to Z.
 - Customise your subtitles! Pick a size and colour, and preview them before you press play.
 - Download any single episode straight from its picture. The Download buttons now show for everyone, with a peek at Plus if you don't have it yet.
+- A fresh look for Download: the title's big picture on top, and clearer, easier-to-scan files.
 
 ## 0.1.1
 
