@@ -1,4 +1,5 @@
 import AppKit
+import ArcTVCore
 import Foundation
 import SwiftUI
 
@@ -29,6 +30,10 @@ final class MPVPlayerModel: ObservableObject {
     @Published var seeking = false
     @Published var failure: String?
     @Published var ended = false
+    /// True when the source turned out to be a "not ready yet" slate (see `PlaceholderVideo`): nothing it plays is saved, and its end is not "finished".
+    @Published private(set) var placeholder = false
+    /// The title's runtime, set by the screen, to recognise such a slate once the length is known.
+    var runtimeMinutes: Int? { didSet { checkPlaceholder() } }
     /// The volume and speed last chosen, for every title on this Mac (not part of the synced account settings).
     @Published var volume: Double = UserDefaults.standard.object(forKey: "ArcTVPlayerVolume") as? Double ?? 100
     @Published var speed: Double = UserDefaults.standard.object(forKey: "ArcTVPlayerSpeed") as? Double ?? 1
@@ -51,13 +56,23 @@ final class MPVPlayerModel: ObservableObject {
                 if speed != 1 { view?.setString("speed", String(speed)) }
                 refreshTracks()
             }
-        case let .duration(value): duration = value
+        case let .duration(value):
+            duration = value
+            checkPlaceholder()
         case let .paused(value): paused = value
         case let .buffering(value): buffering = value
         case let .seeking(value): seeking = value
         case .ended: ended = true
         case let .failed(message): failure = message
         }
+    }
+
+    /// A source far shorter than its title is a slate: stop it and say the source isn't ready, instead of playing it as the film.
+    private func checkPlaceholder() {
+        guard !placeholder, PlaceholderVideo.isPlaceholder(durationSeconds: duration, runtimeMinutes: runtimeMinutes) else { return }
+        placeholder = true
+        view?.setFlag("pause", true)
+        failure = PlaceholderVideo.message
     }
 
     func togglePause() { view?.setFlag("pause", !paused) }

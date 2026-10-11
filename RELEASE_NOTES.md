@@ -6,6 +6,8 @@ them under its version automatically.
 
 ## Unreleased
 
+- Sources still being prepared now say "not ready yet" instead of playing a short clip.
+
 ## 0.1.0
 
 - Arc TV on your Mac: sign in with your account and browse Popular, New and Top rated movies and shows.

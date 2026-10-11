@@ -85,12 +85,13 @@ struct MPVPlayerScreen: View {
             }
         }
         .onChange(of: model.ended) { ended in
-            guard ended else { return }
+            guard ended, !model.placeholder else { return }
             // The video finished: carry on with the next episode when Auto Play Next Episode is on, else go back.
             if let next = nextEpisode, appModel.settings?.autoplayNextEpisode ?? true { playEpisode(next, auto: true) } else { appModel.goBack() }
         }
         .onChange(of: openMenu) { open in if open == nil { showControls() } }
         .onAppear {
+            model.runtimeMinutes = Format.runtimeMinutes(item.target.title.runtime)
             showControls()
             fullScreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
         }
@@ -101,13 +102,14 @@ struct MPVPlayerScreen: View {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
                 if Task.isCancelled { break }
+                if model.placeholder { continue }
                 await appModel.reportProgress(item.target, position: model.position, duration: model.duration)
             }
         }
         .onDisappear {
             hideTask?.cancel()
             let target = item.target, position = model.position, duration = model.duration
-            Task { await appModel.reportProgress(target, position: position, duration: duration) }
+            if !model.placeholder { Task { await appModel.reportProgress(target, position: position, duration: duration) } }
             model.stop()
         }
         .animation(.easeOut(duration: 0.2), value: controlsVisible)
@@ -418,7 +420,7 @@ struct MPVPlayerScreen: View {
             episodeTitle: "S\(episode.season ?? 0) E\(episode.episode ?? 0) \(episode.displayTitle)", autoPick: auto
         )
         Task {
-            await appModel.reportProgress(item.target, position: model.position, duration: model.duration)
+            if !model.placeholder { await appModel.reportProgress(item.target, position: model.position, duration: model.duration) }
             appModel.playing = nil
             appModel.openSources(target)
         }
@@ -442,10 +444,10 @@ struct MPVPlayerScreen: View {
 
     private func failurePanel(_ reason: String) -> some View {
         VStack(spacing: 14) {
-            Text("This source couldn't be played")
+            Text(model.placeholder ? "This source isn't ready yet" : "This source couldn't be played")
                 .font(.system(size: 22, weight: .heavy))
                 .foregroundStyle(Theme.textPrimary)
-            Text("The player reported: \(reason). The file or the link may be broken. Try another source.")
+            Text(model.placeholder ? reason : "The player reported: \(reason). The file or the link may be broken. Try another source.")
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
