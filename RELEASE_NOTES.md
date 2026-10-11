@@ -6,7 +6,7 @@ them under its version automatically.
 
 ## Unreleased
 
-- Subtitles from your addons now show up in the player's Subtitles menu, your language first.
+- Subtitles from your addons now show up in the player's Subtitles menu, your language first, and OpenSubtitles is added to every account for you.
 
 ## 0.1.1
 

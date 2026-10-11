@@ -410,11 +410,26 @@ final class AppModel: ObservableObject {
     }
 
     /// The account's installed addons: where streams come from. Loaded once after sign-in.
-    func loadAddons() async {
-        if let found = try? await authorized({ client, token in try await client.addons(accessToken: token, includeDisabled: true) }) {
-            allAddons = found
-            addons = found.filter(\.enabled)
+    @discardableResult
+    func loadAddons() async -> Bool {
+        guard let found = try? await authorized({ client, token in try await client.addons(accessToken: token, includeDisabled: true) }) else { return false }
+        allAddons = found
+        addons = found.filter(\.enabled)
+        return true
+    }
+
+    /// Every account gets the OpenSubtitles addon once, new and existing, so the player has subtitle files to offer. Only once per account (and
+    /// profile): after that the list is the person's own choice, so removing it sticks on this Mac. Not marked when the install failed, so the next
+    /// launch tries again. Call after the account's addons have been read, so an unread list is not mistaken for "no addon yet".
+    private func offerSubtitlesAddon() async {
+        guard let scope else { return }
+        let key = "ArcTVSubtitlesAddonOffered-\(scope)"
+        if UserDefaults.standard.bool(forKey: key) { return }
+        let have = allAddons.contains { $0.manifestUrl == AppInfo.openSubtitlesManifestURL || $0.addonId == AppInfo.openSubtitlesAddonID }
+        if !have {
+            guard let install = try? await AddonInstall.fetch(AppInfo.openSubtitlesManifestURL), (try? await installAddon(install)) != nil else { return }
         }
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     func installAddon(_ install: AddonInstall) async throws {
@@ -788,7 +803,7 @@ final class AppModel: ObservableObject {
     }
 
     private func loadLibrary() async {
-        await loadAddons()
+        if await loadAddons() { Task { await offerSubtitlesAddon() } }
         await loadSettings()
         async let home: Void = loadHome()
         async let account: Void = loadAccountData()
