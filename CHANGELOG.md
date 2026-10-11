@@ -477,3 +477,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none yet.
 
 **Issues fixed:** none.
+
+**Follow-up to 24 (episodes):** the episode cards on a show's page were cut off: the row showed the pictures with their bottoms sliced and no titles or descriptions. The sideways scroll view settled on too small a height for its lazily built cards. The row now has a fixed height (252 points) that holds the picture, the title and two lines of description. Not seen on screen.

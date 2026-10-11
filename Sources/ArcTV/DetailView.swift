@@ -319,6 +319,9 @@ struct DetailView: View {
                 .padding(.horizontal, 44)
                 .padding(.vertical, 6)
             }
+            // A fixed height: a sideways scroll view of lazily made cards can settle on the height of the pictures alone and clip the titles and
+            // descriptions under them (a picture 152, the title, two lines of description, and a little room).
+            .frame(height: 252)
         }
     }
 
