@@ -508,11 +508,11 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Status:** Done on branch `claude/mac-slate-guard`, not merged or released.
 
-**Context:** A source that isn't cached on the person's debrid service can come back from AIOStreams (ElfHosted) as a short video saying "Not ready yet", which plays like any other video, left a short Continue Watching entry and counted as finishing the title when it ended. (The Fire TV, phone and web players had the same problem, and a source lookup that failed with "This source is no longer available"; the Mac player is given the picked source directly, so it doesn't look it up again.)
+**Context:** A source that isn't cached on the person's debrid service can come back from some addons as a short video saying "Not ready yet", which plays like any other video, left a short Continue Watching entry and counted as finishing the title when it ended. (The Fire TV, phone and web players had the same problem, and a source lookup that failed with "This source is no longer available"; the Mac player is given the picked source directly, so it doesn't look it up again.)
 
 **Changes:** `PlaceholderVideo.isPlaceholder` (`ArcTVCore/PlaceholderVideo.swift`): a source under two minutes and under a tenth of the title's runtime (10 minutes or more, from the title details) is a placeholder. `MPVPlayerModel` checks it when mpv reports the length and whenever the runtime is set: playback pauses and the failure panel says "This source isn't ready yet" with the reason to try again or pick another source. `MPVPlayerScreen` saves no progress for it and ignores its end (no next episode, not finished). Without a known runtime nothing is assumed.
 
-**Tests performed:** None run here (no Swift or Xcode in this sandbox); `PlaceholderVideoTests` and the build are left to the Build and test workflow. Code re-read, braces and parentheses checked. Not run on a Mac or against AIOStreams.
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); `PlaceholderVideoTests` and the build are left to the Build and test workflow. Code re-read, braces and parentheses checked. Not run on a Mac or against an affected addon
 
 **Issues discovered:** the runtime used is the title-level one from its details (an episode's own runtime isn't read); a title without a runtime is never judged.
 

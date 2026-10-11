@@ -1,6 +1,6 @@
 import Foundation
 
-/// A "not ready yet" slate: debrid addons (AIOStreams on ElfHosted, for one) answer a title that isn't cached yet with a short video that says
+/// A "not ready yet" slate: some debrid addons answer a title that isn't cached yet with a short video that says
 /// so, and it plays like any other video. Recognised by being far shorter than the title.
 public enum PlaceholderVideo {
     /// A "video" shorter than this, for a title that runs much longer, is not the title.
