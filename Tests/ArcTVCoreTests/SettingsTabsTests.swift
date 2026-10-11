@@ -12,7 +12,7 @@ final class SettingsTabsTests: XCTestCase {
     }
 
     func testLanguageLists() {
-        XCTAssertEqual(LanguageChoices.subtitles().count, 16)
+        XCTAssertEqual(LanguageChoices.subtitles().count, 20)
         XCTAssertNil(LanguageChoices.subtitles()[0].code)
         XCTAssertEqual(LanguageChoices.audio()[0].name, "Automatic")
         XCTAssertEqual(LanguageChoices.all.first?.code, "en")
