@@ -15,6 +15,7 @@ them under its version automatically.
 - Finished episodes show one tick, not two.
 - Next episode goes straight to the player with Smart source picking, with no source list flashing by.
 - Streaming service tiles are bigger, so the logos are easier to see.
+- Settings > Addons shows two addons side by side, so more fit on screen.
 - Home Rows is tidier: pick a streaming or addon card, then switch rows on and off and put them in your order.
 - Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
 - Posters are bigger everywhere, Netflix's Top 10 is much bigger, and Continue Watching is a touch bigger.

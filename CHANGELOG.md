@@ -847,3 +847,15 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none. **Issues fixed:** none.
 
 **Follow-up (same unshipped work): Smart source picking takes torrents too.** Plain Play with Smart source picking on also picks the best torrent the app can stream when no source has a web link (before, only a source with a web link counted and a torrent user always got the list). The Settings text says so. A dead torrent now fails after the list was skipped instead of letting the person pick another; the failure message and the way back to the list are as for any torrent. Not compiled or tried on a Mac.
+
+## 46 -- Addons in two columns
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The user asked for Settings > Addons to show addons two to a row so more fit on screen.
+
+**Changes:** `AddonsPane` lists the addons in a two-column grid (10 pt apart); each card is at least 104 pt tall so the two in a row line up, and the name is one line. The switch and trash button stay on each card.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac: how a long name or description sits in the narrower card.
+
+**Issues discovered:** none. **Issues fixed:** none.

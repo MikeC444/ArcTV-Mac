@@ -44,7 +44,8 @@ struct AddonsPane: View {
             if model.allAddons.isEmpty {
                 Text("No addons yet.").foregroundStyle(Theme.textSecondary)
             } else {
-                VStack(spacing: 10) {
+                // Two to a row, so more fit on the screen.
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), spacing: 10, alignment: .top)], spacing: 10) {
                     ForEach(model.allAddons, id: \.manifestUrl) { addon in
                         AddonRow(addon: addon, onRemove: { removing = addon })
                     }
@@ -90,7 +91,7 @@ private struct AddonRow: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text(addon.name).font(.system(size: 15, weight: .bold)).foregroundStyle(addon.enabled ? Theme.textPrimary : Theme.textTertiary)
+                    Text(addon.name).font(.system(size: 15, weight: .bold)).foregroundStyle(addon.enabled ? Theme.textPrimary : Theme.textTertiary).lineLimit(1)
                     if let version = addon.manifestJson?.version {
                         Text("v\(version)").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
                     }
@@ -112,6 +113,8 @@ private struct AddonRow: View {
             .help("Remove this addon")
         }
         .padding(14)
+        // the same height whatever the description, so the two in a row line up
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
     }
