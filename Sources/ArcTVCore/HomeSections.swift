@@ -124,7 +124,7 @@ public enum HomeSections {
     }
 
     /// movie[0], series[0], movie[1], ... so a merged row reads as mixed content.
-    static func interleaved(_ lists: [[MetaPreview]]) -> [MetaPreview] {
+    public static func interleaved(_ lists: [[MetaPreview]]) -> [MetaPreview] {
         if lists.count == 1 { return lists[0] }
         var out: [MetaPreview] = []
         for index in 0..<(lists.map(\.count).max() ?? 0) {
