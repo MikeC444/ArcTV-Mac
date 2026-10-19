@@ -37,8 +37,10 @@ public struct HomeSource: Sendable {
     /// The movie and series catalogues that make Home's rows and the Movies / TV Shows pages. An addon made of streaming-service catalogues
     /// (Netflix, Disney+ ...) leaves those out: they are shown only through the service tiles and their pages, not merged into one giant row.
     public var catalogs: [CatalogDefinition] {
-        let service = serviceCatalogEntries.map(\.catalog)
-        return (manifest.catalogs ?? []).filter { ($0.type == "movie" || $0.type == "series") && !service.contains($0) }
+        // An addon made of streaming-service catalogues gives Home no rows at all: not even the ones for a service the app does not know by name
+        // (Shahid VIP), which would otherwise turn up as a row of the wrong kind and a card of its own in Settings > Home Rows.
+        if !serviceCatalogEntries.isEmpty { return [] }
+        return (manifest.catalogs ?? []).filter { $0.type == "movie" || $0.type == "series" }
     }
 }
 

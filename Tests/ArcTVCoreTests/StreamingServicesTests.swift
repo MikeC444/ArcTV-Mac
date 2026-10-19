@@ -41,6 +41,9 @@ final class StreamingServicesTests: XCTestCase {
     func testAServiceAddonGivesNoHomeRowsButHasTheServices() {
         let streaming = source([catalog("nfx", name: "Netflix"), catalog("dnp", name: "Disney+"), catalog("hlu", name: "Hulu")])
         XCTAssertTrue(streaming.catalogs.isEmpty)
+        // a catalogue of a service the app does not know is left out too, not turned into a row
+        let withUnknown = source([catalog("nfx", name: "Netflix"), catalog("dnp", name: "Disney+"), catalog("hlu", name: "Hulu"), catalog("shd", name: "Shahid VIP")])
+        XCTAssertTrue(withUnknown.catalogs.isEmpty)
         XCTAssertEqual(streaming.streamingServiceIDs, ["netflix", "disney", "hulu"])
         // one catalogue that merely mentions a service keeps its row
         let ordinary = source([catalog("top", name: "Popular"), catalog("nfx", name: "Netflix Originals")])

@@ -9,6 +9,7 @@ them under its version automatically.
 - Netflix's page got a glow-up: a Top 10 Today row, then wide pictures with each title's logo.
 - Home fills in faster: your rows start appearing sooner and arrive in quicker.
 - Your streaming services are here: Netflix, Disney+ and more as tiles on Home, each opening a page of its titles.
+- Streaming Catalogs no longer adds a stray row to Home.
 - Home Rows is tidier: pick a streaming or addon card, then switch rows on and off and put them in your order.
 - Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
 - Posters are bigger everywhere, Netflix's Top 10 is much bigger, and Continue Watching is a touch bigger.

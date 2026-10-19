@@ -751,3 +751,19 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues fixed:** none.
 
 **Follow-up (same unshipped work):** Netflix's Top 10 posters are 165 pt wide (was 130, about 27% bigger; the number beside each scales with it) and Continue Watching's pictures are 300 by 169 pt (was 270 by 152, about 11%), both from `PosterSize`. Not compiled or seen on a Mac: how the Top 10 numbers sit at the new size.
+
+## 40 -- A streaming-catalogs addon gives Home no rows at all
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The Home Rows hub (entry 38) showed a "Streaming Catalogs" card with one row, "Shahid VIP" (150 titles). The addon is made of streaming-service catalogues, but Shahid is not one of the 36 services the app knows by name, so `HomeSource.catalogs` only left out the catalogues it recognised and kept the rest as an ordinary row.
+
+**Changes:**
+- `HomeSource.catalogs`: an addon that counts as a streaming-service addon (three or more known services) now gives no Home rows at all, including for a service the app does not know. Test in `StreamingServicesTests`.
+- Effect: no "Streaming Catalogs" card in Settings > Home Rows, no stray row on Home, and that addon's catalogues no longer feed the Movies and TV Shows pages.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac.
+
+**Issues discovered:** services in the addon's list that the app does not know by name (Shahid, and possibly others) get no tile. Not changed; they could be added to the service list.
+
+**Issues fixed:** the stray Shahid VIP row and card.
