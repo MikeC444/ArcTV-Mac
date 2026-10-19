@@ -366,7 +366,7 @@ struct ContinueCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Color.clear
-                .frame(width: 270, height: 152)
+                .frame(width: PosterSize.continueWidth, height: PosterSize.continueHeight)
                 .overlay { artwork }
                 .overlay(alignment: .topLeading) { CornerLogo(contentId: item.contentId) }
                 .overlay(alignment: .bottom) {
@@ -393,7 +393,7 @@ struct ContinueCard: View {
                 .foregroundStyle(Theme.textTertiary)
                 .lineLimit(1)
         }
-        .frame(width: 270)
+        .frame(width: PosterSize.continueWidth)
         .onHover { inside in
             hovering = inside
             CardHover.update(CardMenuTarget(item: item.asPreview), hovering: inside)
@@ -426,7 +426,7 @@ private struct CornerLogo: View {
                 Image(nsImage: logo)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 270 * 0.34, maxHeight: 152 * 0.18, alignment: .topLeading)
+                    .frame(maxWidth: PosterSize.continueWidth * 0.34, maxHeight: PosterSize.continueHeight * 0.18, alignment: .topLeading)
                     .padding(9)
             }
         }

@@ -749,3 +749,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** not changed on purpose: Continue Watching's wide pictures, Netflix's Top 10 and wide grid, and the source picker's small poster.
 
 **Issues fixed:** none.
+
+**Follow-up (same unshipped work):** Netflix's Top 10 posters are 165 pt wide (was 130, about 27% bigger; the number beside each scales with it) and Continue Watching's pictures are 300 by 169 pt (was 270 by 152, about 11%), both from `PosterSize`. Not compiled or seen on a Mac: how the Top 10 numbers sit at the new size.

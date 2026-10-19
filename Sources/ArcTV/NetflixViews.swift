@@ -150,7 +150,7 @@ enum TopTenState: Equatable {
 
 struct TopTenSection: View {
     let state: TopTenState
-    private let posterWidth: CGFloat = 130
+    private let posterWidth: CGFloat = PosterSize.topTen
 
     var body: some View {
         switch state {

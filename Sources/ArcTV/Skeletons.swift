@@ -126,7 +126,7 @@ struct SeasonsSkeleton: View {
             HStack(spacing: 16) {
                 ForEach(0..<4, id: \.self) { _ in
                     VStack(alignment: .leading, spacing: 8) {
-                        Shimmer().frame(width: 270, height: 152)
+                        Shimmer().frame(width: PosterSize.continueWidth, height: PosterSize.continueHeight)
                         Shimmer(cornerRadius: 4).frame(width: 200, height: 14)
                         Shimmer(cornerRadius: 4).frame(width: 250, height: 11)
                     }

@@ -9,6 +9,11 @@ enum PosterSize {
     /// A grid's columns: as many as fit between these widths.
     static let gridMin: CGFloat = 190
     static let gridMax: CGFloat = 270
+    /// A Top 10 poster on Netflix's page (the big number sits beside it).
+    static let topTen: CGFloat = 165
+    /// A Continue Watching picture (16:9).
+    static let continueWidth: CGFloat = 300
+    static var continueHeight: CGFloat { (continueWidth * 9 / 16).rounded() }
     static var gridColumns: [GridItem] { [GridItem(.adaptive(minimum: gridMin, maximum: gridMax), spacing: 18, alignment: .top)] }
 }
 
