@@ -7,15 +7,11 @@ them under its version automatically.
 ## Unreleased
 
 - Netflix's page got a glow-up: a Top 10 Today row, then wide pictures with each title's logo.
-- Home fills in faster: your rows start appearing sooner and arrive in quicker.
-- Your streaming services are here: Netflix, Disney+ and more as tiles on Home, each opening a page of its titles.
 - New services in your Streaming Catalogs addon turn up by themselves in Settings > Home Rows, ready to switch on as tiles.
 - A show you're part-way through now stays in Continue Watching, on its next episode, until you've watched them all.
 - The player hides the mouse while you watch, and has M for mute and C for captions in your language.
 - Finished episodes show one tick, not two.
 - Next episode goes straight to the player with Smart source picking, with no source list flashing by.
-- Streaming service tiles are bigger, so the logos are easier to see.
-- Settings > Addons shows two addons side by side, so more fit on screen.
 - The player's Sources button always opens the source list, and Back no longer bounces you into the player again.
 - Your stats is smarter: episodes you tick by hand no longer count, and Reset stats starts the numbers again.
 - Your stats tells you more: your best streak, this month against last, your top show and movie, and a recap.
