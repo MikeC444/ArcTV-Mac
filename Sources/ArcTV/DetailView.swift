@@ -569,12 +569,7 @@ private struct EpisodeCard: View {
                             .frame(height: 4)
                         }
                     }
-                    .overlay(alignment: .topLeading) {
-                        if status?.watched == true {
-                            Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(Color.black)
-                                .frame(width: 22, height: 22).background(Circle().fill(Theme.watched)).padding(8)
-                        }
-                    }
+                    // (a finished episode's tick is the green button at the top right, which also un-marks it: no second tick here)
                     .background(Theme.surfaceHigh)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(hovering ? 0.9 : 0), lineWidth: 2))

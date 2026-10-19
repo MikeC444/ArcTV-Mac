@@ -12,6 +12,7 @@ them under its version automatically.
 - New services in your Streaming Catalogs addon turn up by themselves in Settings > Home Rows, ready to switch on as tiles.
 - A show you're part-way through now stays in Continue Watching, on its next episode, until you've watched them all.
 - The player hides the mouse while you watch, and has M for mute and C for captions in your language.
+- Finished episodes show one tick, not two.
 - Home Rows is tidier: pick a streaming or addon card, then switch rows on and off and put them in your order.
 - Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
 - Posters are bigger everywhere, Netflix's Top 10 is much bigger, and Continue Watching is a touch bigger.

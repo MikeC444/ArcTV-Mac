@@ -805,3 +805,15 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** there is no on-screen sign that the sound is muted or that captions changed (the Subtitles pill shows the state when opened). The arrow-key shortcuts are hidden buttons, so a focused control could take the key first; not checked.
 
 **Issues fixed:** none.
+
+## 43 -- One tick on a finished episode
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** A finished episode's card showed two ticks: a round one top left on the picture and the green mark-as-watched button top right.
+
+**Changes:** `EpisodeCard` no longer draws the top-left tick; the green button at the top right (which also un-marks the episode) is the one tick.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac.
+
+**Issues discovered:** none. **Issues fixed:** the double tick.
