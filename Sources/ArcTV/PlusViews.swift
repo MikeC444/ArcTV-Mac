@@ -268,23 +268,108 @@ struct StatsPane: View {
 
     var body: some View {
         Group {
-            if !model.plus.active {
-                PlusLockedNote(title: "Your stats are only for Arc TV Plus.", detail: "See how much you watch, how this week compares, your streak, a map of your last 13 weeks and your busiest day.")
-            } else if let stats = model.stats {
-                StatsBody(stats: stats, truncated: model.statsTruncated)
-            } else if model.statsFailed {
-                Text("Couldn't read your watch history right now. Try again in a moment.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
-            } else {
+            if model.plus.active {
+                if let stats = model.stats {
+                    VStack(alignment: .leading, spacing: 16) {
+                        StatsBody(stats: stats, truncated: model.statsTruncated)
+                        StatsReset()
+                    }
+                } else if model.statsFailed {
+                    Text("Couldn't read your watch history right now. Try again in a moment.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                } else {
+                    StatsSkeleton()
+                }
+            } else if model.plus.paywall, let stats = model.stats, !stats.isEmpty {
+                StatsPreview(stats: stats, truncated: model.statsTruncated)
+            } else if model.plus.paywall, model.stats == nil, !model.statsFailed {
                 StatsSkeleton()
+            } else {
+                PlusLockedNote(title: "Your stats are only for Arc TV Plus.", detail: "See how much you watch, how this week compares, your streak, a map of your last 13 weeks and your busiest day.")
             }
         }
-        .task { if model.plus.active { await model.loadStats() } }
+        .task { if model.plus.active || model.plus.paywall { await model.loadStats() } }
+    }
+}
+
+/// Starts Your stats again from now, on every device, after one question. Final: there is no way back to the old numbers. The watch history itself,
+/// Continue Watching and the watched ticks are not touched.
+private struct StatsReset: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var asking = false
+    @State private var note = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let since = model.settings?.statsResetAt.flatMap(ISODate.date(from:)) {
+                Text("Counting from \(since.formatted(.dateTime.day().month(.wide).year())).").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+            }
+            Button { note = ""; asking = true } label: { Label("Reset stats", systemImage: "arrow.counterclockwise") }
+                .buttonStyle(GlassButtonStyle())
+            if !note.isEmpty { Text(note).font(.system(size: 12)).foregroundStyle(Theme.textTertiary) }
+        }
+        .alert("Reset your stats?", isPresented: $asking) {
+            Button("Yes, reset", role: .destructive) {
+                Task {
+                    await model.resetStats()
+                    note = "Your stats were reset. They count from today."
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your stats start again from zero and you can't get the old numbers back. Your Continue Watching and watched ticks are not affected.")
+        }
+    }
+}
+
+/// What someone without Plus sees: a blurred stand-in for their last-30-days time (the real number is Plus), their streak in plain text, and the rest
+/// of their stats blurred behind a button. The blurred parts are decoration only.
+private struct StatsPreview: View {
+    @EnvironmentObject private var model: AppModel
+    let stats: WatchStats
+    let truncated: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("In the last 30 days you've watched").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.textTertiary)
+                // a stand-in, blurred: not the person's real total
+                Text("1,000,000 hours").font(.system(size: 44, weight: .heavy)).foregroundStyle(Theme.brandGradient).blur(radius: 14).accessibilityHidden(true)
+                if stats.streakDays >= 2 {
+                    Text("\(stats.streakDays)-day streak going").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.textSecondary)
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.blue.opacity(0.35), lineWidth: 1))
+
+            ZStack {
+                StatsBody(stats: stats, truncated: truncated)
+                    .blur(radius: 9)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                VStack(spacing: 10) {
+                    Image(systemName: "lock.fill").font(.system(size: 22)).foregroundStyle(Theme.textTertiary)
+                    Text("There's more to your stats.").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                    Text("Arc TV Plus unlocks how this week compares, your busiest day and a map of your last 13 weeks.")
+                        .font(.system(size: 13)).foregroundStyle(Theme.textSecondary).multilineTextAlignment(.center).frame(maxWidth: 360)
+                    Button { model.settingsTab = .plus } label: { Label("See Arc TV Plus", systemImage: "rosette") }.buttonStyle(GlassButtonStyle())
+                }
+                .padding(20)
+                .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated.opacity(0.92)))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+            }
+        }
     }
 }
 
 private struct StatsBody: View {
     let stats: WatchStats
     let truncated: Bool
+    /// The day last pointed at in the activity grid.
+    @State private var picked: Int?
+
+    private var period: String { truncated ? "your recent history" : "all time" }
 
     var body: some View {
         if stats.isEmpty {
@@ -294,23 +379,37 @@ private struct StatsBody: View {
                 hero
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10, alignment: .top)], spacing: 10) {
                     tile("calendar", "Last 7 days", WatchStats.duration(stats.last7DaysMs))
-                    tile("calendar.badge.clock", "Last 30 days", WatchStats.duration(stats.last30DaysMs))
+                    tile("calendar.badge.clock", "Last 30 days", WatchStats.duration(stats.last30DaysMs), note: monthNote)
                     tile("flame.fill", "Day streak", plural(stats.streakDays, "day"),
-                         note: stats.longestStreakDays > stats.streakDays ? "best \(stats.longestStreakDays)" : (stats.streakDays > 0 && stats.streakDays == stats.longestStreakDays ? "your best" : nil), hot: stats.streakDays >= 3)
-                    tile("timer", "Per day you watch", WatchStats.duration(stats.avgPerActiveDayMs), note: "\(plural(stats.activeDays, "day")) in all")
+                         note: WatchStats.streakNote(streak: stats.streakDays, longest: stats.longestStreakDays), hot: stats.streakDays >= 3)
+                    tile("timer", "On days you watch", WatchStats.duration(stats.avgPerActiveDayMs), note: "\(plural(stats.activeDays, "day")) watched")
                     tile("film", "Movies finished", String(stats.moviesFinished))
                     tile("tv", "Episodes watched", String(stats.episodesWatched), note: stats.showsWatched > 0 ? "across \(plural(stats.showsWatched, "show"))" : nil)
                 }
                 split
                 heat
                 weekdays
-                Text("Counted from your watch history\(truncated ? " (the most recent part of it)" : ""). A title you watch again counts once, on the day you last watched it.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                mostWatched
+                recap
+                counts
             }
         }
     }
 
     private func plural(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
+
+    private func heading(_ text: String, period showPeriod: Bool = false) -> some View {
+        HStack(spacing: 6) {
+            Text(text).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+            if showPeriod { Text("\u{00B7} \(period)").font(.system(size: 12)).foregroundStyle(Theme.textTertiary) }
+        }
+    }
+
+    /// The last 30 days against the 30 before.
+    private var monthNote: String? {
+        guard let change = WatchStats.weekChange(last7: stats.last30DaysMs, prev7: stats.prev30DaysMs) else { return nil }
+        return change.direction == "same" ? "same as the 30 days before" : "\(change.percent)% \(change.direction == "up" ? "more" : "less") than the 30 days before"
+    }
 
     private var hero: some View {
         let change = WatchStats.weekChange(last7: stats.last7DaysMs, prev7: stats.prev7DaysMs)
@@ -359,7 +458,7 @@ private struct StatsBody: View {
         if total > 0 {
             let moviePercent = Int((Double(stats.movieMs) / Double(total) * 100).rounded())
             VStack(alignment: .leading, spacing: 8) {
-                Text("Movies or shows").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                heading("Movies or shows", period: true)
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Theme.violet)
@@ -368,9 +467,9 @@ private struct StatsBody: View {
                 }
                 .frame(height: 10)
                 HStack {
-                    legend(Theme.cyan, "Movies \(WatchStats.duration(stats.movieMs)) · \(moviePercent)%")
+                    legend(Theme.cyan, "Movies \(WatchStats.duration(stats.movieMs)) \u{00B7} \(moviePercent)%")
                     Spacer()
-                    legend(Theme.violet, "Shows \(WatchStats.duration(stats.showMs)) · \(100 - moviePercent)%")
+                    legend(Theme.violet, "Shows \(WatchStats.duration(stats.showMs)) \u{00B7} \(100 - moviePercent)%")
                 }
             }
         }
@@ -385,40 +484,58 @@ private struct StatsBody: View {
 
     private var heat: some View {
         let cells = WatchStats.heatCells(stats.dailyMs)
+        let months = WatchStats.heatMonthLabels(cells)
+        let darkest = stats.dailyMs.max() ?? 0
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Last 13 weeks").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+            heading("Last 13 weeks")
             HStack(alignment: .top, spacing: 8) {
                 VStack(spacing: 4) {
+                    Color.clear.frame(height: 14)
                     ForEach(0..<7, id: \.self) { row in
                         Text(["Mon", "", "Wed", "", "Fri", "", "Sun"][row]).font(.system(size: 10)).foregroundStyle(Theme.textTertiary).frame(height: 18, alignment: .center)
                     }
                 }
-                // Column by column (a week each), Monday first.
-                HStack(spacing: 4) {
-                    ForEach(0..<((cells.count + 6) / 7), id: \.self) { week in
-                        VStack(spacing: 4) {
-                            ForEach(0..<7, id: \.self) { day in
-                                let index = week * 7 + day
-                                if index < cells.count, let cell = cells[safe: index] {
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(cell.ms == nil ? .clear : color(level: cell.level))
-                                        .frame(width: 18, height: 18)
-                                        .help(cell.ms.map { "\(cell.label): \($0 > 0 ? WatchStats.duration($0) : "nothing watched")" } ?? "")
-                                } else {
-                                    Color.clear.frame(width: 18, height: 18)
+                VStack(alignment: .leading, spacing: 4) {
+                    // the month names above the weeks where a month starts
+                    HStack(spacing: 4) {
+                        ForEach(months.indices, id: \.self) { column in
+                            Text(months[column]).font(.system(size: 10)).foregroundStyle(Theme.textTertiary).fixedSize().frame(width: 18, height: 14, alignment: .leading)
+                        }
+                    }
+                    // Column by column (a week each), Monday first.
+                    HStack(spacing: 4) {
+                        ForEach(0..<((cells.count + 6) / 7), id: \.self) { week in
+                            VStack(spacing: 4) {
+                                ForEach(0..<7, id: \.self) { day in
+                                    let index = week * 7 + day
+                                    if index < cells.count, let cell = cells[safe: index] {
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(cell.ms == nil ? .clear : color(level: cell.level))
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(picked == index ? Theme.textPrimary : .clear, lineWidth: 1.5))
+                                            .frame(width: 18, height: 18)
+                                            .onHover { inside in if inside, cell.ms != nil { picked = index } }
+                                    } else {
+                                        Color.clear.frame(width: 18, height: 18)
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+            // names the day pointed at
+            Text(pickedLine(cells)).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.textSecondary)
             HStack(spacing: 4) {
-                Spacer()
                 Text("Less").font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
                 ForEach(0..<5, id: \.self) { level in RoundedRectangle(cornerRadius: 3).fill(color(level: level)).frame(width: 12, height: 12) }
-                Text("More").font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
+                Text("More\(darkest > 0 ? " \u{00B7} the darkest is \(WatchStats.duration(darkest)) in a day" : "")").font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
             }
         }
+    }
+
+    private func pickedLine(_ cells: [WatchStats.HeatCell]) -> String {
+        guard let picked, let cell = cells[safe: picked], let ms = cell.ms else { return "Point at a square to see that day." }
+        return "\(cell.label) \u{00B7} \(ms > 0 ? WatchStats.duration(ms) : "nothing watched")"
     }
 
     private func color(level: Int) -> Color {
@@ -432,8 +549,12 @@ private struct StatsBody: View {
 
     private var weekdays: some View {
         let peak = max(stats.byWeekdayMs.max() ?? 1, 1)
+        let today = (Calendar.current.component(.weekday, from: Date()) + 5) % 7
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Busiest day\(stats.busiestWeekday.map { ": \(WatchStats.weekdays[$0])" } ?? "")").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+            HStack(spacing: 6) {
+                Text("Busiest day\(stats.busiestWeekday.map { ": \(WatchStats.weekdays[$0])" } ?? "")").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                Text("\u{00B7} \(period)").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+            }
             HStack(alignment: .bottom, spacing: 8) {
                 ForEach(0..<7, id: \.self) { index in
                     VStack(spacing: 4) {
@@ -445,12 +566,92 @@ private struct StatsBody: View {
                                 .opacity(0.85)
                                 .frame(width: 34, height: max(4, 100 * CGFloat(stats.byWeekdayMs[index]) / CGFloat(peak)))
                         }
-                        Text(String(WatchStats.weekdays[index].prefix(3))).font(.system(size: 11)).foregroundStyle(Theme.textSecondary)
+                        Text(String(WatchStats.weekdays[index].prefix(3))).font(.system(size: 11, weight: index == today ? .bold : .regular))
+                            .foregroundStyle(index == today ? Theme.textPrimary : Theme.textSecondary)
+                        // marks today
+                        Circle().fill(index == today ? Theme.cyan : .clear).frame(width: 5, height: 5)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
+            if let line = WatchStats.weekdayLine(stats.busiestWeekday) {
+                Text(line).font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+            }
         }
+    }
+
+    /// Your top show and top movie, with poster, time and episodes.
+    @ViewBuilder
+    private var mostWatched: some View {
+        let picks = [stats.topShow, stats.topMovie].compactMap { $0 }
+        if !picks.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                heading("Most watched", period: true)
+                ForEach(picks, id: \.title) { top in
+                    HStack(spacing: 12) {
+                        CachedImage(url: top.posterUrl.flatMap(URL.init(string:))) { Theme.surfaceHigh }
+                            .frame(width: 46, height: 69)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(top.type == "MOVIE" ? "Movie" : "Show").font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
+                            Text(top.title).font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.textPrimary).lineLimit(1)
+                            Text(WatchStats.duration(top.watchedMs) + (top.type == "MOVIE" ? "" : " \u{00B7} \(plural(top.parts, "episode"))"))
+                                .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Theme.surface))
+                }
+            }
+        }
+    }
+
+    /// A short summary: total hours, top show and movie, longest streak and counts.
+    @ViewBuilder
+    private var recap: some View {
+        if let recap = stats.recap {
+            VStack(alignment: .leading, spacing: 8) {
+                heading("Your recap")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(recap.heading).font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                    Text(recap.hours).font(.system(size: 30, weight: .heavy)).foregroundStyle(Theme.brandGradient)
+                    ForEach(recap.lines, id: \.self) { line in
+                        Text(line).font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.blue.opacity(0.35), lineWidth: 1))
+            }
+        }
+    }
+
+    private var counts: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(countsLines, id: \.self) { line in
+                    Text("\u{2022} " + line).font(.system(size: 12)).foregroundStyle(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 6)
+        } label: {
+            Text("What counts towards your stats").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+        }
+    }
+
+    private var countsLines: [String] {
+        var lines = [
+            "Everything you watch in Arc TV while signed in to your account, on any device. Each profile has its own stats.",
+            "Only what you actually play counts. Marking a movie, episode or season as watched gives it a tick but adds nothing to your stats.",
+            "A finished movie or episode counts for its whole length. One you stopped part-way counts for how far you got.",
+            "A title you watch again counts once, on the day you last watched it, so rewatching doesn't add to your hours.",
+            "Anything you watch outside Arc TV, or without being signed in, isn't included.",
+            "Reset stats starts the numbers again from today and can't be undone. Continue Watching and your watched ticks are not affected."
+        ]
+        if truncated { lines.append("Your history is very long, so only the most recent part of it is counted.") }
+        return lines
     }
 }
 

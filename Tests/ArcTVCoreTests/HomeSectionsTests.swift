@@ -275,20 +275,23 @@ final class PlusAndStatsTests: XCTestCase {
 
     func testStatsCountEachTitleOnceByDayAndFindStreaksAndTheBusiestDay() {
         let hour: Int64 = 3_600_000
+        // (an episode's length that is not a whole number of minutes, as real playback gives: a whole-minute length used as both the position and
+        // the length is how an old hand-ticked episode looks, and those do not count)
+        let episode = hour + 5_000
         // "Now" is Wednesday 2026-10-14 12:00 UTC.
         let now = ISODate.date(from: "2026-10-14T12:00:00.000Z")!
         let items = [
             HistoryItem(contentId: "m1", contentType: "MOVIE", positionMs: 2 * hour, durationMs: 2 * hour, completed: true, watchedAt: "2026-10-14T09:00:00.000Z"),
-            HistoryItem(contentId: "s1e1", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 1, positionMs: hour, durationMs: hour, completed: true, watchedAt: "2026-10-13T20:00:00.000Z"),
+            HistoryItem(contentId: "s1e1", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 1, positionMs: episode, durationMs: episode, completed: true, watchedAt: "2026-10-13T20:00:00.000Z"),
             HistoryItem(contentId: "s1e2", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 2, positionMs: hour / 2, durationMs: hour, completed: false, watchedAt: "2026-10-12T20:00:00.000Z"),
             HistoryItem(contentId: "m2", contentType: "MOVIE", positionMs: hour / 2, durationMs: 2 * hour, completed: false, watchedAt: "2026-09-01T20:00:00.000Z")
         ]
         let stats = WatchStats.compute(items, now: now, calendar: utc)
         XCTAssertFalse(stats.isEmpty)
-        XCTAssertEqual(stats.totalMs, 2 * hour + hour + hour / 2 + hour / 2)
-        XCTAssertEqual(stats.last7DaysMs, 2 * hour + hour + hour / 2)
+        XCTAssertEqual(stats.totalMs, 2 * hour + episode + hour / 2 + hour / 2)
+        XCTAssertEqual(stats.last7DaysMs, 2 * hour + episode + hour / 2)
         XCTAssertEqual(stats.movieMs, 2 * hour + hour / 2)
-        XCTAssertEqual(stats.showMs, hour + hour / 2)
+        XCTAssertEqual(stats.showMs, episode + hour / 2)
         XCTAssertEqual(stats.moviesFinished, 1)
         XCTAssertEqual(stats.episodesWatched, 1)
         XCTAssertEqual(stats.showsWatched, 2) // two episodes are two history rows, each its own key
@@ -298,6 +301,82 @@ final class PlusAndStatsTests: XCTestCase {
         XCTAssertEqual(stats.dailyMs.last, 2 * hour)
         XCTAssertEqual(stats.busiestWeekday, 2) // Wednesday (index 2, Monday first) holds the 2-hour movie
         XCTAssertTrue(WatchStats.compute([], now: now, calendar: utc).isEmpty)
+    }
+
+    func testHandTickedEpisodesDoNotCountButPlayedOnesDo() {
+        let hour: Int64 = 3_600_000
+        let now = ISODate.date(from: "2026-10-14T12:00:00.000Z")!
+        let items = [
+            // ticked by hand, said so by the account
+            HistoryItem(contentId: "a", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 1, positionMs: hour + 5_000, durationMs: hour + 5_000, completed: true, markedManually: true, watchedAt: "2026-10-14T09:00:00.000Z"),
+            // an older tick: the listed runtime (45 whole minutes) as both position and length
+            HistoryItem(contentId: "b", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 2, positionMs: 45 * 60_000, durationMs: 45 * 60_000, completed: true, watchedAt: "2026-10-14T09:00:00.000Z"),
+            // played
+            HistoryItem(contentId: "c", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 3, positionMs: 40 * 60_000 + 1_234, durationMs: 40 * 60_000 + 1_234, completed: true, watchedAt: "2026-10-14T10:00:00.000Z")
+        ]
+        let stats = WatchStats.compute(items, now: now, calendar: utc)
+        XCTAssertEqual(stats.episodesWatched, 1)
+        XCTAssertEqual(stats.totalMs, 40 * 60_000 + 1_234)
+        XCTAssertTrue(WatchStats.compute(Array(items.prefix(2)), now: now, calendar: utc).isEmpty)
+    }
+
+    func testResetCountsOnlyWhatWasWatchedAfterIt() {
+        let items = [
+            HistoryItem(contentId: "old", contentType: "MOVIE", positionMs: 1, durationMs: 1, completed: true, watchedAt: "2026-10-10T09:00:00.000Z"),
+            HistoryItem(contentId: "new", contentType: "MOVIE", positionMs: 1, durationMs: 1, completed: true, watchedAt: "2026-10-13T09:00:00.000Z")
+        ]
+        XCTAssertEqual(WatchStats.afterReset(items, resetAt: "2026-10-12T00:00:00.000Z").map(\.contentId), ["new"])
+        XCTAssertEqual(WatchStats.afterReset(items, resetAt: nil).count, 2)
+        XCTAssertEqual(WatchStats.afterReset(items, resetAt: "not a time").count, 2)
+    }
+
+    func testStreakNoteWeekdayLineAndTheMonthComparison() {
+        XCTAssertEqual(WatchStats.streakNote(streak: 5, longest: 6), "best 6 \u{00B7} 1 day to match it")
+        XCTAssertEqual(WatchStats.streakNote(streak: 2, longest: 6), "best 6 \u{00B7} 4 days to match it")
+        XCTAssertEqual(WatchStats.streakNote(streak: 6, longest: 6), "your best")
+        XCTAssertNil(WatchStats.streakNote(streak: 7, longest: 6))
+        XCTAssertEqual(WatchStats.streakNote(streak: 0, longest: 3), "best 3")
+        XCTAssertNil(WatchStats.streakNote(streak: 0, longest: 0))
+        XCTAssertEqual(WatchStats.weekdayLine(0), "You watch most on Mondays.")
+        XCTAssertNil(WatchStats.weekdayLine(nil))
+        // the 30 days before the last 30
+        let now = ISODate.date(from: "2026-10-14T12:00:00.000Z")!
+        let items = [
+            HistoryItem(contentId: "a", contentType: "MOVIE", positionMs: 3_600_000, durationMs: 3_600_000 + 7, completed: false, watchedAt: "2026-09-01T09:00:00.000Z"),
+            HistoryItem(contentId: "b", contentType: "MOVIE", positionMs: 1_800_000, durationMs: 3_600_000 + 7, completed: false, watchedAt: "2026-10-10T09:00:00.000Z")
+        ]
+        let stats = WatchStats.compute(items, now: now, calendar: utc)
+        XCTAssertEqual(stats.prev30DaysMs, 3_600_000)
+        XCTAssertEqual(stats.last30DaysMs, 1_800_000)
+    }
+
+    func testMostWatchedAndTheRecapWords() {
+        let hour: Int64 = 3_600_000
+        let now = ISODate.date(from: "2026-10-14T12:00:00.000Z")!
+        let items = [
+            HistoryItem(contentId: "show", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 1, title: "Ted Lasso", positionMs: hour + 1, durationMs: hour + 1, completed: true, watchedAt: "2026-10-14T09:00:00.000Z"),
+            HistoryItem(contentId: "show", contentType: "TV_SHOW", seasonNumber: 1, episodeNumber: 2, title: "Ted Lasso", positionMs: hour + 1, durationMs: hour + 1, completed: true, watchedAt: "2026-10-13T09:00:00.000Z"),
+            HistoryItem(contentId: "film", contentType: "MOVIE", title: "Heat", positionMs: 2 * hour + 1, durationMs: 2 * hour + 1, completed: true, watchedAt: "2026-10-14T10:00:00.000Z")
+        ]
+        let stats = WatchStats.compute(items, now: now, calendar: utc)
+        XCTAssertEqual(stats.topShow?.title, "Ted Lasso")
+        XCTAssertEqual(stats.topShow?.parts, 2)
+        XCTAssertEqual(stats.topMovie?.title, "Heat")
+        let recap = stats.recap
+        XCTAssertEqual(recap?.heading, "My Arc TV recap")
+        XCTAssertEqual(recap?.lines, ["Most watched show: Ted Lasso", "Most watched movie: Heat", "Longest streak: 2 days", "1 movie finished \u{00B7} 2 episodes watched"])
+        XCTAssertNil(WatchStats.compute([], now: now, calendar: utc).recap)
+    }
+
+    func testMonthNamesSitAboveTheWeekWhereAMonthStarts() {
+        let now = ISODate.date(from: "2026-10-14T12:00:00.000Z")!
+        let cells = WatchStats.heatCells([Int64](repeating: 0, count: WatchStats.heatDays), now: now, calendar: utc)
+        let labels = WatchStats.heatMonthLabels(cells, symbols: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
+        XCTAssertEqual(labels.count, (cells.count + 6) / 7)
+        XCTAssertTrue(labels.contains("Oct"))
+        XCTAssertTrue(labels.contains("Sep"))
+        // a name is never followed straight away by another
+        for pair in zip(labels, labels.dropFirst()) { XCTAssertFalse(!pair.0.isEmpty && !pair.1.isEmpty) }
     }
 
     func testTheActivityGridStartsOnAMondayAndLightsTheBusiestDays() {

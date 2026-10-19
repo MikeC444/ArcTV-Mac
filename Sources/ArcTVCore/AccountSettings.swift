@@ -11,11 +11,13 @@ public struct AccountSettings: Codable, Equatable, Sendable {
     public var defaultSubtitleLanguage: String?
     public var defaultAudioLanguage: String?
     public var blockedGenres: [String]?
+    /// When Your stats was last reset (stats count from then on); the account only lets it move forward.
+    public var statsResetAt: String?
     public var updatedAt: String?
 
     public init(homeRowOrder: [String] = [], hiddenRowIds: [String] = [], autoplayNextEpisode: Bool = true, skipIntroEnabled: Bool = true,
                 subtitlesEnabled: Bool = false, defaultSubtitleLanguage: String? = nil, defaultAudioLanguage: String? = nil,
-                blockedGenres: [String]? = nil, updatedAt: String? = nil) {
+                blockedGenres: [String]? = nil, statsResetAt: String? = nil, updatedAt: String? = nil) {
         self.homeRowOrder = homeRowOrder
         self.hiddenRowIds = hiddenRowIds
         self.autoplayNextEpisode = autoplayNextEpisode
@@ -24,12 +26,13 @@ public struct AccountSettings: Codable, Equatable, Sendable {
         self.defaultSubtitleLanguage = defaultSubtitleLanguage
         self.defaultAudioLanguage = defaultAudioLanguage
         self.blockedGenres = blockedGenres
+        self.statsResetAt = statsResetAt
         self.updatedAt = updatedAt
     }
 
     private enum Keys: String, CodingKey {
         case homeRowOrder, hiddenRowIds, autoplayNextEpisode, skipIntroEnabled, subtitlesEnabled
-        case defaultSubtitleLanguage, defaultAudioLanguage, blockedGenres, updatedAt
+        case defaultSubtitleLanguage, defaultAudioLanguage, blockedGenres, statsResetAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -42,6 +45,7 @@ public struct AccountSettings: Codable, Equatable, Sendable {
         defaultSubtitleLanguage = try c.decodeIfPresent(String.self, forKey: .defaultSubtitleLanguage)
         defaultAudioLanguage = try c.decodeIfPresent(String.self, forKey: .defaultAudioLanguage)
         blockedGenres = try c.decodeIfPresent([String].self, forKey: .blockedGenres)
+        statsResetAt = try c.decodeIfPresent(String.self, forKey: .statsResetAt)
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
     }
 
@@ -56,6 +60,8 @@ public struct AccountSettings: Codable, Equatable, Sendable {
         try c.encode(defaultSubtitleLanguage, forKey: .defaultSubtitleLanguage)
         try c.encode(defaultAudioLanguage, forKey: .defaultAudioLanguage)
         try c.encode(blockedGenres ?? [], forKey: .blockedGenres)
+        // left out when there is none: the account keeps its own, and only ever moves it forward
+        try c.encodeIfPresent(statsResetAt, forKey: .statsResetAt)
         try c.encode(updatedAt ?? ISODate.now(), forKey: .updatedAt)
     }
 }

@@ -881,3 +881,24 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the Back arrow's loop was not reported but follows from the same code; fixing it changes where Back lands for people with Smart source picking (the title's page instead of a list they never saw).
 
 **Issues fixed:** the Sources button; the Back loop.
+
+## 48 -- Your stats brought up to the web app's
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** Six web changes from 16 Oct (`docs/PARITY.md`, "Your stats" rows) were open for the Mac. They were missing from my earlier "what the Mac needs" lists because I answered from memory of the first skim instead of re-reading the table's Mac column.
+
+**Changes:**
+- Hand-ticked episodes do not count (`HistoryItem.markedManually`, `isMarkedByHand`: a row the account says was ticked by hand, or an old one whose runtime in whole minutes is both position and length). The episode list now sends `markedManually` when it ticks or un-ticks episodes (`AuthClient.reportProgress`). The server already has the field.
+- Reset stats: a button with a "Reset your stats?" question (`StatsReset`); the time is `statsResetAt` in the account settings (`AccountSettings`, left out of the save when there is none, since the account only moves it forward and ignores a null), and `WatchStats.afterReset` counts only what was watched after it. "Counting from <date>" shows under it.
+- Clearer: "On days you watch" with "N days watched", "all time" / "your recent history" on the movies-or-shows split, busiest day and Most watched, month names above the 13-week map (`WatchStats.heatMonthLabels`), a line naming the day pointed at, and a legend saying what the darkest square is.
+- More to look at: the streak against your best (`streakNote`), Last 30 days against the 30 before (`prev30DaysMs`), today marked on the weekday bars and "You watch most on Mondays." (`weekdayLine`).
+- Most watched (top show and top movie with poster, time and episodes), Your recap (`WatchStats.recap`) and a "What counts towards your stats" explanation.
+- Without Plus (and only while the account has the paywall on), Your stats opens to a preview: the last-30-days number is a blurred stand-in, the streak is shown, and the rest of the person's own stats sit blurred behind a See Arc TV Plus button. Its Settings tab no longer has the lock.
+- Tests: hand ticks, reset, streak note and comparisons, Most watched and the recap words, month names. One existing test's data was changed (an episode's length of exactly an hour is now read as a hand tick, so it uses a length with a few seconds on it).
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new tests and the build are left to the Build and test workflow. Code re-read. Not seen on a Mac: the layout of the month names, the blurred preview and the new cards.
+
+**Issues discovered:** the web does not offer the preview on a kids profile; the Mac has no such check yet (it only looks at the paywall). The web's "tap" on a day is a pointer hover here (no touch). The Plus ask after a movie or last episode ends (a separate parity row) is not done.
+
+**Issues fixed:** none.

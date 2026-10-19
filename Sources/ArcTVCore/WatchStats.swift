@@ -12,10 +12,12 @@ public struct HistoryItem: Codable, Equatable, Sendable {
     public var positionMs: Int64
     public var durationMs: Int64
     public var completed: Bool
+    /// Marked watched by hand rather than played (the account records this); absent from an older backend.
+    public var markedManually: Bool?
     public var watchedAt: String
 
     public init(providerId: String = "p", contentId: String, contentType: String, seasonNumber: Int? = nil, episodeNumber: Int? = nil, title: String = "t",
-                posterUrl: String? = nil, positionMs: Int64, durationMs: Int64, completed: Bool, watchedAt: String) {
+                posterUrl: String? = nil, positionMs: Int64, durationMs: Int64, completed: Bool, markedManually: Bool? = nil, watchedAt: String) {
         self.providerId = providerId
         self.contentId = contentId
         self.contentType = contentType
@@ -26,7 +28,16 @@ public struct HistoryItem: Codable, Equatable, Sendable {
         self.positionMs = positionMs
         self.durationMs = durationMs
         self.completed = completed
+        self.markedManually = markedManually
         self.watchedAt = watchedAt
+    }
+
+    /// Whether this row is only a tick the person pressed ("mark as watched" on an episode or a season) and not something that was played. New rows
+    /// say so themselves. Older ones were written with the show's listed runtime as both the position and the length, in whole minutes, which real
+    /// playback (a length in milliseconds, from the file) essentially never is, so those are recognised that way.
+    public var isMarkedByHand: Bool {
+        if markedManually == true { return true }
+        return contentType == "TV_SHOW" && completed && durationMs > 0 && positionMs == durationMs && durationMs % 60_000 == 0
     }
 
     /// How much of this row counts as watched: all of it when finished, otherwise how far in it got (never more than its length).
@@ -35,6 +46,24 @@ public struct HistoryItem: Codable, Equatable, Sendable {
         if durationMs > 0 { return completed ? durationMs : min(position, durationMs) }
         return position
     }
+}
+
+/// One title's share of the history, for "Most watched".
+public struct TopTitle: Equatable, Sendable {
+    public var title: String
+    public var posterUrl: String?
+    public var type: String
+    public var watchedMs: Int64
+    /// Episodes of a show watched (1 for a movie).
+    public var parts: Int
+}
+
+/// What the recap card says, worked out from the stats.
+public struct StatsRecapText: Equatable, Sendable {
+    public var heading: String
+    /// The big number: "126 hours".
+    public var hours: String
+    public var lines: [String]
 }
 
 /// "Your stats": what the account's watch history says about how it is used. The history holds one row per movie or episode, so a title watched
@@ -49,6 +78,8 @@ public struct WatchStats: Equatable, Sendable {
     public var last30DaysMs: Int64 = 0
     /// The 7 days before the last 7 (to say whether this week was busier or quieter).
     public var prev7DaysMs: Int64 = 0
+    /// The 30 days before the last 30 (the same comparison for the month).
+    public var prev30DaysMs: Int64 = 0
     public var movieMs: Int64 = 0
     public var showMs: Int64 = 0
     public var activeDays = 0
@@ -66,10 +97,22 @@ public struct WatchStats: Equatable, Sendable {
     public var streakDays = 0
     public var longestStreakDays = 0
     public var firstWatchedAt: Date?
+    /// The movie and the show with the most time watched, or nil when there is none of that kind.
+    public var topMovie: TopTitle?
+    public var topShow: TopTitle?
+
+    /// The history from the moment Your stats was last reset onwards (all of it when it never was, or the time cannot be read).
+    public static func afterReset(_ items: [HistoryItem], resetAt: String?) -> [HistoryItem] {
+        guard let resetAt, let from = ISODate.date(from: resetAt) else { return items }
+        return items.filter { item in ISODate.date(from: item.watchedAt).map { $0 >= from } ?? false }
+    }
 
     public static func compute(_ items: [HistoryItem], now: Date = Date(), calendar: Calendar = .current) -> WatchStats {
         var stats = WatchStats()
-        let valid = items.compactMap { item -> (HistoryItem, Date)? in ISODate.date(from: item.watchedAt).map { (item, $0) } }
+        // Only what was played counts: a tick pressed by hand is not time watched, an episode watched, a day on the streak or anything else here.
+        let valid = items.compactMap { item -> (HistoryItem, Date)? in
+            item.isMarkedByHand ? nil : ISODate.date(from: item.watchedAt).map { (item, $0) }
+        }
         if valid.isEmpty { return stats }
         stats.isEmpty = false
         let day: TimeInterval = 24 * 3600
@@ -84,6 +127,7 @@ public struct WatchStats: Equatable, Sendable {
         var titles = Set<String>()
         var shows = Set<String>()
         var first = Date.distantFuture
+        var perTitle: [String: TopTitle] = [:]
         for (item, at) in valid {
             let ms = item.watchedMs
             let age = now.timeIntervalSince(at)
@@ -91,6 +135,7 @@ public struct WatchStats: Equatable, Sendable {
             if age <= 7 * day { stats.last7DaysMs += ms }
             if age <= 30 * day { stats.last30DaysMs += ms }
             if age > 7 * day, age <= 14 * day { stats.prev7DaysMs += ms }
+            if age > 30 * day, age <= 60 * day { stats.prev30DaysMs += ms }
             if item.contentType == "MOVIE" { stats.movieMs += ms } else { stats.showMs += ms }
             let ago = today - dayNumber(at)
             if ago >= 0, ago < heatDays { stats.dailyMs[heatDays - 1 - ago] += ms }
@@ -100,6 +145,10 @@ public struct WatchStats: Equatable, Sendable {
             if ms > 0 { days.insert(dayNumber(at)) }
             let key = "\(item.providerId)|\(item.contentId)|\(item.contentType)"
             titles.insert(key)
+            var entry = perTitle[key] ?? TopTitle(title: item.title, posterUrl: item.posterUrl, type: item.contentType, watchedMs: 0, parts: 0)
+            entry.watchedMs += ms
+            entry.parts += ms > 0 ? 1 : 0
+            perTitle[key] = entry
             if item.contentType == "MOVIE" {
                 if item.completed { stats.moviesFinished += 1 }
             } else {
@@ -126,6 +175,9 @@ public struct WatchStats: Equatable, Sendable {
             cursor -= 1
         }
         stats.firstWatchedAt = first
+        let ranked = perTitle.values.filter { $0.watchedMs > 0 }.sorted { $0.watchedMs != $1.watchedMs ? $0.watchedMs > $1.watchedMs : $0.title < $1.title }
+        stats.topMovie = ranked.first { $0.type == "MOVIE" }
+        stats.topShow = ranked.first { $0.type != "MOVIE" }
         return stats
     }
 
@@ -155,6 +207,34 @@ public struct WatchStats: Equatable, Sendable {
         return "\(Int(hours.rounded()))h"
     }
 
+    /// What to say under the streak: how far it is from the best one. Nil when there is nothing to say.
+    public static func streakNote(streak: Int, longest: Int) -> String? {
+        if longest <= 0 { return nil }
+        if streak <= 0 { return "best \(longest)" }
+        if streak >= longest { return streak == longest ? "your best" : nil }
+        let left = longest - streak
+        return "best \(longest) \u{00B7} \(left) \(left == 1 ? "day" : "days") to match it"
+    }
+
+    /// "You watch most on Mondays." for the weekday bars; nil with no history.
+    public static func weekdayLine(_ busiest: Int?) -> String? {
+        busiest.map { "You watch most on \(weekdays[$0])s." }
+    }
+
+    /// The recap card's words; nil when there is nothing to recap yet.
+    public var recap: StatsRecapText? {
+        if isEmpty || totalMs <= 0 { return nil }
+        var lines: [String] = []
+        if let show = topShow { lines.append("Most watched show: \(show.title)") }
+        if let movie = topMovie { lines.append("Most watched movie: \(movie.title)") }
+        if longestStreakDays >= 2 { lines.append("Longest streak: \(longestStreakDays) days") }
+        var counts: [String] = []
+        if moviesFinished > 0 { counts.append("\(moviesFinished) \(moviesFinished == 1 ? "movie" : "movies") finished") }
+        if episodesWatched > 0 { counts.append("\(episodesWatched) \(episodesWatched == 1 ? "episode" : "episodes") watched") }
+        if !counts.isEmpty { lines.append(counts.joined(separator: " \u{00B7} ")) }
+        return StatsRecapText(heading: "My Arc TV recap", hours: WatchStats.duration(totalMs), lines: lines)
+    }
+
     /// This week against the one before: nil when there is nothing to compare.
     public static func weekChange(last7: Int64, prev7: Int64) -> (direction: String, percent: Int)? {
         guard prev7 > 0 else { return nil }
@@ -167,6 +247,8 @@ public struct WatchStats: Equatable, Sendable {
         public var ms: Int64?
         public var level: Int
         public var label: String
+        /// Month of the day, 0 to 11; nil for the blank cells.
+        public var month: Int? = nil
     }
 
     public static func heatCells(_ dailyMs: [Int64], now: Date = Date(), calendar: Calendar = .current) -> [HeatCell] {
@@ -180,9 +262,31 @@ public struct WatchStats: Equatable, Sendable {
         for (index, ms) in dailyMs.enumerated() {
             let date = calendar.date(byAdding: .day, value: index, to: start) ?? start
             let level = ms <= 0 || maxMs <= 0 ? 0 : min(4, max(1, Int((Double(ms) / Double(maxMs) * 4).rounded(.up))))
-            cells.append(HeatCell(ms: ms, level: level, label: formatter.string(from: date)))
+            cells.append(HeatCell(ms: ms, level: level, label: formatter.string(from: date), month: calendar.component(.month, from: date) - 1))
         }
         return cells
+    }
+
+    /// The month names to print above the activity grid, one per week column: the month's short name where a new month starts and an empty string
+    /// elsewhere. The first column is only named when the next column is not already a new month, so two names never sit side by side.
+    public static func heatMonthLabels(_ cells: [HeatCell], symbols: [String] = DateFormatter().shortMonthSymbols) -> [String] {
+        let columns = (cells.count + 6) / 7
+        func month(of column: Int) -> Int? {
+            let start = column * 7
+            guard start < cells.count else { return nil }
+            return cells[start..<min(start + 7, cells.count)].compactMap(\.month).first
+        }
+        var labels: [String] = []
+        var previous: Int?
+        for column in 0..<columns {
+            let current = month(of: column)
+            let isNew = current != nil && current != previous
+            let next = month(of: 1)
+            let crowded = column == 0 && next != nil && next != current
+            labels.append(isNew && !crowded && symbols.indices.contains(current!) ? symbols[current!] : "")
+            if current != nil { previous = current }
+        }
+        return labels
     }
 }
 

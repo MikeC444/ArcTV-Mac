@@ -751,7 +751,7 @@ final class AppModel: ObservableObject {
                     try await client.reportProgress(
                         accessToken: token, title: title, season: episode.season, episode: episode.episode,
                         episodeTitle: DownloadChoices.episodeHeading(episode), positionSeconds: watched ? duration : 0,
-                        durationSeconds: duration, completed: watched
+                        durationSeconds: duration, completed: watched, markedManually: true
                     )
                 }
             }
@@ -1160,13 +1160,22 @@ final class AppModel: ObservableObject {
 
     func loadStats() async {
         statsFailed = false
+        if settings == nil { await loadSettings() }
         do {
             let found = try await authorized { client, token in try await client.history(accessToken: token) }
-            stats = WatchStats.compute(found.items)
+            // from the last reset onwards (the time is kept with the account's settings, so it holds on every device)
+            stats = WatchStats.compute(WatchStats.afterReset(found.items, resetAt: settings?.statsResetAt))
             statsTruncated = found.truncated
         } catch {
             statsFailed = true
         }
+    }
+
+    /// Starts Your stats again from now, on every device. Final: the old numbers can't be got back. The watch history, Continue Watching and the
+    /// watched ticks are not touched.
+    func resetStats() async {
+        await updateSettings { $0.statsResetAt = ISODate.now() }
+        await loadStats()
     }
 
     /// Opens Stripe's checkout for a plan in the browser, then asks every few seconds until Plus is on (or ten minutes pass).

@@ -20,7 +20,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// Greyed out and not clickable without Arc TV Plus.
-    var plusOnly: Bool { self == .plusSettings || self == .recommendations || self == .stats }
+    var plusOnly: Bool { self == .plusSettings || self == .recommendations }
 
     var subtitle: String {
         switch self {

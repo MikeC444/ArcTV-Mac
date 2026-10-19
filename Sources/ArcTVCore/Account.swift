@@ -73,6 +73,8 @@ struct ProgressReport: Encodable {
     var positionMs: Int64
     var durationMs: Int64
     var completed: Bool
+    /// True when the person ticked it as watched (or not watched) by hand instead of playing it, so Your stats does not count it.
+    var markedManually: Bool?
     var watchedAt: String
 }
 
@@ -119,12 +121,12 @@ extension AuthClient {
 
     /// Reports where someone is in a title. [positionSeconds] and [durationSeconds] are from the player.
     public func reportProgress(accessToken: String, title: MetaDetail, season: Int?, episode: Int?, episodeTitle: String?,
-                               positionSeconds: Double, durationSeconds: Double, completed: Bool) async throws {
+                               positionSeconds: Double, durationSeconds: Double, completed: Bool, markedManually: Bool = false) async throws {
         let report = ProgressReport(
             providerId: AppInfo.cinemetaProviderId, contentId: title.id, contentType: title.type == "movie" ? "MOVIE" : "TV_SHOW",
             seasonNumber: season, episodeNumber: episode, episodeTitle: episodeTitle, title: title.name, posterUrl: title.poster,
             backdropUrl: title.background, positionMs: Int64(max(0, positionSeconds) * 1000), durationMs: Int64(max(0, durationSeconds) * 1000),
-            completed: completed, watchedAt: ISODate.now()
+            completed: completed, markedManually: markedManually ? true : nil, watchedAt: ISODate.now()
         )
         _ = try await sendJSON("POST", "/user/watch-progress", body: try JSONEncoder().encode(report), accessToken: accessToken)
     }
