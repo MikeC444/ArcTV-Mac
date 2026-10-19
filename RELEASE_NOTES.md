@@ -13,6 +13,7 @@ them under its version automatically.
 - A show you're part-way through now stays in Continue Watching, on its next episode, until you've watched them all.
 - The player hides the mouse while you watch, and has M for mute and C for captions in your language.
 - Finished episodes show one tick, not two.
+- Next episode goes straight to the player with Smart source picking, with no source list flashing by.
 - Home Rows is tidier: pick a streaming or addon card, then switch rows on and off and put them in your order.
 - Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
 - Posters are bigger everywhere, Netflix's Top 10 is much bigger, and Continue Watching is a touch bigger.

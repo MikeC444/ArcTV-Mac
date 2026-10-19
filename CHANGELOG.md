@@ -817,3 +817,17 @@ app's look, and talks to the same backend and Stremio addons.
 **Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac.
 
 **Issues discovered:** none. **Issues fixed:** the double tick.
+
+## 44 -- No source list flash when a source is picked for you
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** Pressing Next Episode in the player with Smart source picking on closed the player, showed the "Select a source" page (its grey skeleton) while the addons answered, and only then went back into the player.
+
+**Changes:** `SourcesView.willAutoPick` (the next episode of a binge, a source used before for this title or episode, or Smart source picking on with Plus): while the addons answer, the page shows the player's own loading picture (the title's artwork and logo, with a spinner) over everything instead of the list. If no source can be picked the list appears as before. `PlayerLoadingCover` is no longer private. This also covers pressing Play on a title with Smart source picking or a remembered source.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac. The player is still closed and reopened underneath (not kept alive), so the picture may blink once between the two covers.
+
+**Issues discovered:** the cover shows until the addons have answered (as long as the list used to take); there is no text saying what is happening.
+
+**Issues fixed:** the list flash.

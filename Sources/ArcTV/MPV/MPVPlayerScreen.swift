@@ -607,7 +607,7 @@ private struct MenuRow: View {
 }
 
 /// What fills the player until the first picture plays: the title's artwork, darkened, with its logo (or name) in the middle.
-private struct PlayerLoadingCover: View {
+struct PlayerLoadingCover: View {
     let title: MetaDetail
 
     var body: some View {

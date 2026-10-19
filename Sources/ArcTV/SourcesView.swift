@@ -14,6 +14,15 @@ struct SourcesView: View {
     private var arranged: [SourceItem] { SourceListing.arrange(result.items, filter: filter, sort: sort) }
     private var recommendedID: String? { SourceListing.recommendedID(in: result.items) }
 
+    /// Is a source going to be picked without asking (the next episode of a binge, a source used before, or Smart source picking)? Then the list
+    /// is not shown while the addons answer: the player's own loading picture is, so there is no flash of "Select a source" on the way in.
+    private var willAutoPick: Bool {
+        if target.chooseSource { return false }
+        if target.autoPick { return true }
+        if let user = model.scope, LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode) != nil { return true }
+        return model.plus.active && model.smartPicking
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             Theme.background.ignoresSafeArea()
@@ -70,6 +79,13 @@ struct SourcesView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            }
+            if loading && willAutoPick {
+                ZStack {
+                    PlayerLoadingCover(title: target.title)
+                    ProgressView().controlSize(.large)
+                }
+                .transition(.opacity)
             }
             if let progress = torrents.progress {
                 TorrentLoadingView(detail: target.title, progress: progress) { model.cancelTorrent() }
