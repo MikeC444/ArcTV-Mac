@@ -671,3 +671,5 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
+**Follow-up (same unshipped work): a tighter light.** The coloured light under a streaming tile reached too far down the page; its blur is now 11 pt under the pointer (was 18) and 6 pt at rest (was 9), dropped 5 and 3 pt (was 12 and 7), and the room kept for it inside the row is 24 pt above and below (was 40). Not compiled or seen on a Mac.
+

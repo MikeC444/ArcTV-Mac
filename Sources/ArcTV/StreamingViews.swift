@@ -18,9 +18,9 @@ struct StreamingTilesRow: View {
             .padding(.horizontal, 44)
             // Room above and below for each tile's coloured light, which the scroll view would cut off at its edge; the negative padding outside
             // gives the space back, so the row sits where it did.
-            .padding(.vertical, 40)
+            .padding(.vertical, 24)
         }
-        .padding(.vertical, -28)
+        .padding(.vertical, -12)
         .accessibilityLabel("Streaming services")
     }
 }
@@ -109,7 +109,7 @@ private struct StreamingTile: View {
             }
             .frame(width: 220, height: 124)
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(hovering ? 0.8 : 0.14), lineWidth: hovering ? 2 : 1))
-            .shadow(color: glow.opacity(hovering ? (brand?.hover ?? 0.5) : (brand?.rest ?? 0.15)), radius: hovering ? 18 : 9, y: hovering ? 12 : 7)
+            .shadow(color: glow.opacity(hovering ? (brand?.hover ?? 0.5) : (brand?.rest ?? 0.15)), radius: hovering ? 11 : 6, y: hovering ? 5 : 3)
             .scaleEffect(hovering ? 1.04 : 1)
             .animation(.easeOut(duration: 0.15), value: hovering)
             .contentShape(RoundedRectangle(cornerRadius: 14))
