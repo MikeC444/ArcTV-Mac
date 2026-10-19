@@ -216,7 +216,8 @@ struct SourcesView: View {
         if model.addons.isEmpty { await model.loadAddons() }
         result = await SourceFinder.find(addons: model.addons, type: target.title.type, id: target.streamID)
         // The next episode of a binge: the best source that plays at once, without asking; the list is shown only when there is none.
-        if target.autoPick, let best = result.items.first(where: \.isPlayable) {
+        // (a source with a web link first; with none, the best torrent the app can stream, so a person who watches torrents is not sent to the list)
+        if target.autoPick, let best = result.items.first(where: \.isPlayable) ?? result.items.first(where: \.canStream) {
             choose(best)
         } else if !target.chooseSource, let user = model.scope,
            let last = LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode),

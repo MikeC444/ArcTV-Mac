@@ -831,3 +831,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the cover shows until the addons have answered (as long as the list used to take); there is no text saying what is happening.
 
 **Issues fixed:** the list flash.
+
+**Follow-up (same unshipped work): Next Episode with nothing but torrents.** People reported Next Episode still opening the source list with Smart source picking on. The code path for Next Episode (and for an episode that ends by itself) picks the best source with a web link, and only a source with a web link counted, so a title whose sources are all torrents (no debrid service) always fell through to the list. With no web-link source it now takes the best torrent the app can stream. Plain Play with Smart source picking is unchanged (still only a source that surely plays). This is my best reading of the report from the code, not a confirmed cause: I could not reproduce it, and a failed or empty answer from the addons would still show the list. Not compiled or tried on a Mac.
