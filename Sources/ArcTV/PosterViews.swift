@@ -2,6 +2,16 @@ import AppKit
 import ArcTVCore
 import SwiftUI
 
+/// How big posters are everywhere (rows, grids and their grey placeholders), kept in one place so they stay the same.
+enum PosterSize {
+    /// A poster in a row (Home).
+    static let row: CGFloat = 195
+    /// A grid's columns: as many as fit between these widths.
+    static let gridMin: CGFloat = 190
+    static let gridMax: CGFloat = 270
+    static var gridColumns: [GridItem] { [GridItem(.adaptive(minimum: gridMin, maximum: gridMax), spacing: 18, alignment: .top)] }
+}
+
 /// A poster with its title and year under it. Give it a [width] in a row; in a grid it fills its column.
 struct PosterCard: View {
     @EnvironmentObject private var model: AppModel
@@ -149,7 +159,7 @@ struct PosterGrid: View {
     var placeholders = false
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 16, alignment: .top)], alignment: .leading, spacing: 22) {
+        LazyVGrid(columns: PosterSize.gridColumns, alignment: .leading, spacing: 24) {
             ForEach(items) { item in
                 PosterCard(item: item)
                     .onAppear {

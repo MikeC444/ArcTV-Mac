@@ -733,3 +733,19 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** none new. A row whose id does not start with any installed addon's id (an addon removed since the rows were saved) has no page.
 
 **Issues fixed:** none.
+
+## 39 -- Bigger posters everywhere
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** Posters felt small on a Mac screen. The user asked for them bigger in every section, so fewer fit on a page.
+
+**Changes:**
+- `PosterSize` (in `PosterViews.swift`): one place for the sizes. A poster in a row is 195 pt wide (was 156); grids fit as many columns as they can between 190 and 270 pt (was 150 to 210), 18 pt apart with 24 pt between rows (was 16 and 22). About 25% bigger.
+- Used by Home's rows and Picked for you, the grid on Movies, TV Shows, My List, Search and the streaming service pages, and the grey placeholders and skeletons, so a loading page has the same shapes as the loaded one.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac: how many columns each window width now gives.
+
+**Issues discovered:** not changed on purpose: Continue Watching's wide pictures, Netflix's Top 10 and wide grid, and the source picker's small poster.
+
+**Issues fixed:** none.

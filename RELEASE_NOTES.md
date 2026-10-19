@@ -11,6 +11,7 @@ them under its version automatically.
 - Your streaming services are here: Netflix, Disney+ and more as tiles on Home, each opening a page of its titles.
 - Home Rows is tidier: pick a streaming or addon card, then switch rows on and off and put them in your order.
 - Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
+- Posters are bigger everywhere, so you see fewer at a time and get a better look.
 - Posters get a soft edge and lift when you point at them, and Continue Watching shows each title's logo.
 
 ## 0.2.0

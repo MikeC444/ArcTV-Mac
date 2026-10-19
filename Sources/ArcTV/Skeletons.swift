@@ -34,7 +34,7 @@ struct HomeSkeleton: View {
                         VStack(alignment: .leading, spacing: 14) {
                             Shimmer(cornerRadius: 6).frame(width: 180, height: 20).padding(.horizontal, 44)
                             HStack(spacing: 16) {
-                                ForEach(0..<10, id: \.self) { _ in Shimmer().frame(width: 156, height: 234) }
+                                ForEach(0..<10, id: \.self) { _ in Shimmer().frame(width: PosterSize.row, height: PosterSize.row * 1.5) }
                             }
                             .padding(.horizontal, 44)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -52,7 +52,7 @@ struct HomeSkeleton: View {
 /// Movies / TV Shows / My List while the first page loads: a grid of grey posters.
 struct GridSkeleton: View {
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 16, alignment: .top)], alignment: .leading, spacing: 22) {
+        LazyVGrid(columns: PosterSize.gridColumns, alignment: .leading, spacing: 24) {
             ForEach(0..<14, id: \.self) { _ in Shimmer().aspectRatio(2.0 / 3.0, contentMode: .fit) }
         }
         .padding(.horizontal, 44)

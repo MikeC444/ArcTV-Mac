@@ -269,7 +269,7 @@ struct HomeRowView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(row.items) { item in
-                        PosterCard(item: item, width: 156)
+                        PosterCard(item: item, width: PosterSize.row)
                     }
                 }
                 .padding(.horizontal, 44)
@@ -293,7 +293,7 @@ struct PickedRowView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(row.entries) { entry in
-                        PosterCard(item: entry.item, width: 156, reason: entry.reason, fromPicked: true)
+                        PosterCard(item: entry.item, width: PosterSize.row, reason: entry.reason, fromPicked: true)
                     }
                 }
                 .padding(.horizontal, 44)
