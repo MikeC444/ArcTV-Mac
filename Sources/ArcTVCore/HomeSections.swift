@@ -52,8 +52,8 @@ public enum HomeSections {
     static let newPageWeights: [Double] = [6, 4]
     static let pageSize = 100
     static let maxGenreRows = 30
-    /// Rows are fetched in small batches so the first rows appear fast and shared free addon servers aren't hammered.
-    static let batchSize = 4
+    /// How many rows are asked for at once: enough for the rows to fill in quickly, few enough that shared free addon servers aren't hammered.
+    static let batchSize = 6
 
     /// Whether an addon is shaped like Cinemeta.
     static func isRanked(_ catalogs: [CatalogDefinition]) -> Bool {
@@ -104,17 +104,36 @@ public enum HomeSections {
             }
         }
 
-        var index = 0
-        while index < jobs.count {
-            let slice = Array(jobs[index..<min(index + batchSize, jobs.count)])
-            let ready = await withTaskGroup(of: (Int, HomeSection?).self) { group -> [HomeSection] in
-                for (offset, job) in slice.enumerated() { group.addTask { (offset, await job()) } }
-                var found: [(Int, HomeSection)] = []
-                for await (offset, section) in group { if let section { found.append((offset, section)) } }
-                return found.sorted { $0.0 < $1.0 }.map(\.1)
+        // A sliding window of `batchSize` requests: as soon as one row is in, the next one starts (the rows no longer wait for the slowest of a
+        // fixed group of four). Rows are still handed over in their own order, each as soon as every row before it is in, so the order never changes
+        // from one launch to the next.
+        var results = [HomeSection?](repeating: nil, count: jobs.count)
+        var finished = [Bool](repeating: false, count: jobs.count)
+        var started = 0
+        var delivered = 0
+        await withTaskGroup(of: (Int, HomeSection?).self) { group in
+            while started < min(batchSize, jobs.count) {
+                let at = started
+                started += 1
+                let job = jobs[at]
+                group.addTask { (at, await job()) }
             }
-            if !ready.isEmpty { await onBatch(ready) }
-            index += batchSize
+            while let (at, section) = await group.next() {
+                results[at] = section
+                finished[at] = true
+                if started < jobs.count {
+                    let next = started
+                    started += 1
+                    let job = jobs[next]
+                    group.addTask { (next, await job()) }
+                }
+                var ready: [HomeSection] = []
+                while delivered < jobs.count, finished[delivered] {
+                    if let row = results[delivered] { ready.append(row) }
+                    delivered += 1
+                }
+                if !ready.isEmpty { await onBatch(ready) }
+            }
         }
     }
 

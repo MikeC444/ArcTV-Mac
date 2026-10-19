@@ -654,3 +654,20 @@ app's look, and talks to the same backend and Stremio addons.
 
 
 **Follow-up (same unshipped work): the tiles' light and the top bar.** The scroll view cut off the coloured light under each streaming tile at its bottom (and top) edge; the row now has room for it inside the scroll view (40 pt above and below) and gives the space back with a negative padding outside, so it sits where it did. The top bar, which slides away while a page scrolls down, now also comes back on any click (left or right) anywhere in the window, not only on a scroll up or the pointer reaching the top. Not compiled or seen on a Mac.
+
+## 35 -- Home's rows fill in faster
+
+**Status:** Done, on main. Not compiled or timed here (see below).
+
+**Context:** The owner found Home's rows slow to appear. Read from the code, not measured, the waits were: (1) the sign-in work before Home starts asked for the Plus status, the profiles, the addons and the settings one after the other, so the addons and the settings cost two round trips in a row; (2) the rows were asked for in lock-step groups of four, so each group waited for its slowest request before the next group began (Cinemeta's Popular, New, Top rated and nine genre rows are three such groups, one after another, each page about 100 titles).
+
+**Changes:**
+- `AppModel.loadLibrary`: the settings are asked for while the addons are (the settings do not depend on them); Home still starts once both are in, so the hidden rows are known before anything is drawn.
+- `HomeSections.load`: a sliding window of six requests (was four in lock-step): the next row starts the moment one finishes. Rows are still handed over in their own order, each once every row before it is in, so the row order does not change from one launch to the next.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the existing `HomeSectionsTests` do not call `load`. Code re-read. Not timed on a Mac: how much faster it is depends on the addon servers and the account server.
+
+**Issues discovered:** the account server and a free addon server can each be slow to answer on their own (a cold start), which this does not change. The first launch has no saved rows to show at once; later launches draw the last launch's rows first.
+
+**Issues fixed:** none.
+

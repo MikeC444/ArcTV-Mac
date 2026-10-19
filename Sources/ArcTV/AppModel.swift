@@ -896,8 +896,10 @@ final class AppModel: ObservableObject {
     }
 
     private func loadLibrary() async {
+        // The addons and the settings are asked for together (neither needs the other), not one after the other.
+        async let settingsLoaded: Void = loadSettings()
         await loadAddons()
-        await loadSettings()
+        await settingsLoaded
         async let home: Void = loadHome()
         async let account: Void = loadAccountData()
         _ = await (home, account)
