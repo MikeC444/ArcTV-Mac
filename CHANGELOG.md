@@ -859,3 +859,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac: how a long name or description sits in the narrower card.
 
 **Issues discovered:** none. **Issues fixed:** none.
+
+**Follow-up (same unshipped work): the list still showed for a moment for a torrent.** The cover was only up while the addons answered; once a torrent source was picked the list was uncovered until the torrent engine reported its first progress (a gap of a second or more), which showed the list. `SourcesView` now keeps the cover up from the pick until the source plays or fails (`autoStarted`), and takes it down if the torrent is cancelled. This is my reading of the report from the code, not a confirmed cause. Not compiled or seen on a Mac.

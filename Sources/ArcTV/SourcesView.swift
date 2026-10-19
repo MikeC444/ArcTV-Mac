@@ -7,6 +7,8 @@ struct SourcesView: View {
     let target: PlayTarget
     @State private var result = SourceResult()
     @State private var loading = true
+    /// A source was picked without asking and is starting (a torrent takes a while to get going): the list stays covered until it plays or fails.
+    @State private var autoStarted = false
     @State private var filter: SourceFilter = .all
     @State private var sort: SourceSort = .quality
     @ObservedObject private var torrents = TorrentEngine.shared
@@ -80,7 +82,7 @@ struct SourcesView: View {
                 }
             }
             }
-            if loading && willAutoPick {
+            if (loading && willAutoPick) || (autoStarted && torrents.failure == nil) {
                 ZStack {
                     PlayerLoadingCover(title: target.title)
                     ProgressView().controlSize(.large)
@@ -93,6 +95,10 @@ struct SourcesView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await load() }
+        .onChange(of: torrents.progress == nil) { gone in
+            // the torrent was cancelled (not played): show the list again
+            if gone, model.playing == nil, torrents.failure == nil { autoStarted = false }
+        }
     }
 
     /// Quality pills and the sort choice, as on the web app.
@@ -218,15 +224,18 @@ struct SourcesView: View {
         // The next episode of a binge: the best source that plays at once, without asking; the list is shown only when there is none.
         // (a source with a web link first; with none, the best torrent the app can stream, so a person who watches torrents is not sent to the list)
         if target.autoPick, let best = result.items.first(where: \.isPlayable) ?? result.items.first(where: \.canStream) {
+            autoStarted = true
             choose(best)
         } else if !target.chooseSource, let user = model.scope,
            let last = LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode),
            let match = last.match(in: result.items) {
+            autoStarted = true
             choose(match)
         } else if !target.chooseSource, model.plus.active, model.smartPicking,
                   let best = result.items.first(where: \.isPlayable) ?? result.items.first(where: \.canStream) {
             // Smart source picking (Plus): the best source that plays here, without asking: one with a web link first, else the best torrent the
             // app can stream.
+            autoStarted = true
             choose(best)
         }
         loading = false
