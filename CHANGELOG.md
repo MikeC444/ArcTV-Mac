@@ -845,3 +845,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac: how many tiles fit across at common window widths.
 
 **Issues discovered:** none. **Issues fixed:** none.
+
+**Follow-up (same unshipped work): Smart source picking takes torrents too.** Plain Play with Smart source picking on also picks the best torrent the app can stream when no source has a web link (before, only a source with a web link counted and a torrent user always got the list). The Settings text says so. A dead torrent now fails after the list was skipped instead of letting the person pick another; the failure message and the way back to the list are as for any torrent. Not compiled or tried on a Mac.
