@@ -882,6 +882,9 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** the Sources button; the Back loop.
 
+
+**Follow-up (same unshipped work): the Sources button still did not show the list.** The source page made when Play was pressed stays under the player (it is only identified by the title and episode), so asking for the list reused that same page with the state it had left (the list "already loaded", or the cover up because a source had been picked) and its loading did not run again. The page is now identified by the title, the episode and whether the list was asked for by hand, so the Sources button builds a fresh page that loads and shows the list. Not compiled or tried on a Mac.
+
 ## 48 -- Your stats brought up to the web app's
 
 **Status:** Done, on main. Not compiled here (see below).

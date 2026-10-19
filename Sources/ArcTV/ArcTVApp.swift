@@ -76,7 +76,8 @@ struct MainView: View {
             }
             if let target = model.sourcesFor {
                 SourcesView(target: target)
-                    .id(target.id)
+                    // (a new page when the list is asked for by hand: the one made to pick a source stays under the player, with its state)
+                    .id("\(target.id)|\(target.chooseSource)")
                     .transition(.opacity)
             }
             if model.guideOpen {
