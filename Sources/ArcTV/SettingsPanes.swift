@@ -214,10 +214,10 @@ struct HomeRowsPane: View {
         if !services.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Streaming services").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
-                Text("The tiles at the top of Home. Each opens that service's titles.")
+                Text("The tiles on Home. Each opens that service's titles; use the arrows to put them in your order.")
                     .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                 VStack(spacing: 8) {
-                    ForEach(services) { choice in
+                    ForEach(Array(services.enumerated()), id: \.element.id) { position, choice in
                         HStack(spacing: 12) {
                             Toggle("", isOn: Binding(
                                 get: { choice.visible },
@@ -229,6 +229,8 @@ struct HomeRowsPane: View {
                             Text(choice.service.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
                                 .opacity(choice.visible ? 1 : 0.5)
                             Spacer(minLength: 0)
+                            arrow("chevron.up", enabled: position > 0) { Task { await model.moveStreaming(choice.service.id, delta: -1) } }
+                            arrow("chevron.down", enabled: position < services.count - 1) { Task { await model.moveStreaming(choice.service.id, delta: 1) } }
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)

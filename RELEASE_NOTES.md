@@ -9,6 +9,10 @@ them under its version automatically.
 - Netflix's page got a glow-up: a Top 10 Today row, then wide pictures with each title's logo.
 - Home fills in faster: your rows start appearing sooner and arrive in quicker.
 - Your streaming services are here: Netflix, Disney+ and more as tiles on Home, each opening a page of its titles.
+- Put your streaming tiles in your own order with the new arrows in Settings.
+- Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
+- Posters get a soft edge and lift when you point at them, and Continue Watching shows each title's logo.
+
 ## 0.2.0
 
 - Subtitles from your addons are here! Pick them in the player, with OpenSubtitles ready to go.

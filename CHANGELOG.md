@@ -690,3 +690,23 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
+## 37 -- Home polish from the web app: colour light, poster rim, logos, tile order
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The web app (and Fire TV) light the area under the Home banner with the banner picture's colour, give posters a faint rim and a lift, show title logos on Continue Watching pictures, and let the streaming tiles be put in order. The Mac had none of these. The Settings > Home Rows hub (a page per source) is not done in this entry.
+
+**Changes:**
+- `ArcTVCore/WashColor.swift` (new): `WashColor.compute(rgba:)`, a port of the Fire TV app's `WashColor.kt` (pixels weighted by saturation and brightness, near black and near white skipped, nil for a picture with no colour, brightest channel lifted to 200). `WashColorTests`.
+- `HeroWash.swift` (new): draws a banner picture to 32 by 18, keeps one answer per picture; `HeroWashLayer` is a wide soft ellipse (peak 0.3, falling off like exp(-3t^2)) that crossfades over 0.9 s. `HeroCarousel` reports the colour of the slide showing; `HomeView` draws the light just below the banner, scrolling with the page.
+- `HomeView`: while Home is still being found and has no banner yet, a grey block of the banner's height is kept (was a short gap that the rows then jumped down from). `AppModel.homeComplete` is now readable (still only set inside the model).
+- `PosterCard`: a faint white rim at rest (hidden under the pointer) and a 4 pt lift with the grow.
+- `ContinueCard`: the title's Metahub logo top left over a soft shade, shown once loaded.
+- Streaming tile order: up and down arrows beside each service in Settings > Home Rows; the order is saved as `streaming:<id>` entries in the Home Rows order list (the rows' own entries are kept).
+- Details from Cinemeta first: the Mac's details page already asks Cinemeta first, so nothing changed.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `WashColorTests` and the build are left to the Build and test workflow. Code re-read. Not seen on a Mac: the light's position, size and strength (worked out from the Fire TV values, not looked at), the rim, the lift, the logo size.
+
+**Issues discovered:** the light is placed from the banner height and window height, so it may sit differently from the web on a very tall or short window. A saved banner still shows from the last launch's rows, as before.
+
+**Issues fixed:** none.

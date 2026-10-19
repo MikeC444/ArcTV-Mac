@@ -102,3 +102,29 @@ final class StreamingTitlesTests: XCTestCase {
         XCTAssertEqual(StreamingTitles.region(Locale(identifier: "en")), "US")
     }
 }
+
+final class WashColorTests: XCTestCase {
+    private func pixels(_ count: Int, _ r: UInt8, _ g: UInt8, _ b: UInt8, alpha: UInt8 = 255) -> [UInt8] {
+        Array((0..<count).map { _ in [r, g, b, alpha] }.joined())
+    }
+
+    func testAMostlyRedPictureGivesARedLightWithItsBrightestChannelAt200() {
+        let color = WashColor.compute(rgba: pixels(100, 200, 40, 30))
+        XCTAssertNotNil(color)
+        XCTAssertEqual(color?.r ?? 0, 200, accuracy: 0.5)
+        XCTAssertLessThan(color?.g ?? 255, 80)
+    }
+
+    func testBlackWhiteAndGreyPicturesGiveNoColour() {
+        XCTAssertNil(WashColor.compute(rgba: pixels(100, 10, 10, 10)))
+        XCTAssertNil(WashColor.compute(rgba: pixels(100, 240, 240, 240)))
+        XCTAssertNil(WashColor.compute(rgba: pixels(100, 120, 120, 120)))
+        XCTAssertNil(WashColor.compute(rgba: []))
+    }
+
+    func testSeeThroughPixelsAreIgnored() {
+        XCTAssertNil(WashColor.compute(rgba: pixels(100, 200, 40, 30, alpha: 50)))
+        let mixed = pixels(50, 30, 30, 200) + pixels(50, 200, 40, 30, alpha: 0)
+        XCTAssertGreaterThan(WashColor.compute(rgba: mixed)?.b ?? 0, 150)
+    }
+}

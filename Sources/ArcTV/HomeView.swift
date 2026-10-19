@@ -5,6 +5,8 @@ import SwiftUI
 /// Home: the rotating banner of featured titles, Continue Watching, Picked for you (Plus), then the rows.
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
+    /// The colour of the banner picture now showing, which lights the area below it.
+    @State private var wash: WashRGB?
 
     var body: some View {
         switch model.home {
@@ -17,10 +19,14 @@ struct HomeView: View {
             GeometryReader { geo in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    if model.heroTitles.isEmpty {
-                        Spacer().frame(height: 90)
+                    let heroHeight = max(geo.size.height * 0.62, 500)
+                    if !model.heroTitles.isEmpty {
+                        HeroCarousel(items: model.heroTitles, height: heroHeight, onColor: { wash = $0 })
+                    } else if !model.homeComplete {
+                        // The banner is still being found: keep its space so the rows don't jump down when it arrives.
+                        Theme.surface.opacity(0.5).frame(height: heroHeight)
                     } else {
-                        HeroCarousel(items: model.heroTitles, height: max(geo.size.height * 0.62, 500))
+                        Spacer().frame(height: 90)
                     }
                     // The first row rides up over the bottom of the banner (which fades into the page there), as on the web app.
                     VStack(alignment: .leading, spacing: 0) {
@@ -41,8 +47,14 @@ struct HomeView: View {
                             ForEach(rows) { row in HomeRowView(row: row) }
                         }
                     }
-                    .padding(.top, model.heroTitles.isEmpty ? 8 : -70)
+                    .padding(.top, model.heroTitles.isEmpty && model.homeComplete ? 8 : -70)
                     .padding(.bottom, 40)
+                }
+                // the light sits just below the banner's bottom edge and scrolls away with the page
+                .background(alignment: .top) {
+                    HeroWashLayer(color: wash)
+                        .frame(height: geo.size.height * 0.78)
+                        .offset(y: max(geo.size.height * 0.62, 500) + geo.size.height * 0.05 - geo.size.height * 0.39)
                 }
             }
             .ignoresSafeArea(.container, edges: .top)
@@ -57,6 +69,8 @@ struct HeroCarousel: View {
     @EnvironmentObject private var model: AppModel
     let items: [MetaPreview]
     let height: CGFloat
+    /// Told the colour of each banner picture as it comes up (nil when it has none worth lighting with).
+    var onColor: (WashRGB?) -> Void = { _ in }
     @State private var index = 0
     @State private var paused = false
     @State private var hovering = false
@@ -77,6 +91,10 @@ struct HeroCarousel: View {
         .frame(height: height)
         .clipped()
         .onHover { hovering = $0 }
+        .task(id: current.id) {
+            guard let url = current.background.flatMap(URL.init(string:)) else { onColor(nil); return }
+            onColor(await HeroWash.color(for: url))
+        }
         .task(id: items.map(\.id)) {
             ImageCache.preload(items.flatMap { [$0.background, $0.logo] }.compactMap { $0.flatMap(URL.init(string:)) })
         }
@@ -339,6 +357,7 @@ struct ContinueCard: View {
             Color.clear
                 .frame(width: 270, height: 152)
                 .overlay { artwork }
+                .overlay(alignment: .topLeading) { CornerLogo(contentId: item.contentId) }
                 .overlay(alignment: .bottom) {
                     ZStack(alignment: .leading) {
                         Rectangle().fill(Color.white.opacity(0.25))
@@ -378,6 +397,34 @@ struct ContinueCard: View {
             AsyncImage(url: url) { phase in
                 if case let .success(image) = phase { image.resizable().aspectRatio(contentMode: .fill) }
             }
+        }
+    }
+}
+
+/// The title's own logo in the top-left of a Continue Watching picture (from Metahub, as on the web app), over a soft shade so it reads on any
+/// picture. Shown only once it has loaded; a title with no logo just has its picture.
+private struct CornerLogo: View {
+    let contentId: String
+    @State private var logo: NSImage?
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if let logo {
+                LinearGradient(colors: [Color.black.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 70)
+                Image(nsImage: logo)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 270 * 0.34, maxHeight: 152 * 0.18, alignment: .topLeading)
+                    .padding(9)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(false)
+        .task(id: contentId) {
+            let id = contentId.split(separator: ":").first.map(String.init) ?? contentId
+            guard id.hasPrefix("tt"), let url = URL(string: "https://images.metahub.space/logo/medium/\(id)/img") else { logo = nil; return }
+            logo = await ImageCache.load(url)
         }
     }
 }

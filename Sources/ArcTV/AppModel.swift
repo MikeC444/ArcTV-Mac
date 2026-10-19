@@ -94,7 +94,8 @@ final class AppModel: ObservableObject {
     private var homeFromCache = false
     private let homeCache = HomeCache()
     private let pathMonitor = NWPathMonitor()
-    private var homeComplete = false
+    /// Every addon has answered for Home (the banner is not waiting for more rows).
+    @Published private(set) var homeComplete = false
     private var homeGeneration = 0
     private var heroKey: String?
     private var trailers: [String: String] = [:]
@@ -544,7 +545,8 @@ final class AppModel: ObservableObject {
     /// Every service an addon has, with whether its tile is on (Settings > Home Rows).
     var streamingChoices: [StreamingChoice] {
         let hidden = Set(settings?.hiddenRowIds ?? [])
-        return availableStreamingServices.compactMap { id in
+        let order = StreamingServices.inUserOrder(availableStreamingServices, order: settings?.homeRowOrder ?? [])
+        return order.compactMap { id in
             StreamingServices.service(id).map { StreamingChoice(service: $0, visible: StreamingServices.isVisible(id, hidden: hidden)) }
         }
     }
@@ -552,6 +554,19 @@ final class AppModel: ObservableObject {
     func setStreamingVisible(_ service: String, visible: Bool) async {
         await updateSettings { value in
             value.hiddenRowIds = StreamingServices.withVisible(value.hiddenRowIds, service: service, visible: visible)
+        }
+    }
+
+    /// Moves a service's tile one place earlier (-1) or later (+1). The order is saved as `streaming:<id>` entries in the Home Rows order list, beside
+    /// the rows' own entries (which stay as they are), so it follows the person to the other apps.
+    func moveStreaming(_ service: String, delta: Int) async {
+        var ids = StreamingServices.inUserOrder(availableStreamingServices, order: settings?.homeRowOrder ?? [])
+        guard let from = ids.firstIndex(of: service) else { return }
+        let to = from + delta
+        guard ids.indices.contains(to) else { return }
+        ids.swapAt(from, to)
+        await updateSettings { value in
+            value.homeRowOrder = value.homeRowOrder.filter { !StreamingServices.isServiceRowID($0) } + ids.map { StreamingServices.rowID($0) }
         }
     }
 

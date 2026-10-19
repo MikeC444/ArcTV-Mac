@@ -33,9 +33,17 @@ struct PosterCard: View {
                             .background(LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .top, endPoint: .bottom))
                     }
                 }
+                // A faint light rim at rest, so a light poster sits on the dark page instead of glaring (the web app's poster rim); the outline takes over under the pointer.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.18), Color.white.opacity(0.08)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                        .opacity(hovering ? 0 : 1)
+                )
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(hovering ? 0.9 : 0), lineWidth: 2))
                 .shadow(color: .black.opacity(hovering ? 0.55 : 0), radius: 14, y: 6)
                 .scaleEffect(hovering ? 1.05 : 1)
+                // lifts a little as well as growing
+                .offset(y: hovering ? -4 : 0)
                 .animation(.easeOut(duration: 0.15), value: hovering)
 
             Text(item.name)
