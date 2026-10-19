@@ -63,4 +63,24 @@ final class SourcesTests: XCTestCase {
         XCTAssertEqual(describeAddonError(URLError(.timedOut)), "took too long to answer")
         XCTAssertEqual(describeAddonError(URLError(.notConnectedToInternet)), "couldn't be reached")
     }
+
+    func testSmartPickingTakesTheTorrentWithMostSeedersThenSizeThenQuality() {
+        func torrent(_ hash: String, _ title: String, _ index: Int) -> SourceItem {
+            SourceItem(addonName: "T", stream: AddonStream(infoHash: hash, title: title), index: index)
+        }
+        let few = torrent("a", "Show 2160p\n👤 2  💾 30 GB", 0)
+        let many = torrent("b", "Show 720p\n👤 150  💾 1.2 GB", 1)
+        XCTAssertEqual(SourceListing.bestTorrent(in: [few, many])?.stream.infoHash, "b")
+        // equal seeders: the bigger file
+        let small = torrent("c", "Show 1080p\n👤 40  💾 2 GB", 0)
+        let big = torrent("d", "Show 1080p\n👤 40  💾 9 GB", 1)
+        XCTAssertEqual(SourceListing.bestTorrent(in: [small, big])?.stream.infoHash, "d")
+        // equal seeders and size: the better quality, then the addon's order
+        let hd = torrent("e", "Show 720p\n👤 40  💾 4 GB", 0)
+        let uhd = torrent("f", "Show 2160p\n👤 40  💾 4 GB", 1)
+        XCTAssertEqual(SourceListing.bestTorrent(in: [hd, uhd])?.stream.infoHash, "f")
+        // a source with a web link is not a torrent
+        let link = SourceItem(addonName: "D", stream: AddonStream(url: "https://x.example/a.mkv", title: "Show 1080p"), index: 2)
+        XCTAssertNil(SourceListing.bestTorrent(in: [link]))
+    }
 }

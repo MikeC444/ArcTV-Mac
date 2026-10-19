@@ -84,6 +84,18 @@ public enum SourceListing {
     /// The best source that plays straight away (the list is already best first), marked "Recommended".
     public static func recommendedID(in items: [SourceItem]) -> String? { items.first(where: \.isPlayable)?.id }
 
+    /// The torrent Smart source picking starts when no source has a web link: the one with the most seeders, then the biggest file, then the best
+    /// quality, then the addon's own order. A torrent that does not say its seeders or size counts as having none.
+    public static func bestTorrent(in items: [SourceItem]) -> SourceItem? {
+        items.enumerated().filter { $0.element.isTorrent }.sorted { left, right in
+            let a = left.element, b = right.element
+            if (a.seeders ?? 0) != (b.seeders ?? 0) { return (a.seeders ?? 0) > (b.seeders ?? 0) }
+            if (a.sizeBytes ?? 0) != (b.sizeBytes ?? 0) { return (a.sizeBytes ?? 0) > (b.sizeBytes ?? 0) }
+            if a.quality != b.quality { return a.quality > b.quality }
+            return left.offset < right.offset
+        }.first?.element
+    }
+
     /// The sources after filtering and sorting. Quality keeps the list's own order (direct links first, best quality first); the recommended
     /// source always stays on top.
     public static func arrange(_ items: [SourceItem], filter: SourceFilter, sort: SourceSort) -> [SourceItem] {

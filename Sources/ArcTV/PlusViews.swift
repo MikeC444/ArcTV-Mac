@@ -250,7 +250,7 @@ struct PlusSettingsPane: View {
                 Toggle(isOn: $model.smartPicking) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Smart source picking").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
-                        Text("Skip the source list and start the best source this Mac can play: a direct link first, then the best torrent. If there is none, you still get the list.")
+                        Text("Skip the source list and start the best source this Mac can play: a direct link first, then the torrent with the most seeders. If there is none, you still get the list.")
                             .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                     }
                 }
