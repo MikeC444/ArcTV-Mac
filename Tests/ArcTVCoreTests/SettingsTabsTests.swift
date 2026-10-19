@@ -132,9 +132,13 @@ final class SourceListingTests: XCTestCase {
         let hd = item("Movie 720p\n👤 90", index: 2, size: 2_000_000_000)
         let all = [direct, uhd, hd]
         XCTAssertEqual(SourceListing.recommendedID(in: all), direct.id)
-        XCTAssertEqual(SourceListing.arrange(all, filter: .uhd, sort: .quality).map(\.id), [direct.id, uhd.id])
+        // the best direct link and the best torrent (the most seeders) are both recommended and stay on top, whatever the filter or sort
+        XCTAssertEqual(SourceListing.recommendedIDs(in: all), [direct.id, hd.id])
+        XCTAssertEqual(SourceListing.arrange(all, filter: .uhd, sort: .quality).map(\.id), [direct.id, hd.id, uhd.id])
         XCTAssertEqual(SourceListing.arrange(all, filter: .all, sort: .seeders).map(\.id), [direct.id, hd.id, uhd.id])
-        XCTAssertEqual(SourceListing.arrange(all, filter: .all, sort: .size).map(\.id), [direct.id, uhd.id, hd.id])
+        XCTAssertEqual(SourceListing.arrange(all, filter: .all, sort: .size).map(\.id), [direct.id, hd.id, uhd.id])
+        // only torrents: just the best torrent
+        XCTAssertEqual(SourceListing.recommendedIDs(in: [uhd, hd]), [hd.id])
         XCTAssertEqual(SourceSort.size.next, .quality)
     }
 }

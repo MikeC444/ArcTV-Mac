@@ -21,6 +21,7 @@ them under its version automatically.
 - Your stats tells you more: your best streak, this month against last, your top show and movie, and a recap.
 - Your stats is clearer: month names above the 13-week map, a line for the day you point at, and what counts.
 - Without Plus, Your stats opens to a preview of your own numbers instead of a locked page.
+- Sources shows a Recommended box around the best debrid source and the best torrent.
 - Home Rows is tidier: pick a streaming or addon card, then switch rows on and off and put them in your order.
 - Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
 - Posters are bigger everywhere, Netflix's Top 10 is much bigger, and Continue Watching is a touch bigger.

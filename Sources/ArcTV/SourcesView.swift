@@ -14,7 +14,7 @@ struct SourcesView: View {
     @ObservedObject private var torrents = TorrentEngine.shared
 
     private var arranged: [SourceItem] { SourceListing.arrange(result.items, filter: filter, sort: sort) }
-    private var recommendedID: String? { SourceListing.recommendedID(in: result.items) }
+    private var recommendedIDs: [String] { SourceListing.recommendedIDs(in: result.items) }
 
     /// Is a source going to be picked without asking (the next episode of a binge, a source used before, or Smart source picking)? Then the list
     /// is not shown while the addons answer: the player's own loading picture is, so there is no flash of "Select a source" on the way in.
@@ -58,7 +58,7 @@ struct SourcesView: View {
                                 filterBar
                                 VStack(spacing: 10) {
                                     ForEach(arranged) { item in
-                                        SourceRow(item: item, recommended: item.id == recommendedID) { choose(item) }
+                                        SourceRow(item: item, recommended: recommendedIDs.contains(item.id), kindLabel: recommendedIDs.count > 1) { choose(item) }
                                     }
                                 }
                                 if arranged.count <= 1 && filter != .all {
@@ -322,6 +322,8 @@ struct TorrentLoadingView: View {
 private struct SourceRow: View {
     let item: SourceItem
     let recommended: Bool
+    /// Two sources are recommended (a direct link and a torrent): the badge says which is which.
+    var kindLabel = false
     let action: () -> Void
     @State private var hovering = false
 
@@ -380,7 +382,7 @@ private struct SourceRow: View {
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(recommended ? Theme.accent : Color.clear, lineWidth: 1.5))
             .overlay(alignment: .topTrailing) {
                 if recommended {
-                    Label("Recommended", systemImage: "star.fill")
+                    Label(kindLabel ? (item.isTorrent ? "Recommended \u{00B7} Torrent" : "Recommended \u{00B7} Debrid") : "Recommended", systemImage: "star.fill")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Color(hex: 0x04161A))
                         .padding(.horizontal, 10)

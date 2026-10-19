@@ -905,3 +905,17 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the web does not offer the preview on a kids profile; the Mac has no such check yet (it only looks at the paywall). The web's "tap" on a day is a pointer hover here (no touch). The Plus ask after a movie or last episode ends (a separate parity row) is not done.
 
 **Issues fixed:** none.
+
+## 49 -- Recommended box for the best debrid source and the best torrent
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The source list boxed and badged one source as Recommended: the first with a direct link. A person with only torrents, or with both, had no recommendation for the torrents.
+
+**Changes:** `SourceListing.recommendedIDs`: the best source with a direct link and the best torrent (the same ranking Smart source picking uses: seeders, then quality, then size). Each gets the Recommended box; with both kinds the badge reads "Recommended · Debrid" and "Recommended · Torrent". Both stay at the top of the list whatever the quality filter or sort. The existing filter-and-sort test is updated and a case for only torrents added.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac.
+
+**Issues discovered:** "Debrid" is the badge's word for any source with a direct web link; the app can't tell a debrid service from another direct link.
+
+**Issues fixed:** none.

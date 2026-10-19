@@ -84,6 +84,12 @@ public enum SourceListing {
     /// The best source that plays straight away (the list is already best first), marked "Recommended".
     public static func recommendedID(in items: [SourceItem]) -> String? { items.first(where: \.isPlayable)?.id }
 
+    /// Every source marked "Recommended": the best one with a direct link (a debrid service, say) and the best torrent (`bestTorrent`), each in its
+    /// own box, so a person who has both sees the best of each. With only one kind, just that one.
+    public static func recommendedIDs(in items: [SourceItem]) -> [String] {
+        [items.first(where: \.isPlayable)?.id, bestTorrent(in: items)?.id].compactMap { $0 }
+    }
+
     /// The torrent Smart source picking starts when no source has a web link: the one with the most seeders, then the best quality, then the biggest
     /// file, then the addon's own order (a bigger 720p file does not beat a 1080p one with the same seeders). A torrent that does not say its seeders or size counts as having none.
     public static func bestTorrent(in items: [SourceItem]) -> SourceItem? {
@@ -97,17 +103,18 @@ public enum SourceListing {
     }
 
     /// The sources after filtering and sorting. Quality keeps the list's own order (direct links first, best quality first); the recommended
-    /// source always stays on top.
+    /// sources always stay on top.
     public static func arrange(_ items: [SourceItem], filter: SourceFilter, sort: SourceSort) -> [SourceItem] {
-        let recommended = recommendedID(in: items)
-        let kept = items.filter { filter.matches($0.quality) || $0.id == recommended }
+        let recommended = recommendedIDs(in: items)
+        let kept = items.filter { filter.matches($0.quality) || recommended.contains($0.id) }
         let sorted: [SourceItem]
         switch sort {
         case .quality: sorted = kept
         case .seeders: sorted = kept.enumerated().sorted { ($0.element.seeders ?? -1, -$0.offset) > ($1.element.seeders ?? -1, -$1.offset) }.map(\.element)
         case .size: sorted = kept.enumerated().sorted { ($0.element.sizeBytes ?? -1, -$0.offset) > ($1.element.sizeBytes ?? -1, -$1.offset) }.map(\.element)
         }
-        guard let recommended, let top = sorted.first(where: { $0.id == recommended }) else { return sorted }
-        return [top] + sorted.filter { $0.id != recommended }
+        let top = recommended.compactMap { id in sorted.first { $0.id == id } }
+        guard !top.isEmpty else { return sorted }
+        return top + sorted.filter { !recommended.contains($0.id) }
     }
 }
