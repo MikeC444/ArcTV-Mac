@@ -6,6 +6,8 @@ them under its version automatically.
 
 ## Unreleased
 
+## 0.3.0
+
 - Netflix's page got a glow-up: a Top 10 Today row, then wide pictures with each title's logo.
 - New services in your Streaming Catalogs addon turn up by themselves in Settings > Home Rows, ready to switch on as tiles.
 - A show you're part-way through now stays in Continue Watching, on its next episode, until you've watched them all.
