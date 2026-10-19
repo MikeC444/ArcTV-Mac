@@ -283,6 +283,7 @@ final class AppModel: ObservableObject {
         if sources.isEmpty, let manifest = try? await AddonClient().fetchManifest(AppInfo.cinemetaManifestURL) {
             sources = [HomeSource(manifestURL: AppInfo.cinemetaManifestURL, manifest: manifest)]
         }
+        StreamingServices.learn(from: sources)
         catalogSources = sources
         let seed = "\(session?.user.id ?? "guest")|\(HomeVariety.dayStamp())"
         await withTaskGroup(of: Void.self) { group in
@@ -606,6 +607,8 @@ final class AppModel: ObservableObject {
 
     /// One page of TMDB's titles for a service in this Mac's country (see `StreamingTitles`); "not available" when signed out, offline or the server has none.
     func streamingTitles(service: String, type: String, page: Int) async -> StreamingTitlesPage {
+        // the server's lists cover the built-in services only
+        guard StreamingServices.isBuiltIn(service) else { return .notAvailable }
         let region = StreamingTitles.region()
         let answer = try? await authorized { client, token in
             await client.streamingTitles(accessToken: token, service: service, type: type, page: page, region: region)

@@ -63,7 +63,41 @@ public enum StreamingServices {
 
     private static let byID: [String: StreamingService] = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
 
-    public static func service(_ id: String) -> StreamingService? { byID[id] }
+    /// Services a streaming-catalogue addon has that are not in the list above (a new one the addon's author adds), learned from the installed addons
+    /// (`learn`) so each still gets a tile and a place in Settings > Home Rows. Their ids start with "x-".
+    private static let lock = NSLock()
+    private static var learned: [String: StreamingService] = [:]
+
+    public static func service(_ id: String) -> StreamingService? {
+        if let known = byID[id] { return known }
+        lock.lock()
+        defer { lock.unlock() }
+        return learned[id]
+    }
+
+    /// Is this one of the built-in services (the server's list of titles, and the logos, only cover these)?
+    public static func isBuiltIn(_ id: String) -> Bool { byID[id] != nil }
+
+    /// Takes the services the installed addons have that the built-in list does not (replacing what was learned before).
+    public static func learn(from sources: [HomeSource]) {
+        var found: [String: StreamingService] = [:]
+        for source in sources {
+            for entry in source.serviceCatalogEntries where byID[entry.service] == nil && found[entry.service] == nil {
+                found[entry.service] = StreamingService(id: entry.service, name: entry.catalog.name ?? entry.catalog.id, words: [], off: true)
+            }
+        }
+        lock.lock()
+        learned = found
+        lock.unlock()
+    }
+
+    /// The id of a service the built-in list does not have: from its catalogue's own id (or name), so it stays the same from one launch to the next.
+    static func learnedID(for catalog: CatalogDefinition) -> String? {
+        let slug = tokens(catalog.id).joined(separator: "-")
+        let fallback = tokens(catalog.name).joined(separator: "-")
+        let text = slug.isEmpty ? fallback : slug
+        return text.isEmpty ? nil : "x-" + text
+    }
 
     /// Words of seven letters or more also count when they sit inside the whole name run together ("Netflix Kids" is "netflixkids").
     static let longWord = 7
@@ -101,12 +135,19 @@ public enum StreamingServices {
         let matched = catalogs
             .filter { catalog in !(catalog.extra ?? []).contains { $0.isRequired == true } }
             .compactMap { catalog in serviceOfCatalog(name: catalog.name, id: catalog.id).map { (catalog: catalog, service: $0) } }
-        return Set(matched.map(\.service)).count >= minServicesForServiceAddon ? matched : []
+        guard Set(matched.map(\.service)).count >= minServicesForServiceAddon else { return [] }
+        // In an addon that is made of services, a catalogue that is none of the ones known is a service the author added: it gets a tile too.
+        let extra = catalogs
+            .filter { catalog in !(catalog.extra ?? []).contains { $0.isRequired == true } }
+            .filter { catalog in serviceOfCatalog(name: catalog.name, id: catalog.id) == nil }
+            .compactMap { catalog in learnedID(for: catalog).map { (catalog: catalog, service: $0) } }
+        return matched + extra
     }
 
-    /// Service ids in tile order, each once. Ids that are not known are dropped.
+    /// Service ids in tile order, each once (the built-in ones first, then any an addon added).
     public static func ordered(_ ids: Set<String>) -> [String] {
-        all.filter { ids.contains($0.id) }.map(\.id)
+        // the built-in ones in their order, then any the addon added, A to Z
+        all.filter { ids.contains($0.id) }.map(\.id) + ids.filter { byID[$0] == nil }.sorted()
     }
 
     /// The id Home Rows keeps in its hidden list for a service's tile (the same list that hides ordinary rows, so it is saved and synced with them).
@@ -118,14 +159,14 @@ public enum StreamingServices {
     /// Is this service shown as a tile? Not when the person hid it; a service that is off by default only when they have turned it on.
     public static func isVisible(_ service: String, hidden: Set<String>) -> Bool {
         if hidden.contains(rowID(service)) { return false }
-        return byID[service]?.off == true ? hidden.contains(onID(service)) : true
+        return Self.service(service)?.off == true ? hidden.contains(onID(service)) : true
     }
 
     /// The hidden list after the person turns a service on or off in Home Rows.
     public static func withVisible(_ hidden: [String], service: String, visible: Bool) -> [String] {
         let rest = hidden.filter { $0 != rowID(service) && $0 != onID(service) }
         if !visible { return rest + [rowID(service)] }
-        return byID[service]?.off == true ? rest + [onID(service)] : rest
+        return Self.service(service)?.off == true ? rest + [onID(service)] : rest
     }
 
     /// Which of these services are shown as tiles.
