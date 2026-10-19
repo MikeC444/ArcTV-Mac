@@ -96,6 +96,10 @@ private struct StreamingTile: View {
     let action: () -> Void
     @State private var hovering = false
 
+    /// The tile's size (16:9, about 20% bigger than it first was).
+    private static let width: CGFloat = 264
+    private static let height: CGFloat = 149
+
     var body: some View {
         let brand = TileBrand.of(service.id)
         let glow = Color(hex: brand?.glow ?? 0xFFFFFF)
@@ -107,7 +111,7 @@ private struct StreamingTile: View {
                     .fill(LinearGradient(colors: [Color.white.opacity(0.16), .clear, Color.black.opacity(0.22)], startPoint: .top, endPoint: .bottom))
                 logo(brand)
             }
-            .frame(width: 220, height: 124)
+            .frame(width: Self.width, height: Self.height)
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(hovering ? 0.8 : 0.14), lineWidth: hovering ? 2 : 1))
             .shadow(color: glow.opacity(hovering ? (brand?.hover ?? 0.5) : (brand?.rest ?? 0.15)), radius: hovering ? 11 : 6, y: hovering ? 5 : 3)
             .scaleEffect(hovering ? 1.04 : 1)
@@ -125,15 +129,15 @@ private struct StreamingTile: View {
             switch brand?.logo {
             case .white?:
                 Image(nsImage: image).renderingMode(.template).resizable().scaledToFit().foregroundStyle(.white)
-                    .padding(.horizontal, 220 * 0.18).padding(.vertical, 124 * 0.14)
+                    .padding(.horizontal, Self.width * 0.18).padding(.vertical, Self.height * 0.14)
                     .shadow(color: .black.opacity(0.35), radius: 4, y: 3)
             case .black?:
                 Image(nsImage: image).renderingMode(.template).resizable().scaledToFit().foregroundStyle(.black)
-                    .padding(.horizontal, 220 * 0.18).padding(.vertical, 124 * 0.14)
+                    .padding(.horizontal, Self.width * 0.18).padding(.vertical, Self.height * 0.14)
                     .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
             case nil:
                 Image(nsImage: image).resizable().scaledToFit()
-                    .padding(.horizontal, 220 * 0.18).padding(.vertical, 124 * 0.14)
+                    .padding(.horizontal, Self.width * 0.18).padding(.vertical, Self.height * 0.14)
                     .shadow(color: .black.opacity(0.35), radius: 4, y: 3)
             }
         } else {
