@@ -16,8 +16,11 @@ struct StreamingTilesRow: View {
                 }
             }
             .padding(.horizontal, 44)
-            .padding(.vertical, 12)
+            // Room above and below for each tile's coloured light, which the scroll view would cut off at its edge; the negative padding outside
+            // gives the space back, so the row sits where it did.
+            .padding(.vertical, 40)
         }
+        .padding(.vertical, -28)
         .accessibilityLabel("Streaming services")
     }
 }

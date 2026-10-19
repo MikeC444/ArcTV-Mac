@@ -64,7 +64,12 @@ struct TopNavBar: View {
 
     private func watchScrolling() {
         guard monitor == nil else { return }
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel]) { event in
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .leftMouseDown, .rightMouseDown]) { event in
+            // A click on anything brings the bar back if it is away.
+            if event.type != .scrollWheel {
+                DispatchQueue.main.async { hidden = false }
+                return event
+            }
             let delta = event.scrollingDeltaY
             DispatchQueue.main.async {
                 guard abs(delta) > 1 else { return }

@@ -651,3 +651,7 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
+
+
+**Follow-up (same unshipped work): the tiles' light and the top bar.** The scroll view cut off the coloured light under each streaming tile at its bottom (and top) edge; the row now has room for it inside the scroll view (40 pt above and below) and gives the space back with a negative padding outside, so it sits where it did. The top bar, which slides away while a page scrolls down, now also comes back on any click (left or right) anywhere in the window, not only on a scroll up or the pointer reaching the top. Not compiled or seen on a Mac.
+\n
