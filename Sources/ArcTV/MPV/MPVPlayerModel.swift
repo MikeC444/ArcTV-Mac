@@ -116,6 +116,34 @@ final class MPVPlayerModel: ObservableObject {
         UserDefaults.standard.set(value, forKey: "ArcTVPlayerVolume")
     }
 
+    /// True while the sound is muted (the M key); the volume itself is kept.
+    @Published private(set) var muted = false
+
+    func toggleMute() {
+        muted.toggle()
+        view?.setFlag("mute", muted)
+    }
+
+    /// The C key: turns the subtitles off when one is showing; otherwise turns them on in the language chosen in Settings (the video's own track in
+    /// that language, then an addon's file in it, then the video's first subtitle track, then the addons' first file). Nothing happens when there is none.
+    func toggleCaptions() {
+        refreshTracks()
+        if subtitleTracks.contains(where: { $0.selected }) {
+            selectSubtitle(nil)
+            return
+        }
+        let wanted = SubtitleLanguage.key(preferredSubtitleLanguage)
+        if let wanted, let own = subtitleTracks.first(where: { SubtitleLanguage.key($0.language) == wanted }) {
+            selectSubtitle(own)
+        } else if let wanted, let file = addonSubtitles.first(where: { SubtitleLanguage.key($0.languageCode) == wanted }) {
+            selectAddonSubtitle(file)
+        } else if let first = subtitleTracks.first {
+            selectSubtitle(first)
+        } else if let file = addonSubtitles.first {
+            selectAddonSubtitle(file)
+        }
+    }
+
     func setSpeed(_ value: Double) {
         speed = value
         view?.setString("speed", String(value))

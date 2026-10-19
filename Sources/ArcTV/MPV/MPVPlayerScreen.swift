@@ -444,7 +444,8 @@ struct MPVPlayerScreen: View {
         }
     }
 
-    /// Space pauses, the arrow keys skip 10 seconds (up and down change the volume), F goes full screen, and Esc only leaves full screen.
+    /// Space pauses, the left and right arrow keys go back and forward 10 seconds (up and down change the volume), M mutes, C turns captions on or off
+    /// (in the Settings language), F goes full screen, and Esc only leaves full screen.
     private var keyboardShortcuts: some View {
         ZStack {
             Button("") { model.togglePause() }.keyboardShortcut(.space, modifiers: [])
@@ -453,6 +454,8 @@ struct MPVPlayerScreen: View {
             Button("") { model.setVolume(min(100, model.volume + 10)) }.keyboardShortcut(.upArrow, modifiers: [])
             Button("") { model.setVolume(max(0, model.volume - 10)) }.keyboardShortcut(.downArrow, modifiers: [])
             Button("") { toggleFullScreen() }.keyboardShortcut("f", modifiers: [])
+            Button("") { model.toggleMute() }.keyboardShortcut("m", modifiers: [])
+            Button("") { model.toggleCaptions() }.keyboardShortcut("c", modifiers: [])
             // Esc leaves full screen; it is not a back button here.
             Button("") { if fullScreen { toggleFullScreen() } }.keyboardShortcut(.escape, modifiers: [])
         }
@@ -491,7 +494,10 @@ struct MPVPlayerScreen: View {
         hideTask = Task {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled else { return }
-            if openMenu == nil { controlsVisible = false }
+            guard openMenu == nil else { return }
+            controlsVisible = false
+            // With the controls gone and the picture playing, the mouse pointer goes too, until the mouse moves again.
+            if !model.paused { NSCursor.setHiddenUntilMouseMoves(true) }
         }
     }
 

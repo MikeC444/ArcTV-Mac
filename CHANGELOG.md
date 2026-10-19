@@ -788,3 +788,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the report for the next episode writes a history row at position 0 for it (not finished, so no tick and no time counted in Your stats). Marking episodes watched by hand (the episode list) is unchanged: it clears the pointer as before. The Fire TV and web apps still drop the show on finishing an episode; they would need the same.
 
 **Issues fixed:** none.
+
+## 42 -- Player: hidden mouse, M for mute, C for captions
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The user asked for the mouse pointer to be hidden while watching, the left and right arrow keys to go back and forward 10 seconds, M to mute and C for captions in the language chosen in Settings.
+
+**Changes:**
+- `MPVPlayerScreen.showControls`: when the controls fade out after 3 s and the picture is playing (not paused, no menu open), `NSCursor.setHiddenUntilMouseMoves(true)` hides the pointer until the mouse moves, which also brings the controls back.
+- `MPVPlayerModel.toggleMute` (mpv's `mute` flag, the volume is kept) and `toggleCaptions` (off when a subtitle is showing; otherwise the video's own track in the Settings language, then an addon's file in it, then the video's first track, then the addons' first file; nothing when there is none).
+- `keyboardShortcuts`: M and C added. Left and right arrows already skipped 10 seconds before this change, so nothing was added for them.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not tried on a Mac: whether the pointer really hides in full screen and in a window, and whether the arrow keys reach the player when a button has focus.
+
+**Issues discovered:** there is no on-screen sign that the sound is muted or that captions changed (the Subtitles pill shows the state when opened). The arrow-key shortcuts are hidden buttons, so a focused control could take the key first; not checked.
+
+**Issues fixed:** none.
