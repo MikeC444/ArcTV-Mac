@@ -156,7 +156,15 @@ private struct HeroSlide: View {
                             .clipped()
                     }
                 }
-                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.5), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                // fully gone a little before the banner's bottom edge, in several steps so there is no visible start or end to the fade
+                .mask(LinearGradient(stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: 0.45),
+                    .init(color: .black.opacity(0.7), location: 0.62),
+                    .init(color: .black.opacity(0.32), location: 0.76),
+                    .init(color: .black.opacity(0.08), location: 0.88),
+                    .init(color: .clear, location: 0.96)
+                ], startPoint: .top, endPoint: .bottom))
                 LinearGradient(colors: [Theme.background.opacity(0.85), .clear], startPoint: .leading, endPoint: .center)
 
                 details
