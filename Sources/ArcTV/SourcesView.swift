@@ -56,12 +56,15 @@ struct SourcesView: View {
                                 noSources
                             } else {
                                 filterBar
+                                // worked out once for the whole list, not for each row
+                                let rows = arranged
+                                let recommended = recommendedIDs
                                 VStack(spacing: 10) {
-                                    ForEach(arranged) { item in
-                                        SourceRow(item: item, recommended: recommendedIDs.contains(item.id), kindLabel: recommendedIDs.count > 1) { choose(item) }
+                                    ForEach(rows) { item in
+                                        SourceRow(item: item, recommended: recommended.contains(item.id), kindLabel: recommended.count > 1) { choose(item) }
                                     }
                                 }
-                                if arranged.count <= 1 && filter != .all {
+                                if rows.count <= 1 && filter != .all {
                                     Button("No other sources in this quality. Show all sources") { filter = .all }
                                         .buttonStyle(.plain)
                                         .font(.system(size: 13, weight: .semibold))

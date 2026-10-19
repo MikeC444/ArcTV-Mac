@@ -93,13 +93,21 @@ public enum SourceListing {
     /// The torrent Smart source picking starts when no source has a web link: the one with the most seeders, then the best quality, then the biggest
     /// file, then the addon's own order (a bigger 720p file does not beat a 1080p one with the same seeders). A torrent that does not say its seeders or size counts as having none.
     public static func bestTorrent(in items: [SourceItem]) -> SourceItem? {
-        items.enumerated().filter { $0.element.isTorrent }.sorted { left, right in
-            let a = left.element, b = right.element
-            if (a.seeders ?? 0) != (b.seeders ?? 0) { return (a.seeders ?? 0) > (b.seeders ?? 0) }
-            if a.quality != b.quality { return a.quality > b.quality }
-            if (a.sizeBytes ?? 0) != (b.sizeBytes ?? 0) { return (a.sizeBytes ?? 0) > (b.sizeBytes ?? 0) }
-            return left.offset < right.offset
-        }.first?.element
+        // Each torrent's seeders, quality and size are read from its text once (each is a text search), then compared in a single pass: this runs
+        // whenever the source list is drawn, so it must be cheap.
+        var best: (item: SourceItem, seeders: Int, quality: Quality, size: Int64)?
+        for item in items where item.isTorrent {
+            let candidate = (item: item, seeders: item.seeders ?? 0, quality: item.quality, size: item.sizeBytes ?? 0)
+            guard let current = best else {
+                best = candidate
+                continue
+            }
+            // strictly better only, so on a tie the first (the addon's own order) stays
+            if candidate.seeders != current.seeders ? candidate.seeders > current.seeders
+                : candidate.quality != current.quality ? candidate.quality > current.quality
+                : candidate.size > current.size { best = candidate }
+        }
+        return best?.item
     }
 
     /// The sources after filtering and sorting. Quality keeps the list's own order (direct links first, best quality first); the recommended

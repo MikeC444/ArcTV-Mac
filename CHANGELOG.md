@@ -920,6 +920,8 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Issues fixed:** none.
 
+**Follow-up (same unshipped work): the source list froze the app.** The Recommended box worked out the best torrent once for every row (twice), and the best torrent was found by sorting every torrent with each comparison reading seeders, quality and size out of the text with text searches, so a list of a couple of hundred sources, redrawn on every torrent progress update, stalled the whole app. The two sets are now worked out once for the list (`SourcesView`), and `bestTorrent` reads each torrent's figures once and picks in a single pass. Not compiled or tried on a Mac; I could not time it here.
+
 ## 50 -- Smoother scrolling on Netflix's page
 
 **Status:** Done, on main. Not compiled here (see below).
