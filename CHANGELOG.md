@@ -686,7 +686,7 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `TopTenTests` and the build are left to the Build and test workflow. Code re-read. Not seen on a Mac: how the big numbers sit (their size and how far down, worked out from the web's, not looked at), the wide grid's column count (as many 230 to 380 pt pictures as fit; the web has 4 to 6) and the logos were not looked at.
 
-**Issues discovered:** a title with no logo on Metahub shows none (the web and Fire TV apps then look the logo up through the addons; not done here). The web's pointer tilt and 3D poster edges are not copied. Cards have no keyboard focus ring (the Mac app is pointer-first).
+**Issues discovered:** a title with no logo on Metahub showed none; it now asks Cinemeta for the logo (`AppModel.logo(of:)`, once per title a session, a miss too), as the web and Fire TV apps ask the addons. Only Cinemeta is asked, not every installed addon, and a title with no IMDb id gets none. The web's pointer tilt and 3D poster edges are not copied. Cards have no keyboard focus ring (the Mac app is pointer-first).
 
 **Issues fixed:** none.
 

@@ -29,8 +29,9 @@ struct NetflixN: View {
 }
 
 /// A title's logo at the bottom left of a wide picture, on a soft shade. It looks the logo up on Metahub (Cinemeta's own logos live there, by IMDb id);
-/// nothing is drawn, shade included, when there is none.
+/// when Metahub has none it asks Cinemeta; nothing is drawn, shade included, when there is none.
 private struct WideLogo: View {
+    @EnvironmentObject private var model: AppModel
     let item: MetaPreview
     @State private var image: NSImage?
 
@@ -55,8 +56,15 @@ private struct WideLogo: View {
             }
         }
         .task(id: url) {
-            guard let url else { return }
-            image = await ImageCache.load(url)
+            image = nil
+            if let url, let found = await ImageCache.load(url) {
+                image = found
+                return
+            }
+            // Metahub has none (or the title has no IMDb id): ask Cinemeta, as the web and Fire TV apps ask the addons
+            if let fallback = await model.logo(of: item), fallback != url {
+                image = await ImageCache.load(fallback)
+            }
         }
         .allowsHitTesting(false)
     }

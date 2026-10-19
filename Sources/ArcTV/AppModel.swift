@@ -605,6 +605,17 @@ final class AppModel: ObservableObject {
         return meta?.genres
     }
 
+    /// A title's logo as Cinemeta has it, for a wide picture Metahub has no logo for. Each title is asked once a session (a miss too).
+    private static var logoLookups: [String: String?] = [:]
+
+    func logo(of item: MetaPreview) async -> URL? {
+        if let known = Self.logoLookups[item.id] { return known.flatMap(URL.init(string:)) }
+        let meta = try? await AddonClient().fetchMeta(manifestURL: AppInfo.cinemetaManifestURL, type: item.type, id: item.id)
+        let found = meta?.logo
+        Self.logoLookups[item.id] = .some(found)
+        return found.flatMap(URL.init(string:))
+    }
+
     /// One page of TMDB's titles for a service in this Mac's country (see `StreamingTitles`); "not available" when signed out, offline or the server has none.
     func streamingTitles(service: String, type: String, page: Int) async -> StreamingTitlesPage {
         // the server's lists cover the built-in services only
