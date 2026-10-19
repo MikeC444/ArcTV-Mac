@@ -23,6 +23,7 @@ them under its version automatically.
 - Without Plus, Your stats opens to a preview of your own numbers instead of a locked page.
 - Sources shows a Recommended box around the best debrid source and the best torrent.
 - Scrolling Netflix's page is much smoother.
+- Netflix's wide pictures are five across, so each one is bigger.
 - Home Rows is tidier: pick a streaming or addon card, then switch rows on and off and put them in your order.
 - Home glows with the colour of the banner picture, and the banner's space is held while it loads so nothing jumps.
 - Posters are bigger everywhere, Netflix's Top 10 is much bigger, and Continue Watching is a touch bigger.

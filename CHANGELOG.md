@@ -936,3 +936,17 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the poster grids on the other pages use `AsyncImage`, which neither keeps pictures nor shrinks them, so they probably have the same problem to a lesser degree; not changed. The Top 10's big numbers are nine text layers each; they may cost something and were not changed (rasterising them could clip their edges).
 
 **Issues fixed:** none confirmed.
+
+## 51 -- Netflix's page: five pictures across
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The wide-picture grid fitted as many 230 to 380 pt pictures as the window allowed, which gave 6 across on a wide window. The user wanted 5.
+
+**Changes:** `WideGrid.columns`: five flexible columns, 9 pt apart, always (also for the grey placeholders and the loading skeleton). The pictures are made up to 1000 px (was 780) so they stay sharp now that each is wider on a big window.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not seen on a Mac.
+
+**Issues discovered:** on a very narrow window five across makes small pictures (the web drops to 4 on a small window; not done here).
+
+**Issues fixed:** none.

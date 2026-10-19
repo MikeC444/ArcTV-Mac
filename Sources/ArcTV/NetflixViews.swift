@@ -107,9 +107,9 @@ struct ServiceCard: View {
     private var artwork: some View {
         let picture = wide ? (item.background ?? item.poster) : item.poster
         if let picture, let url = URL(string: picture) {
-            // made no bigger than it is shown (a wide picture is at most about 380 pt across, a Top 10 poster about 165), so scrolling is not
+            // made no bigger than it is shown (a wide picture is about a fifth of the window, up to 500 pt across on a big one, a Top 10 poster about 165), so scrolling is not
             // spent decoding full-size backdrops
-            CachedImage(url: url, contentMode: .fill, maxPixel: wide ? 780 : 420)
+            CachedImage(url: url, contentMode: .fill, maxPixel: wide ? 1000 : 420)
         }
     }
 }
@@ -209,14 +209,15 @@ struct TopTenSection: View {
 /// The titles under the Top 10: wide pictures close together (small gaps and corners, no captions, the red N on each), more as the page is scrolled,
 /// and grey wide shapes after the last one while more are still to come.
 struct WideGrid: View {
+    /// Five pictures across, always (the web and Fire TV apps show 5 on a laptop and bigger screens), 9 pt apart.
+    static let columns = Array(repeating: GridItem(.flexible(), spacing: 9, alignment: .top), count: 5)
+
     let items: [MetaPreview]
     var placeholders = false
     var onLastAppear: (() -> Void)? = nil
 
-    private let columns = [GridItem(.adaptive(minimum: 230, maximum: 380), spacing: 9, alignment: .top)]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 9) {
+        LazyVGrid(columns: WideGrid.columns, alignment: .leading, spacing: 9) {
             ForEach(items) { item in
                 ServiceCard(item: item, wide: true)
                     .onAppear { if item.id == items.last?.id { onLastAppear?() } }
@@ -235,7 +236,7 @@ struct WideGrid: View {
 /// The wide grid made only of grey cells, for while the titles load.
 struct WideGridSkeleton: View {
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 380), spacing: 9, alignment: .top)], alignment: .leading, spacing: 9) {
+        LazyVGrid(columns: WideGrid.columns, alignment: .leading, spacing: 9) {
             ForEach(0..<20, id: \.self) { _ in Shimmer(cornerRadius: 4).aspectRatio(16.0 / 9.0, contentMode: .fit) }
         }
         .padding(.horizontal, 44)
