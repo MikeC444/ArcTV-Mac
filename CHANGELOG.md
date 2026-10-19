@@ -625,3 +625,23 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the account has no "forget this episode" call, so marking not watched stores the episode as not finished at the start (it still counts in Your stats as an episode at 0 minutes). An episode marked watched without a listed length is recorded as 45 minutes.
 
 **Issues fixed:** none.
+
+## 34 -- Streaming-service tiles on Home, and a page for each service (the Fire TV and web apps' tiles)
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The web app (17 Oct) and the Fire TV app show a row of tiles on Home, one for each streaming service (Netflix, Disney+ ...) an installed addon has titles for. The server gives every account the Streaming Catalogs addon, whose catalogues are one per service; without the tiles the Mac app would show them as one giant merged row. The Mac app had no streaming code at all.
+
+**Changes:**
+- `ArcTVCore/StreamingServices.swift` (new): the 36 services with their names, default order and "off by default" flags, and the rules, ported from the Fire TV app's `StreamingServices.kt` (itself the web app's `streamingServices.ts`): which service a catalogue is for (by its name, then its id, longest word wins), when an addon counts as a streaming-catalogue addon (three or more services), which tiles are shown (`streaming:<id>` hides one and `streaming-on:<id>` turns a default-off one on, in the account's `hiddenRowIds`, so the choices follow the account to the other apps), and the person's own order (`streaming:<id>` entries in `homeRowOrder`). `HomeSource.serviceCatalogEntries`, `streamingServiceIDs`, `serviceItems(_:)` and `moreServiceItems(_:page:)` read a service's titles (only a catalogue that declares skip has more pages).
+- `HomeSource.catalogs` leaves a streaming-catalogue addon's catalogues out, so Home, Movies and TV Shows no longer get one giant row from them; `loadHome` keeps such an addon as a source (it has no rows but has services).
+- `AppModel`: `streamingTiles`, `streamingChoices`, `setStreamingVisible`, `openStreaming`, and `streamingService` (the open service page; leaving Home closes it). `moveRow` keeps the `streaming:<id>` entries of `homeRowOrder`, so moving a row here does not reset a tile order set on another app.
+- `StreamingViews.swift` (new): the tiles row (no heading, after Continue Watching and above Picked for you; a glass tile in the service's colour with its name, lifting under the pointer), `StreamingModel` and `StreamingServiceView` (the service's titles in the poster grid, more as you scroll, a back button; Home in the top bar also closes it). Settings > Home Rows has a "Streaming services" section with a switch for each.
+- `StreamingServicesTests` (new): the matching, the 36 services and the default ten, the three-service rule, no rows from a service addon, the visibility rules and the ids written, the person's order.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `StreamingServicesTests` and the build are left to the Build and test workflow. Code re-read, braces and parentheses checked. Not seen on a Mac: the tiles, the page and the new Settings section were not looked at, and nothing was tried against a live account.
+
+**Issues discovered:** the tiles show the service's name on a coloured card, not the service's logo (the Fire TV and web apps draw logos). The page stops at what the addon lists (about 200 titles): the Fire TV and web apps carry on with TMDB's list through `GET /user/streaming-titles`, with grey placeholders; not done here yet. There is no reordering of tiles here yet (the order set on another app is used and kept). The server only lists the Streaming Catalogs addon to the apps named in `ADDON_SUPPORT` (`server/src/services/addonCompatibility.ts` in the Fire TV repo, where `macos` is not named yet): until the Mac app with this change is released and `macos` is added with its version, an ordinary account's Mac app is not sent the addon; developer accounts are.
+
+**Issues fixed:** none.
+

@@ -82,12 +82,18 @@ struct TopNavBar: View {
                 LogoView(height: size.logo)
                     .fixedSize()
                     .frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture { model.selected = .home }
+                    .onTapGesture {
+                        model.streamingService = nil
+                        model.selected = .home
+                    }
             }
 
             HStack(spacing: 2) {
                 ForEach(NavItem.allCases.filter { !(model.isKids && $0 == .settings) }) { item in
-                    NavPill(item: item, selected: model.selected == item, size: size) { model.selected = item }
+                    NavPill(item: item, selected: model.selected == item, size: size) {
+                        model.streamingService = nil
+                        model.selected = item
+                    }
                 }
             }
             .padding(4)

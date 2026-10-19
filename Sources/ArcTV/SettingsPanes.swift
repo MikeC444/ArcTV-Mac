@@ -202,8 +202,43 @@ struct HomeRowsPane: View {
                     }
                 }
             }
+            streamingSection
         }
         .task { if model.settings == nil { await model.loadSettings() } }
+    }
+
+    /// The streaming services an addon has, each with a switch for its tile on Home.
+    @ViewBuilder
+    private var streamingSection: some View {
+        let services = model.streamingChoices
+        if !services.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Streaming services").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+                Text("The tiles at the top of Home. Each opens that service's titles.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                VStack(spacing: 8) {
+                    ForEach(services) { choice in
+                        HStack(spacing: 12) {
+                            Toggle("", isOn: Binding(
+                                get: { choice.visible },
+                                set: { value in Task { await model.setStreamingVisible(choice.service.id, visible: value) } }
+                            ))
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(Theme.accent)
+                            Text(choice.service.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                                .opacity(choice.visible ? 1 : 0.5)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+                    }
+                }
+            }
+            .padding(.top, 10)
+        }
     }
 
     private func arrow(_ name: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {

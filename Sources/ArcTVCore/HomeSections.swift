@@ -34,7 +34,12 @@ public struct HomeSource: Sendable {
         self.manifest = manifest
     }
 
-    public var catalogs: [CatalogDefinition] { (manifest.catalogs ?? []).filter { $0.type == "movie" || $0.type == "series" } }
+    /// The movie and series catalogues that make Home's rows and the Movies / TV Shows pages. An addon made of streaming-service catalogues
+    /// (Netflix, Disney+ ...) leaves those out: they are shown only through the service tiles and their pages, not merged into one giant row.
+    public var catalogs: [CatalogDefinition] {
+        let service = serviceCatalogEntries.map(\.catalog)
+        return (manifest.catalogs ?? []).filter { ($0.type == "movie" || $0.type == "series") && !service.contains($0) }
+    }
 }
 
 /// Home's rows, built from the account's addons the way the web and Fire TV apps build them. A port of `StremioAddonProvider.getHomeSections`:

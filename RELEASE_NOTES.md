@@ -6,6 +6,7 @@ them under its version automatically.
 
 ## Unreleased
 
+- Your streaming services are here: Netflix, Disney+ and more as tiles on Home, each opening a page of its titles.
 ## 0.2.0
 
 - Subtitles from your addons are here! Pick them in the player, with OpenSubtitles ready to go.

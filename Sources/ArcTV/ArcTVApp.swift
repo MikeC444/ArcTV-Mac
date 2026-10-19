@@ -50,7 +50,12 @@ struct MainView: View {
         ZStack(alignment: .top) {
             Group {
                 switch model.selected {
-                case .home: HomeView()
+                case .home:
+                    if let id = model.streamingService, let service = StreamingServices.service(id) {
+                        StreamingServiceView(service: service).id(id)
+                    } else {
+                        HomeView()
+                    }
                 case .movies: BrowseView(title: "Movies", type: "movie")
                 case .tv: BrowseView(title: "TV Shows", type: "series")
                 case .search: SearchView()

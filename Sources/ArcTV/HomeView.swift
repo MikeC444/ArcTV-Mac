@@ -28,6 +28,11 @@ struct HomeView: View {
                             ContinueRowView(items: model.continueItems)
                                 .padding(.bottom, 18)
                         }
+                        let tiles = model.streamingTiles
+                        if !tiles.isEmpty {
+                            StreamingTilesRow(tiles: tiles)
+                                .padding(.bottom, 18)
+                        }
                         if let picked = model.picked {
                             PickedRowView(row: picked)
                                 .padding(.bottom, 18)

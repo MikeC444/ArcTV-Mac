@@ -75,7 +75,10 @@ final class AppModel: ObservableObject {
     }
 
     @Published var session: Session?
-    @Published var selected: NavItem = .home
+    @Published var selected: NavItem = .home {
+        // A streaming service's page belongs to Home: leaving Home closes it.
+        didSet { if selected != .home { streamingService = nil } }
+    }
     @Published var playerEngine: PlayerEngine = PlayerEngine(rawValue: UserDefaults.standard.string(forKey: "ArcTVPlayerEngine") ?? "") ?? .mpv {
         didSet { UserDefaults.standard.set(playerEngine.rawValue, forKey: "ArcTVPlayerEngine") }
     }
@@ -97,6 +100,8 @@ final class AppModel: ObservableObject {
     private var trailers: [String: String] = [:]
     /// Which screen is open over the tabs: a title's details, then its sources, then the player (each sits on top of the one before).
     @Published var detail: MetaPreview?
+    /// The streaming service whose page is open (Netflix, Disney+ ...), or nil on Home itself.
+    @Published var streamingService: String?
     @Published var sourcesFor: PlayTarget?
     @Published var playing: PlayingItem? {
         didSet { if playing == nil { TorrentEngine.shared.stop() } }
@@ -273,7 +278,7 @@ final class AppModel: ObservableObject {
         }
 
         var sources = addons.compactMap { addon in addon.manifestJson.map { HomeSource(manifestURL: addon.manifestUrl, manifest: $0) } }
-            .filter { !$0.catalogs.isEmpty }
+            .filter { !$0.catalogs.isEmpty || !$0.serviceCatalogEntries.isEmpty }
         if sources.isEmpty, let manifest = try? await AddonClient().fetchManifest(AppInfo.cinemetaManifestURL) {
             sources = [HomeSource(manifestURL: AppInfo.cinemetaManifestURL, manifest: manifest)]
         }
@@ -509,8 +514,48 @@ final class AppModel: ObservableObject {
 
     func moveRow(_ id: String, delta: Int) async {
         let order = homeRowChoices.map(\.section.id)
-        await updateSettings { $0.homeRowOrder = HomeRowOrder.move(order, id: id, delta: delta) }
+        // The streaming tiles' places (`streaming:<id>`) share this list: keep them, or moving a row would reset the order set on another app.
+        await updateSettings { value in
+            value.homeRowOrder = HomeRowOrder.move(order, id: id, delta: delta) + value.homeRowOrder.filter(StreamingServices.isServiceRowID)
+        }
     }
+
+    // MARK: Streaming services
+
+    /// One streaming service an installed addon has catalogues for, and whether its tile is switched on.
+    struct StreamingChoice: Identifiable {
+        let service: StreamingService
+        let visible: Bool
+        var id: String { service.id }
+    }
+
+    /// The services an installed addon has catalogues for, in the default tile order.
+    var availableStreamingServices: [String] {
+        StreamingServices.ordered(Set(catalogSources.flatMap(\.streamingServiceIDs)))
+    }
+
+    /// The tiles Home shows: the services that are switched on, in the person's own order (a new one joins the end).
+    var streamingTiles: [StreamingService] {
+        let hidden = Set(settings?.hiddenRowIds ?? [])
+        let shown = StreamingServices.visible(availableStreamingServices, hidden: hidden)
+        return StreamingServices.inUserOrder(shown, order: settings?.homeRowOrder ?? []).compactMap { StreamingServices.service($0) }
+    }
+
+    /// Every service an addon has, with whether its tile is on (Settings > Home Rows).
+    var streamingChoices: [StreamingChoice] {
+        let hidden = Set(settings?.hiddenRowIds ?? [])
+        return availableStreamingServices.compactMap { id in
+            StreamingServices.service(id).map { StreamingChoice(service: $0, visible: StreamingServices.isVisible(id, hidden: hidden)) }
+        }
+    }
+
+    func setStreamingVisible(_ service: String, visible: Bool) async {
+        await updateSettings { value in
+            value.hiddenRowIds = StreamingServices.withVisible(value.hiddenRowIds, service: service, visible: visible)
+        }
+    }
+
+    func openStreaming(_ service: String) { streamingService = service }
 
     // MARK: My List, Watched and Continue Watching
 
