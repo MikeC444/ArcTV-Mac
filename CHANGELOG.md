@@ -714,3 +714,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Follow-up (same unshipped work): the light had a hard edge.** A first look at it showed the banner's bottom painted over with the page colour and the light starting in a hard line below it. The banner's picture now fades out with a mask (not a coat of page colour), and the light is centred on the banner's bottom edge so it shows through the fade. Not compiled or seen again on a Mac.
 
 **Follow-up 2 (same unshipped work):** a second look still showed a line at the banner's bottom edge. I could not tell whether that build had the previous fix. The banner picture's fade is now in six steps and is fully clear before its bottom edge, so no picture is left at the edge to show a line. Not compiled or seen on a Mac.
+
+**Follow-up 3 (same unshipped work):** the picture now fades, but a line was left on the left-hand side at the banner's bottom edge. Cause: the left-hand shade that keeps the text readable was drawn over the full banner height, outside the fade, so it stopped dead at the edge. It now sits inside the faded picture. Not compiled or seen on a Mac.

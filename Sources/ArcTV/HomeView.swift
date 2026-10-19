@@ -155,6 +155,8 @@ private struct HeroSlide: View {
                             .frame(width: geo.size.width, height: height)
                             .clipped()
                     }
+                    // darkens the left so the text can be read; inside the faded part, or it would stop in a line at the banner's bottom edge
+                    LinearGradient(colors: [Theme.background.opacity(0.85), .clear], startPoint: .leading, endPoint: .center)
                 }
                 // fully gone a little before the banner's bottom edge, in several steps so there is no visible start or end to the fade
                 .mask(LinearGradient(stops: [
@@ -165,7 +167,6 @@ private struct HeroSlide: View {
                     .init(color: .black.opacity(0.08), location: 0.88),
                     .init(color: .clear, location: 0.96)
                 ], startPoint: .top, endPoint: .bottom))
-                LinearGradient(colors: [Theme.background.opacity(0.85), .clear], startPoint: .leading, endPoint: .center)
 
                 details
                     .padding(.horizontal, 44)
