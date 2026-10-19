@@ -57,13 +57,13 @@ private struct WideLogo: View {
         }
         .task(id: url) {
             image = nil
-            if let url, let found = await ImageCache.load(url) {
+            if let url, let found = await ImageCache.load(url, maxPixel: 320) {
                 image = found
                 return
             }
             // Metahub has none (or the title has no IMDb id): ask Cinemeta, as the web and Fire TV apps ask the addons
             if let fallback = await model.logo(of: item), fallback != url {
-                image = await ImageCache.load(fallback)
+                image = await ImageCache.load(fallback, maxPixel: 320)
             }
         }
         .allowsHitTesting(false)
@@ -90,7 +90,8 @@ struct ServiceCard: View {
                 if model.isWatched(item.id) { WatchedTick().padding(5) }
             }
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(hovering ? 0.9 : 0.1), lineWidth: hovering ? 2 : 1))
-            .shadow(color: .black.opacity(hovering ? 0.55 : 0), radius: 12, y: 5)
+            // (only while hovered: a shadow, even a clear one, is an extra layer drawn for every card on the page)
+            .shadow(color: hovering ? .black.opacity(0.55) : .clear, radius: hovering ? 12 : 0, y: hovering ? 5 : 0)
             .scaleEffect(hovering ? 1.04 : 1)
             .animation(.easeOut(duration: 0.15), value: hovering)
             .onHover { inside in
@@ -106,7 +107,9 @@ struct ServiceCard: View {
     private var artwork: some View {
         let picture = wide ? (item.background ?? item.poster) : item.poster
         if let picture, let url = URL(string: picture) {
-            CachedImage(url: url, contentMode: .fill)
+            // made no bigger than it is shown (a wide picture is at most about 380 pt across, a Top 10 poster about 165), so scrolling is not
+            // spent decoding full-size backdrops
+            CachedImage(url: url, contentMode: .fill, maxPixel: wide ? 780 : 420)
         }
     }
 }

@@ -919,3 +919,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** "Debrid" is the badge's word for any source with a direct web link; the app can't tell a debrid service from another direct link.
 
 **Issues fixed:** none.
+
+## 50 -- Smoother scrolling on Netflix's page
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** Scrolling Netflix's streaming page was very stuttery.
+
+**Changes:** (my reading of the code; I could not run or profile the app here)
+- `ImageCache.load` / `CachedImage` take a `maxPixel`: the picture is made no bigger than that on its long side and decoded at once, off the main thread (ImageIO thumbnail), and kept at that size. Before, a full-size backdrop was only decoded the first time it was drawn, on the main thread, as each card scrolled into view, which is the likeliest cause of the stutter.
+- Netflix's cards ask for 780 px (wide pictures, up to about 380 pt across), 420 px (the Top 10's tall posters) and 320 px (the title logos).
+- A card's shadow is only drawn while it is pointed at (it was a clear shadow layer on every card).
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox) and nothing was profiled. Code re-read. Not tried on a Mac: how much smoother it is.
+
+**Issues discovered:** the poster grids on the other pages use `AsyncImage`, which neither keeps pictures nor shrinks them, so they probably have the same problem to a lesser degree; not changed. The Top 10's big numbers are nine text layers each; they may cost something and were not changed (rasterising them could clip their edges).
+
+**Issues fixed:** none confirmed.

@@ -6,12 +6,33 @@ import SwiftUI
 enum ImageCache {
     private static let cache = NSCache<NSString, NSImage>()
 
-    static func image(for url: URL) -> NSImage? { cache.object(forKey: url.absoluteString as NSString) }
+    private static func key(_ url: URL, _ maxPixel: CGFloat?) -> NSString {
+        (maxPixel.map { "\(url.absoluteString)#\(Int($0))" } ?? url.absoluteString) as NSString
+    }
 
-    static func load(_ url: URL) async -> NSImage? {
-        if let known = image(for: url) { return known }
-        guard let (data, _) = try? await URLSession.shared.data(from: url), let image = NSImage(data: data) else { return nil }
-        cache.setObject(image, forKey: url.absoluteString as NSString)
+    static func image(for url: URL, maxPixel: CGFloat? = nil) -> NSImage? { cache.object(forKey: key(url, maxPixel)) }
+
+    /// The picture, fetched once. With `maxPixel` it is made no bigger than that many pixels on its long side, and decoded here, off the main thread:
+    /// a full-size backdrop is decoded lazily the first time it is drawn, on the main thread, and a page of them scrolling in is what made scrolling
+    /// stutter. Pass the size it will be shown at (twice the points, for a sharp picture on a Retina screen).
+    static func load(_ url: URL, maxPixel: CGFloat? = nil) async -> NSImage? {
+        if let known = image(for: url, maxPixel: maxPixel) { return known }
+        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+        let image: NSImage?
+        if let maxPixel, let source = CGImageSourceCreateWithData(data as CFData, nil) {
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixel
+            ]
+            image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+                .map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) } ?? NSImage(data: data)
+        } else {
+            image = NSImage(data: data)
+        }
+        guard let image else { return nil }
+        cache.setObject(image, forKey: key(url, maxPixel))
         return image
     }
 
@@ -27,14 +48,17 @@ enum ImageCache {
 struct CachedImage<Placeholder: View>: View {
     let url: URL?
     var contentMode: ContentMode = .fill
+    /// The size to make the picture (its long side in pixels) when it is shown small: see `ImageCache.load`.
+    var maxPixel: CGFloat?
     @ViewBuilder var placeholder: () -> Placeholder
     @State private var image: NSImage?
 
-    init(url: URL?, contentMode: ContentMode = .fill, @ViewBuilder placeholder: @escaping () -> Placeholder) {
+    init(url: URL?, contentMode: ContentMode = .fill, maxPixel: CGFloat? = nil, @ViewBuilder placeholder: @escaping () -> Placeholder) {
         self.url = url
         self.contentMode = contentMode
+        self.maxPixel = maxPixel
         self.placeholder = placeholder
-        _image = State(initialValue: url.flatMap { ImageCache.image(for: $0) })
+        _image = State(initialValue: url.flatMap { ImageCache.image(for: $0, maxPixel: maxPixel) })
     }
 
     var body: some View {
@@ -47,17 +71,17 @@ struct CachedImage<Placeholder: View>: View {
         }
         .task(id: url) {
             guard let url else { return }
-            if let cached = ImageCache.image(for: url) {
+            if let cached = ImageCache.image(for: url, maxPixel: maxPixel) {
                 image = cached
             } else {
-                image = await ImageCache.load(url)
+                image = await ImageCache.load(url, maxPixel: maxPixel)
             }
         }
     }
 }
 
 extension CachedImage where Placeholder == Color {
-    init(url: URL?, contentMode: ContentMode = .fill) {
-        self.init(url: url, contentMode: contentMode) { Color.clear }
+    init(url: URL?, contentMode: ContentMode = .fill, maxPixel: CGFloat? = nil) {
+        self.init(url: url, contentMode: contentMode, maxPixel: maxPixel) { Color.clear }
     }
 }
