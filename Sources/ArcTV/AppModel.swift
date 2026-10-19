@@ -766,7 +766,34 @@ final class AppModel: ObservableObject {
                                             episodeTitle: target.episodeTitle, positionSeconds: position, durationSeconds: duration, completed: completed)
         }
         if completed, !isWatched(target.title.id), target.title.type == "movie" { await toggleWatched(target.title) }
+        if completed, target.title.type != "movie" { await keepShowInContinueWatching(target, duration: duration) }
         await loadContinueWatching()
+    }
+
+    /// The episode each finished one points on to, worked out once (the player reports "finished" again and again until it closes).
+    private var nextEpisodeCache: [String: EpisodeInfo?] = [:]
+
+    /// A finished episode clears the show's Continue Watching pointer, but a show with episodes still to watch should stay until every one is watched:
+    /// the pointer is put back on the next episode not yet watched, at the start. When none is left the show is allowed to leave.
+    private func keepShowInContinueWatching(_ target: PlayTarget, duration: Double) async {
+        guard let season = target.season, let episode = target.episode else { return }
+        let next: EpisodeInfo?
+        if let known = nextEpisodeCache[target.streamID] {
+            next = known
+        } else {
+            guard let statuses = await episodeStatuses(contentID: target.title.id) else { return }
+            next = EpisodeProgress.nextToWatch(seasons: target.title.seasons, statuses: statuses, finished: (season, episode))
+            nextEpisodeCache[target.streamID] = .some(next)
+        }
+        guard let next else { return }
+        // stamped after the finished report, which cleared the pointer
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        _ = try? await authorized { client, token in
+            try await client.reportProgress(
+                accessToken: token, title: target.title, season: next.season, episode: next.episode,
+                episodeTitle: DownloadChoices.episodeHeading(next), positionSeconds: 0, durationSeconds: duration, completed: false
+            )
+        }
     }
 
     func reloadHome() async {

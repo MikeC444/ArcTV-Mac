@@ -771,3 +771,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Follow-up (same unshipped work): a service the app does not know gets a tile.** Instead of leaving a catalogue of an unknown service (Shahid VIP) with nothing, a streaming-catalogue addon's catalogue that is none of the 36 built-in services is now a service of its own: id `x-<catalogue id>`, named as the addon names it, a black tile with its name (no logo), off until switched on in Settings > Home Rows > Streaming tiles like the other less common services. `StreamingServices.learn(from:)` is called with the installed addons when Home loads; `serviceCatalogs`, `ordered`, `isVisible` and `withVisible` know the learned ones; built-in services still come first in their order, the learned ones A to Z. The server's TMDB lists cover only built-in services, so a learned one is not asked for them (it shows what the addon returns). Test in `StreamingServicesTests`. Not compiled or seen on a Mac. **Correction to an earlier note in this entry's discussion:** `shd` in the addon's link is Shudder (a built-in service in the app's list), not Shahid; where Shahid's own code is, I could not tell.
 
 **Follow-up (same unshipped work): Netflix's page no longer jumps.** Its Top 10 row started as "nothing" until the load began, so the wide grey cells could show for a moment and then move down when the row's grey posters appeared above them. The page now starts with the row's grey posters (`StreamingModel.init`). Not compiled or seen on a Mac.
+
+## 41 -- A show stays in Continue Watching until every episode is watched
+
+**Status:** Done, on main. Not compiled here (see below). Mac only; no server change.
+
+**Context:** Finishing an episode sends a "finished" report, and the account clears the show's one Continue Watching pointer for any finished report (`playbackProgressService.recordProgress`), so a show left Continue Watching the moment an episode ended, with episodes still to watch. The user wanted it to stay until every season is watched.
+
+**Changes:**
+- `EpisodeProgress.nextToWatch(seasons:statuses:finished:now:)` (new, `ArcTVCore`): the first episode not yet watched after the finished one, else the first not yet watched from the start; nil when every episode that is out has been watched. Season 0 (specials) and episodes dated in the future are left out (so a show that is caught up with what has aired can leave). Tests in `NextToWatchTests`.
+- `AppModel.reportProgress`: after a finished report for an episode, `keepShowInContinueWatching` reads the show's watch history, works out the next episode (once per finished episode, kept, since the player reports "finished" repeatedly until it closes) and puts the pointer back on it at 0:00 with an ordinary not-finished report, stamped just after the finished one. The card then shows the next episode. With nothing left to watch it does nothing, so the show leaves as before.
+- No server change on purpose: the server clears the pointer for any finished report and every app (Fire TV, web, phone) relies on that, so changing it would change them all at once. This works with the existing server, and an older app simply sees the show pointing at the next episode.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new tests and the build are left to the Build and test workflow. Code re-read. Not tried on a Mac.
+
+**Issues discovered:** the report for the next episode writes a history row at position 0 for it (not finished, so no tick and no time counted in Your stats). Marking episodes watched by hand (the episode list) is unchanged: it clears the pointer as before. The Fire TV and web apps still drop the show on finishing an episode; they would need the same.
+
+**Issues fixed:** none.

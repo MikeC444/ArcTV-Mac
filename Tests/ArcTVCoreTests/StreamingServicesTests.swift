@@ -139,3 +139,43 @@ final class WashColorTests: XCTestCase {
         XCTAssertGreaterThan(WashColor.compute(rgba: mixed)?.b ?? 0, 150)
     }
 }
+
+
+final class NextToWatchTests: XCTestCase {
+    private func episode(_ season: Int, _ number: Int, released: String? = nil) -> EpisodeInfo {
+        EpisodeInfo(id: "tt1:\(season):\(number)", title: nil, name: nil, season: season, episode: number, released: released, thumbnail: nil, overview: nil)
+    }
+
+    private let seasons: [Int: [EpisodeInfo]] = [
+        0: [EpisodeInfo(id: "sp", title: nil, name: nil, season: 0, episode: 1, released: nil, thumbnail: nil, overview: nil)],
+        1: [EpisodeInfo(id: "a", title: nil, name: nil, season: 1, episode: 1, released: nil, thumbnail: nil, overview: nil),
+            EpisodeInfo(id: "b", title: nil, name: nil, season: 1, episode: 2, released: nil, thumbnail: nil, overview: nil)],
+        2: [EpisodeInfo(id: "c", title: nil, name: nil, season: 2, episode: 1, released: nil, thumbnail: nil, overview: nil)]
+    ]
+    private func watched(_ keys: String...) -> [String: EpisodeStatus] {
+        Dictionary(uniqueKeysWithValues: keys.map { ($0, EpisodeStatus(watched: true, fraction: 1)) })
+    }
+
+    func testFinishingAnEpisodePointsAtTheNextOne() {
+        XCTAssertEqual(EpisodeProgress.nextToWatch(seasons: seasons, statuses: [:], finished: (1, 1))?.id, "b")
+        // the next season once one is done
+        XCTAssertEqual(EpisodeProgress.nextToWatch(seasons: seasons, statuses: watched("1:1"), finished: (1, 2))?.id, "c")
+    }
+
+    func testAnEarlierEpisodeNotWatchedIsPickedUpWhenNothingIsLeftAfter() {
+        XCTAssertEqual(EpisodeProgress.nextToWatch(seasons: seasons, statuses: watched("1:2"), finished: (2, 1))?.id, "a")
+    }
+
+    func testEverythingWatchedMeansTheShowCanLeave() {
+        XCTAssertNil(EpisodeProgress.nextToWatch(seasons: seasons, statuses: watched("1:1", "1:2"), finished: (2, 1)))
+        // specials do not hold a show in Continue Watching
+        XCTAssertNil(EpisodeProgress.nextToWatch(seasons: seasons, statuses: watched("1:1", "2:1"), finished: (1, 2)))
+    }
+
+    func testAnEpisodeNotOutYetDoesNotHoldTheShow() {
+        let future = ISO8601DateFormatter().string(from: Date().addingTimeInterval(86_400 * 30))
+        var airing = seasons
+        airing[2] = [episode(2, 1, released: future)]
+        XCTAssertNil(EpisodeProgress.nextToWatch(seasons: airing, statuses: watched("1:1"), finished: (1, 2)))
+    }
+}

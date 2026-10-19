@@ -45,6 +45,32 @@ public enum EpisodeProgress {
         }) else { return nil }
         return ordered.indices.contains(last + 1) ? ordered[last + 1] : nil
     }
+
+    /// Has this episode come out? An episode with no date, or one that cannot be read, counts as out; one dated after `now` has not.
+    static func isOut(_ episode: EpisodeInfo, now: Date) -> Bool {
+        guard let text = episode.released, !text.isEmpty else { return true }
+        let plain = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = fractional.date(from: text) ?? plain.date(from: text) else { return true }
+        return date <= now
+    }
+
+    /// The episode a show should point at once `finished` is done: the first one not yet watched after it, or, with none left after it, the first
+    /// not yet watched from the start of the show. Nil when every episode that is out has been watched, which is when the show leaves Continue
+    /// Watching. Season 0 (specials) and episodes that are not out yet are left out, so a show that is caught up with what has aired is finished
+    /// for now. The finished episode counts as watched whatever the statuses say.
+    public static func nextToWatch(seasons: [Int: [EpisodeInfo]], statuses: [String: EpisodeStatus], finished: (season: Int, episode: Int),
+                                   now: Date = Date()) -> EpisodeInfo? {
+        let ordered = seasons.keys.filter { $0 > 0 }.sorted().flatMap { seasons[$0] ?? [] }.filter { isOut($0, now: now) }
+        let finishedKey = key(season: finished.season, episode: finished.episode)
+        func done(_ episode: EpisodeInfo) -> Bool {
+            guard let k = key(season: episode.season, episode: episode.episode) else { return true }
+            return k == finishedKey || statuses[k]?.watched == true
+        }
+        let start = ordered.firstIndex { key(season: $0.season, episode: $0.episode) == finishedKey }.map { $0 + 1 } ?? 0
+        return ordered[start...].first { !done($0) } ?? ordered[..<start].first { !done($0) }
+    }
 }
 
 extension AuthClient {
