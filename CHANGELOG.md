@@ -716,3 +716,20 @@ app's look, and talks to the same backend and Stremio addons.
 **Follow-up 2 (same unshipped work):** a second look still showed a line at the banner's bottom edge. I could not tell whether that build had the previous fix. The banner picture's fade is now in six steps and is fully clear before its bottom edge, so no picture is left at the edge to show a line. Not compiled or seen on a Mac.
 
 **Follow-up 3 (same unshipped work):** the picture now fades, but a line was left on the left-hand side at the banner's bottom edge. Cause: the left-hand shade that keeps the text readable was drawn over the full banner height, outside the fade, so it stopped dead at the edge. It now sits inside the faded picture. Not compiled or seen on a Mac.
+
+## 38 -- Settings > Home Rows as a hub with a page per source
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The web app (17 Oct, `docs/PARITY.md`) made Settings > Home Rows a short hub of cards with a page for each source, and the Fire TV app copied it. The Mac still showed one long list of every row, with the streaming tiles under it. (The streaming tile order arrows from entry 37 now live on the tiles page; the release note for them is folded into the hub's bullet.)
+
+**Changes:**
+- `ArcTVCore/LanguageChoices.swift`: `HomeRowOrder.reorderWithin(_:subset:id:delta:)`, a port of the web's `reorderWithin`: a row moves among one page's rows and every other row keeps its place in Home's single order. Test in `SettingsTabsTests`.
+- `AppModel`: `homeRowGroups` (each addon with rows, and its rows in Home's order; a row belongs to the addon whose id starts its own, the longer id winning; an addon with no rows has no card) and `moveRow(_:delta:within:)` (keeps the `streaming:<id>` entries). The old whole-list `moveRow` is gone.
+- `HomeRowsPane`: the hub (a "Streaming tiles" card, then one card per addon, each saying how many are on Home) and its pages (a Back button, then one list: place number, switch, name, up/down arrows). The tiles page is the tile list from entry 37.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `reorderWithin` test and the build are left to the Build and test workflow. Code re-read. Not seen on a Mac. Not copied from the web: the focus-return to the card you came from (the Mac is pointer-first).
+
+**Issues discovered:** none new. A row whose id does not start with any installed addon's id (an addon removed since the rows were saved) has no page.
+
+**Issues fixed:** none.

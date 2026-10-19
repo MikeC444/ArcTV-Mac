@@ -161,14 +161,42 @@ struct BlockedGenresPane: View {
 
 // MARK: Home Rows
 
-/// Settings > Home Rows: switch each row of Home on or off and move it up or down. Saved to the account as you go.
+/// Settings > Home Rows: a short hub of cards (the streaming tiles, and one for each addon that has rows), each opening a page where every item is in one
+/// list with a switch and up / down arrows. Saved to the account as you go.
 struct HomeRowsPane: View {
     @EnvironmentObject private var model: AppModel
+    /// nil is the hub; "streaming" the tiles; otherwise an addon's id.
+    @State private var page: String?
+
+    private static let streamingPage = "streaming"
 
     var body: some View {
-        let choices = model.homeRowChoices
         VStack(alignment: .leading, spacing: 14) {
-            if choices.isEmpty {
+            if let page {
+                Button { self.page = nil } label: {
+                    Label("Home Rows", systemImage: "chevron.left").font(.system(size: 13, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.accent)
+                if page == Self.streamingPage {
+                    streamingSection
+                } else if let group = model.homeRowGroups.first(where: { $0.id == page }) {
+                    addonPage(group)
+                } else {
+                    Text("Nothing to arrange here.").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                }
+            } else {
+                hub
+            }
+        }
+        .task { if model.settings == nil { await model.loadSettings() } }
+    }
+
+    private var hub: some View {
+        let groups = model.homeRowGroups
+        let services = model.streamingChoices
+        return VStack(alignment: .leading, spacing: 14) {
+            if groups.isEmpty && services.isEmpty {
                 Text(model.homeRaw.isEmpty
                      ? "Home has no rows yet. Install an addon first, then come back to arrange them."
                      : "Loading your rows...")
@@ -177,34 +205,70 @@ struct HomeRowsPane: View {
                 Text("Choose which rows appear on Home and the order they come in. Changes are saved automatically.")
                     .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                 VStack(spacing: 8) {
-                    ForEach(Array(choices.enumerated()), id: \.element.section.id) { index, choice in
-                        HStack(spacing: 12) {
-                            Toggle("", isOn: Binding(
-                                get: { choice.visible },
-                                set: { value in Task { await model.setRowVisible(choice.section.id, visible: value) } }
-                            ))
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .tint(Theme.accent)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(choice.section.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
-                                Text("\(choice.section.items.count) titles").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
-                            }
-                            .opacity(choice.visible ? 1 : 0.5)
-                            Spacer(minLength: 0)
-                            arrow("chevron.up", enabled: index > 0) { Task { await model.moveRow(choice.section.id, delta: -1) } }
-                            arrow("chevron.down", enabled: index < choices.count - 1) { Task { await model.moveRow(choice.section.id, delta: 1) } }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+                    if !services.isEmpty {
+                        card(title: "Streaming tiles", note: "\(services.filter(\.visible).count) of \(services.count) on Home") { page = Self.streamingPage }
+                    }
+                    ForEach(groups) { group in
+                        card(title: group.name, note: "\(group.shown) of \(group.rows.count) rows on Home") { page = group.id }
                     }
                 }
             }
-            streamingSection
         }
-        .task { if model.settings == nil { await model.loadSettings() } }
+    }
+
+    private func card(title: String, note: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                    Text(note).font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.textTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// One addon's rows in one list: place number, switch, name, arrows.
+    private func addonPage(_ group: AppModel.HomeRowGroup) -> some View {
+        let ids = group.rows.map(\.section.id)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(group.name).font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.textPrimary)
+            Text("\(group.shown) of \(group.rows.count) rows are on Home.")
+                .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+            VStack(spacing: 8) {
+                ForEach(Array(group.rows.enumerated()), id: \.element.section.id) { index, choice in
+                    HStack(spacing: 12) {
+                        Text("\(index + 1)").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.textTertiary).frame(width: 22)
+                        Toggle("", isOn: Binding(
+                            get: { choice.visible },
+                            set: { value in Task { await model.setRowVisible(choice.section.id, visible: value) } }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .tint(Theme.accent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(choice.section.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                            Text("\(choice.section.items.count) titles").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                        }
+                        .opacity(choice.visible ? 1 : 0.5)
+                        Spacer(minLength: 0)
+                        arrow("chevron.up", enabled: index > 0) { Task { await model.moveRow(choice.section.id, delta: -1, within: ids) } }
+                        arrow("chevron.down", enabled: index < group.rows.count - 1) { Task { await model.moveRow(choice.section.id, delta: 1, within: ids) } }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Theme.elevated))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.divider, lineWidth: 1))
+                }
+            }
+        }
     }
 
     /// The streaming services an addon has, each with a switch for its tile on Home.
@@ -239,7 +303,6 @@ struct HomeRowsPane: View {
                     }
                 }
             }
-            .padding(.top, 10)
         }
     }
 

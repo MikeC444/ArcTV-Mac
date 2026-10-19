@@ -11,6 +11,16 @@ final class SettingsTabsTests: XCTestCase {
         XCTAssertEqual(HomeRowOrder.move(order, id: "x", delta: 1), order)
     }
 
+    func testReorderWithinKeepsOtherRowsInPlace() {
+        let global = ["a1", "b1", "a2", "b2", "a3"]
+        // a's rows move among a's places; b's rows do not
+        XCTAssertEqual(HomeRowOrder.reorderWithin(global, subset: ["a1", "a2", "a3"], id: "a2", delta: -1), ["a2", "b1", "a1", "b2", "a3"])
+        XCTAssertEqual(HomeRowOrder.reorderWithin(global, subset: ["a1", "a2", "a3"], id: "a3", delta: -1), ["a1", "b1", "a3", "b2", "a2"])
+        XCTAssertNil(HomeRowOrder.reorderWithin(global, subset: ["a1", "a2", "a3"], id: "a1", delta: -1))
+        XCTAssertNil(HomeRowOrder.reorderWithin(global, subset: ["a1", "a2", "a3"], id: "a3", delta: 1))
+        XCTAssertNil(HomeRowOrder.reorderWithin(global, subset: ["a1", "a2", "a3"], id: "zz", delta: 1))
+    }
+
     func testLanguageLists() {
         XCTAssertEqual(LanguageChoices.subtitles().count, 20)
         XCTAssertNil(LanguageChoices.subtitles()[0].code)

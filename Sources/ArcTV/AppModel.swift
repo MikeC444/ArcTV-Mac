@@ -513,11 +513,37 @@ final class AppModel: ObservableObject {
         schedulePicked()
     }
 
-    func moveRow(_ id: String, delta: Int) async {
+    /// One addon's rows, for its page in Settings > Home Rows.
+    struct HomeRowGroup: Identifiable {
+        let id: String
+        let name: String
+        let rows: [(section: HomeSection, visible: Bool)]
+        var shown: Int { rows.filter(\.visible).count }
+    }
+
+    /// The addons that have rows on Home, each with its rows in Home's order. A row belongs to the addon whose id starts its own (`<addon id>_<key>`);
+    /// where one addon's id begins with another's, the longer one wins. An addon with no rows has no group.
+    var homeRowGroups: [HomeRowGroup] {
+        let choices = homeRowChoices
+        let sources = catalogSources.sorted { $0.manifest.id.count > $1.manifest.id.count }
+        var grouped: [String: [(section: HomeSection, visible: Bool)]] = [:]
+        for choice in choices {
+            if let owner = sources.first(where: { choice.section.id.hasPrefix($0.manifest.id + "_") }) {
+                grouped[owner.manifest.id, default: []].append(choice)
+            }
+        }
+        return catalogSources.compactMap { source in
+            guard let rows = grouped[source.manifest.id], !rows.isEmpty else { return nil }
+            return HomeRowGroup(id: source.manifest.id, name: source.manifest.name, rows: rows)
+        }
+    }
+
+    /// Moves a row one place among `subset` (one addon's rows) while every other row keeps its place in Home's single order.
+    func moveRow(_ id: String, delta: Int, within subset: [String]) async {
         let order = homeRowChoices.map(\.section.id)
-        // The streaming tiles' places (`streaming:<id>`) share this list: keep them, or moving a row would reset the order set on another app.
+        guard let next = HomeRowOrder.reorderWithin(order, subset: subset, id: id, delta: delta) else { return }
         await updateSettings { value in
-            value.homeRowOrder = HomeRowOrder.move(order, id: id, delta: delta) + value.homeRowOrder.filter(StreamingServices.isServiceRowID)
+            value.homeRowOrder = next + value.homeRowOrder.filter(StreamingServices.isServiceRowID)
         }
     }
 

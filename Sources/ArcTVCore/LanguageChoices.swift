@@ -58,4 +58,18 @@ public enum HomeRowOrder {
         next.swapAt(index, target)
         return next
     }
+
+    /// `global` (every row, in the order Home uses) after `id` moved `delta` places among `subset` (the rows one Settings page shows, in their order):
+    /// the other rows keep their places and the subset's rows take the subset's places in the new order. Nil when it can't move that way.
+    public static func reorderWithin(_ global: [String], subset: [String], id: String, delta: Int) -> [String]? {
+        let moved = move(subset, id: id, delta: delta)
+        if moved == subset { return nil }
+        let inSubset = Set(subset)
+        var next = 0
+        return global.map { entry in
+            guard inSubset.contains(entry) else { return entry }
+            defer { next += 1 }
+            return moved[next]
+        }
+    }
 }
