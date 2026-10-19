@@ -6,6 +6,7 @@ them under its version automatically.
 
 ## Unreleased
 
+- Netflix's page got a glow-up: a Top 10 Today row, then wide pictures with each title's logo.
 - Home fills in faster: your rows start appearing sooner and arrive in quicker.
 - Your streaming services are here: Netflix, Disney+ and more as tiles on Home, each opening a page of its titles.
 ## 0.2.0

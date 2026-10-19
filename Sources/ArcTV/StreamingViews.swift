@@ -156,10 +156,15 @@ final class StreamingModel: ObservableObject {
     @Published var loading = true
     /// More titles may still arrive by scrolling: the grid shows grey poster shapes after the last title.
     @Published var moreComing = true
+    /// Netflix's page: the Top 10 row (nothing for any other service).
+    @Published var topTen: TopTenState = .none
 
     let service: String
     /// One page of TMDB's titles for this service ("movie" or "series", page from 1).
     private let tmdbPage: (String, Int) async -> StreamingTitlesPage
+    /// A title's genres (looked up through the addons), for leaving blocked genres out of the Top 10; the genres blocked now.
+    private let genresOf: @Sendable (MetaPreview) async -> [String]?
+    private let blockedGenres: () -> Set<String>
     private var sources: [HomeSource] = []
     private var page = 1
     private var nextTmdbPage = 1
@@ -168,13 +173,52 @@ final class StreamingModel: ObservableObject {
     private var generation = 0
     private var seen = Set<String>()
 
-    init(service: String, tmdbPage: @escaping (String, Int) async -> StreamingTitlesPage) {
+    init(service: String, tmdbPage: @escaping (String, Int) async -> StreamingTitlesPage,
+         genresOf: @escaping @Sendable (MetaPreview) async -> [String]?, blockedGenres: @escaping () -> Set<String>) {
         self.service = service
         self.tmdbPage = tmdbPage
+        self.genresOf = genresOf
+        self.blockedGenres = blockedGenres
+    }
+
+    /// The Top 10's titles, which the list under it leaves out so nothing shows twice.
+    var topTenIDs: Set<String> {
+        if case let .ready(titles) = topTen { return Set(titles.map(\.id)) }
+        return []
+    }
+
+    /// One answer per service, country and set of blocked genres for the session, so coming back to the page does not ask again.
+    @MainActor private enum TopTenCache {
+        static var store: [String: [MetaPreview]] = [:]
+    }
+
+    /// Works out the Top 10 row: TMDB's first page of movies and of series for the service, ten of them in turn, blocked genres left out (their genres are
+    /// looked up, as TMDB sends none). Starts at once when the page opens, beside the titles.
+    private func loadTopTen(generation current: Int) async {
+        let blocked = blockedGenres()
+        let key = "\(service):\(StreamingTitles.region()):\(blocked.sorted().joined(separator: ","))"
+        if let hit = TopTenCache.store[key] {
+            if current == generation { topTen = .ready(hit) }
+            return
+        }
+        async let movies = tmdbPage("movie", 1)
+        async let shows = tmdbPage("series", 1)
+        let (foundMovies, foundShows) = await (movies, shows)
+        let picked: [MetaPreview]
+        if blocked.isEmpty {
+            picked = TopTen.pick(movies: foundMovies.items, shows: foundShows.items)
+        } else {
+            let candidates = TopTen.rankedPool(movies: foundMovies.items, shows: foundShows.items, limit: TopTen.pool)
+            picked = await TopTen.pickUnblocked(candidates, blocked: blocked, count: TopTen.count, genresOf: genresOf)
+        }
+        if !picked.isEmpty { TopTenCache.store[key] = picked }
+        guard current == generation else { return }
+        topTen = picked.isEmpty ? .none : .ready(picked)
     }
 
     func reload(sources next: [HomeSource]) async {
-        sources = next.filter { $0.streamingServiceIDs.contains(service) }
+        let wanted = self.service
+        sources = next.filter { $0.streamingServiceIDs.contains(wanted) }
         generation += 1
         fetching = false
         items = []
@@ -184,18 +228,29 @@ final class StreamingModel: ObservableObject {
         hasMore = true
         moreComing = true
         loading = true
+        let current = generation
+        let hasTopTen = self.service == TopTen.service
+        topTen = hasTopTen ? .loading : .none
+        if hasTopTen { Task { await self.loadTopTen(generation: current) } }
         guard !sources.isEmpty else {
             loading = false
             moreComing = false
+            if hasTopTen, topTen == .loading { topTen = .none }
             return
         }
-        let current = generation
         let service = self.service
         let lists = await withTaskGroup(of: (Int, [MetaPreview]).self) { group -> [[MetaPreview]] in
             for (index, source) in sources.enumerated() { group.addTask { (index, await source.serviceItems(service)) } }
             var results = Array(repeating: [MetaPreview](), count: sources.count)
             for await (index, found) in group { results[index] = found }
             return results
+        }
+        guard current == generation else { return }
+        // The titles wait for the Top 10 (up to 6 seconds), so it does not pull ten titles out of the list after the list is on screen.
+        var waited = 0
+        while hasTopTen, topTen == .loading, waited < 60, current == generation {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            waited += 1
         }
         guard current == generation else { return }
         let merged = distinctByID(HomeSections.interleaved(lists))
@@ -260,9 +315,12 @@ struct StreamingServiceView: View {
 
     init(service: StreamingService, model: AppModel) {
         self.service = service
-        _browse = StateObject(wrappedValue: StreamingModel(service: service.id) { type, page in
-            await model.streamingTitles(service: service.id, type: type, page: page)
-        })
+        _browse = StateObject(wrappedValue: StreamingModel(
+            service: service.id,
+            tmdbPage: { type, page in await model.streamingTitles(service: service.id, type: type, page: page) },
+            genresOf: { item in await model.genres(of: item) },
+            blockedGenres: { model.blockedGenres }
+        ))
     }
 
     var body: some View {
@@ -288,7 +346,20 @@ struct StreamingServiceView: View {
                 .padding(.top, 96)
                 .padding(.bottom, 14)
 
-                if browse.loading && browse.items.isEmpty {
+                if service.id == TopTen.service {
+                    // Netflix's page: the Top 10, then the titles as wide pictures (the Top 10's own titles left out)
+                    TopTenSection(state: browse.topTen)
+                    let listed = browse.items.withoutBlocked(model.blockedGenres).filter { !browse.topTenIDs.contains($0.id) }
+                    if browse.loading && browse.items.isEmpty {
+                        WideGridSkeleton()
+                    } else if listed.isEmpty {
+                        Text("Your addons didn't return any \(service.name) titles right now.")
+                            .foregroundStyle(Theme.textSecondary)
+                            .padding(.horizontal, 44)
+                    } else {
+                        WideGrid(items: listed, placeholders: browse.moreComing) { Task { await browse.loadMore() } }
+                    }
+                } else if browse.loading && browse.items.isEmpty {
                     GridSkeleton()
                 } else if browse.items.isEmpty {
                     Text("Your addons didn't return any \(service.name) titles right now.")

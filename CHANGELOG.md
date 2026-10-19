@@ -673,3 +673,20 @@ app's look, and talks to the same backend and Stremio addons.
 
 **Follow-up (same unshipped work): a tighter light.** The coloured light under a streaming tile reached too far down the page; its blur is now 11 pt under the pointer (was 18) and 6 pt at rest (was 9), dropped 5 and 3 pt (was 12 and 7), and the room kept for it inside the row is 24 pt above and below (was 40). Not compiled or seen on a Mac.
 
+## 36 -- Netflix's page like the web app's: Top 10 Today, wide pictures with logos
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** The web app redesigned Netflix's streaming-service page on 19 Oct (`docs/PARITY.md` in ArcTV-Web: about 15 rows) and the Fire TV app copied it. The Mac's service pages (entry 34) were the same poster grid for every service.
+
+**Changes:** (Netflix only, as on the web; the other services keep the poster grid)
+- `ArcTVCore/TopTen.swift` (new): `rankedPool` / `pick` (a series and a movie in turn from TMDB's popularity list, ten kept) and `pickUnblocked` (blocked genres left out: each candidate's genres are looked up, 30 candidates, ten at a time; a title whose genres cannot be found is kept). `TopTenTests`.
+- `StreamingModel`: for Netflix the Top 10 starts loading the moment the page opens, one answer is kept per service, country and set of blocked genres for the session, the titles wait for it up to 6 seconds, and the list leaves its ten titles out. `AppModel.genres(of:)` looks a title's genres up through Cinemeta.
+- `NetflixViews.swift` (new): the "Top 10 Today" row (a big outlined number behind each 130 pt poster, a "1" narrower than the other digits, the poster over the number's right-hand part; ten grey posters with their numbers while it loads; nothing when there is no list), the red N (`NetflixN`), `ServiceCard` (a tall poster or a 16:9 picture with 4 pt corners and no caption, the red N top left, the watched tick top right; wide pictures show the title's logo at the bottom left on a soft shade, from Metahub `images.metahub.space/logo/medium/<IMDb id>/img` by IMDb id), `WideGrid` (wide pictures 9 pt apart, more as you scroll, grey wide shapes after the last while more are coming) and `WideGridSkeleton` (grey wide cells while the titles load).
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox); the new `TopTenTests` and the build are left to the Build and test workflow. Code re-read. Not seen on a Mac: how the big numbers sit (their size and how far down, worked out from the web's, not looked at), the wide grid's column count (as many 230 to 380 pt pictures as fit; the web has 4 to 6) and the logos were not looked at.
+
+**Issues discovered:** a title with no logo on Metahub shows none (the web and Fire TV apps then look the logo up through the addons; not done here). The web's pointer tilt and 3D poster edges are not copied. Cards have no keyboard focus ring (the Mac app is pointer-first).
+
+**Issues fixed:** none.
+

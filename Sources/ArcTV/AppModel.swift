@@ -557,6 +557,12 @@ final class AppModel: ObservableObject {
 
     func openStreaming(_ service: String) { streamingService = service }
 
+    /// A title's genres, looked up through Cinemeta (for leaving a blocked genre out of Netflix's Top 10); nil when it can't be found.
+    func genres(of item: MetaPreview) async -> [String]? {
+        let meta = try? await AddonClient().fetchMeta(manifestURL: AppInfo.cinemetaManifestURL, type: item.type, id: item.id)
+        return meta?.genres
+    }
+
     /// One page of TMDB's titles for a service in this Mac's country (see `StreamingTitles`); "not available" when signed out, offline or the server has none.
     func streamingTitles(service: String, type: String, page: Int) async -> StreamingTitlesPage {
         let region = StreamingTitles.region()
