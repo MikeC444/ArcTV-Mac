@@ -1,3 +1,4 @@
+import AppKit
 import ArcTVCore
 import SwiftUI
 
@@ -21,28 +22,91 @@ struct StreamingTilesRow: View {
     }
 }
 
-/// One tile: the service's name on a glass card tinted with its colour, lifting a little under the pointer.
+/// How a service's tile looks (the web app's `BRAND` table): the colour its app icon sits on (or a gradient), whether its logo is drawn all white or all
+/// black on that colour (nil shows the logo as it is), and the colour of the light beneath it at rest and under the pointer.
+private struct TileBrand {
+    var background: UInt32
+    var gradient: [UInt32]? = nil
+    var gradientStart = UnitPoint.top
+    var gradientEnd = UnitPoint.bottom
+    var logo: LogoTint? = nil
+    var glow: UInt32
+    var hover: Double
+    var rest: Double
+
+    enum LogoTint { case white, black }
+
+    /// A service with no entry is a black tile with its name in white.
+    static func of(_ id: String) -> TileBrand? {
+        switch id {
+        case "netflix": return TileBrand(background: 0x000000, glow: 0xE50914, hover: 0.55, rest: 0.12)
+        case "disney": return TileBrand(background: 0x003F4F, gradient: [0x011828, 0x002F3D, 0x015E70, 0x0098A5, 0x2BBCC1], logo: nil, glow: 0x1EBEC8, hover: 0.55, rest: 0.14)
+        case "prime": return TileBrand(background: 0x1D2547, gradient: [0x141721, 0x1D2547, 0x294071, 0x346B9F, 0x4089C0], gradientStart: UnitPoint(x: 0, y: 0.6), gradientEnd: UnitPoint(x: 1, y: 0.4), logo: .white, glow: 0x4089C0, hover: 0.6, rest: 0.24)
+        case "max": return TileBrand(background: 0xFFFFFF, glow: 0x8C5AFF, hover: 0.5, rest: 0.26)
+        case "apple": return TileBrand(background: 0x000000, glow: 0xBEBECD, hover: 0.4, rest: 0.16)
+        case "paramount": return TileBrand(background: 0x0064FF, logo: .white, glow: 0x0064FF, hover: 0.6, rest: 0.28)
+        case "hulu": return TileBrand(background: 0x1CE783, logo: .white, glow: 0x1CE783, hover: 0.5, rest: 0.12)
+        case "peacock": return TileBrand(background: 0x000000, glow: 0xFFBE28, hover: 0.4, rest: 0.12)
+        case "crunchyroll": return TileBrand(background: 0xF47521, logo: .white, glow: 0xF47521, hover: 0.6, rest: 0.16)
+        case "skyshowtime": return TileBrand(background: 0x4A38E6, gradient: [0x6A3DF0, 0x2B2FE0], gradientStart: .topLeading, gradientEnd: .bottomTrailing, logo: nil, glow: 0x6A3DF0, hover: 0.6, rest: 0.3)
+        case "britbox": return TileBrand(background: 0x0D273D, glow: 0x78BEEB, hover: 0.5, rest: 0.16)
+        case "itvx": return TileBrand(background: 0xDFEB55, logo: .black, glow: 0xDFEB55, hover: 0.5, rest: 0.12)
+        case "iplayer": return TileBrand(background: 0x000000, glow: 0xFF4696, hover: 0.5, rest: 0.16)
+        case "sky": return TileBrand(background: 0xFFFFFF, glow: 0xA05AFF, hover: 0.5, rest: 0.24)
+        case "discovery": return TileBrand(background: 0x000000, glow: 0xFF963C, hover: 0.5, rest: 0.14)
+        case "shudder": return TileBrand(background: 0x000000, glow: 0xDC141E, hover: 0.55, rest: 0.12)
+        case "channel4": return TileBrand(background: 0x000000, glow: 0xAAFF8C, hover: 0.45, rest: 0.1)
+        default: return nil
+        }
+    }
+
+    var fill: AnyShapeStyle {
+        if let gradient {
+            let stops = gradient.enumerated().map { index, hex in
+                Gradient.Stop(color: Color(hex: hex), location: gradient.count > 1 ? Double(index) / Double(gradient.count - 1) : 0)
+            }
+            return AnyShapeStyle(LinearGradient(stops: stops, startPoint: gradientStart, endPoint: gradientEnd))
+        }
+        return AnyShapeStyle(Color(hex: background))
+    }
+}
+
+/// The logo pictures, decoded once.
+private enum StreamingLogos {
+    private static let lock = NSLock()
+    private static var cache: [String: NSImage] = [:]
+
+    static func image(_ id: String) -> NSImage? {
+        lock.lock()
+        defer { lock.unlock() }
+        if let known = cache[id] { return known }
+        guard let text = StreamingLogoData.base64[id], let data = Data(base64Encoded: text), let image = NSImage(data: data) else { return nil }
+        cache[id] = image
+        return image
+    }
+}
+
+/// One tile: the service's logo on its own colour (its name in white on black when it has no logo), a glass slab with a coloured light beneath it that
+/// grows and lifts under the pointer, as on the web app.
 private struct StreamingTile: View {
     let service: StreamingService
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
+        let brand = TileBrand.of(service.id)
+        let glow = Color(hex: brand?.glow ?? 0xFFFFFF)
         Button(action: action) {
             ZStack {
+                RoundedRectangle(cornerRadius: 14).fill(brand?.fill ?? AnyShapeStyle(Color.black))
+                // the glass: a bright top edge and a darker bottom edge
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(LinearGradient(colors: [service.tint.opacity(0.55), Color(hex: 0x101014)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                Text(service.name)
-                    .font(.system(size: 24, weight: .heavy))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .padding(.horizontal, 14)
-                    .shadow(color: .black.opacity(0.5), radius: 6, y: 2)
+                    .fill(LinearGradient(colors: [Color.white.opacity(0.16), .clear, Color.black.opacity(0.22)], startPoint: .top, endPoint: .bottom))
+                logo(brand)
             }
             .frame(width: 220, height: 124)
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(hovering ? 0.9 : 0.14), lineWidth: hovering ? 2 : 1))
-            .shadow(color: service.tint.opacity(hovering ? 0.45 : 0.2), radius: hovering ? 16 : 8, y: 6)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(hovering ? 0.8 : 0.14), lineWidth: hovering ? 2 : 1))
+            .shadow(color: glow.opacity(hovering ? (brand?.hover ?? 0.5) : (brand?.rest ?? 0.15)), radius: hovering ? 18 : 9, y: hovering ? 12 : 7)
             .scaleEffect(hovering ? 1.04 : 1)
             .animation(.easeOut(duration: 0.15), value: hovering)
             .contentShape(RoundedRectangle(cornerRadius: 14))
@@ -51,43 +115,59 @@ private struct StreamingTile: View {
         .onHover { hovering = $0 }
         .help(service.name)
     }
-}
 
-private extension StreamingService {
-    /// The colour a tile leans towards (the well-known services have their own; the rest share the app's blue).
-    var tint: Color {
-        switch id {
-        case "netflix": return Color(hex: 0xE50914)
-        case "prime": return Color(hex: 0x00A8E1)
-        case "apple": return Color(hex: 0x8E8E93)
-        case "max": return Color(hex: 0x5B2EFF)
-        case "disney": return Color(hex: 0x113CCF)
-        case "paramount": return Color(hex: 0x0064FF)
-        case "hulu": return Color(hex: 0x1CE783)
-        case "peacock": return Color(hex: 0xF5C400)
-        case "iplayer": return Color(hex: 0xFF4E98)
-        case "shudder": return Color(hex: 0xD6001C)
-        default: return Color(hex: 0x4A5BFF)
+    @ViewBuilder
+    private func logo(_ brand: TileBrand?) -> some View {
+        if let image = StreamingLogos.image(service.id) {
+            switch brand?.logo {
+            case .white?:
+                Image(nsImage: image).renderingMode(.template).resizable().scaledToFit().foregroundStyle(.white)
+                    .padding(.horizontal, 220 * 0.18).padding(.vertical, 124 * 0.14)
+                    .shadow(color: .black.opacity(0.35), radius: 4, y: 3)
+            case .black?:
+                Image(nsImage: image).renderingMode(.template).resizable().scaledToFit().foregroundStyle(.black)
+                    .padding(.horizontal, 220 * 0.18).padding(.vertical, 124 * 0.14)
+                    .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
+            case nil:
+                Image(nsImage: image).resizable().scaledToFit()
+                    .padding(.horizontal, 220 * 0.18).padding(.vertical, 124 * 0.14)
+                    .shadow(color: .black.opacity(0.35), radius: 4, y: 3)
+            }
+        } else {
+            Text(service.name)
+                .font(.system(size: 24, weight: .heavy))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .padding(.horizontal, 14)
         }
     }
 }
 
-/// Loads one service's titles from the addons that have it, then more a page at a time as you scroll (only an addon whose catalogue can skip has any).
+/// Loads one service's titles from the addons that have it, then more a page at a time as you scroll: first what the addons page through (only an addon
+/// whose catalogue can skip has any), then, once they have no more, TMDB's list for the service (the Streaming Catalogs addon lists about 100 titles a
+/// catalogue and has no paging), a page of movies and of series at a time, as the web and Fire TV apps do.
 @MainActor
 final class StreamingModel: ObservableObject {
     @Published var items: [MetaPreview] = []
     @Published var loading = true
+    /// More titles may still arrive by scrolling: the grid shows grey poster shapes after the last title.
+    @Published var moreComing = true
 
     let service: String
+    /// One page of TMDB's titles for this service ("movie" or "series", page from 1).
+    private let tmdbPage: (String, Int) async -> StreamingTitlesPage
     private var sources: [HomeSource] = []
     private var page = 1
+    private var nextTmdbPage = 1
     private var hasMore = true
     private var fetching = false
     private var generation = 0
     private var seen = Set<String>()
 
-    init(service: String) {
+    init(service: String, tmdbPage: @escaping (String, Int) async -> StreamingTitlesPage) {
         self.service = service
+        self.tmdbPage = tmdbPage
     }
 
     func reload(sources next: [HomeSource]) async {
@@ -97,10 +177,13 @@ final class StreamingModel: ObservableObject {
         items = []
         seen = []
         page = 1
+        nextTmdbPage = 1
         hasMore = true
+        moreComing = true
         loading = true
         guard !sources.isEmpty else {
             loading = false
+            moreComing = false
             return
         }
         let current = generation
@@ -131,14 +214,36 @@ final class StreamingModel: ObservableObject {
             return results
         }
         guard current == generation else { return }
-        let fresh = distinctByID(HomeSections.interleaved(lists)).filter { !seen.contains($0.id) }
+        var fresh = distinctByID(HomeSections.interleaved(lists)).filter { !seen.contains($0.id) }
+        var exhausted = false
+        if fresh.isEmpty {
+            // The addons have no more: carry on with TMDB's list, a page of movies and of series at a time (up to four tries to find titles not shown yet).
+            var tries = 0
+            while tries < 4, fresh.isEmpty {
+                tries += 1
+                let at = nextTmdbPage
+                async let movies = tmdbPage("movie", at)
+                async let shows = tmdbPage("series", at)
+                let (foundMovies, foundShows) = await (movies, shows)
+                guard current == generation else { return }
+                if !foundMovies.available && !foundShows.available { break }
+                nextTmdbPage += 1
+                fresh = distinctByID(interleave(foundMovies.items, foundShows.items)).filter { !seen.contains($0.id) }
+                if at >= max(foundMovies.totalPages, foundShows.totalPages) {
+                    exhausted = true
+                    break
+                }
+            }
+        }
         if fresh.isEmpty {
             hasMore = false
         } else {
             page += 1
             fresh.forEach { seen.insert($0.id) }
             items += fresh
+            if exhausted { hasMore = false }
         }
+        moreComing = hasMore
         fetching = false
     }
 }
@@ -150,9 +255,11 @@ struct StreamingServiceView: View {
     let service: StreamingService
     @StateObject private var browse: StreamingModel
 
-    init(service: StreamingService) {
+    init(service: StreamingService, model: AppModel) {
         self.service = service
-        _browse = StateObject(wrappedValue: StreamingModel(service: service.id))
+        _browse = StateObject(wrappedValue: StreamingModel(service: service.id) { type, page in
+            await model.streamingTitles(service: service.id, type: type, page: page)
+        })
     }
 
     var body: some View {
@@ -185,9 +292,9 @@ struct StreamingServiceView: View {
                         .foregroundStyle(Theme.textSecondary)
                         .padding(.horizontal, 44)
                 } else {
-                    PosterGrid(items: browse.items.withoutBlocked(model.blockedGenres)) {
+                    PosterGrid(items: browse.items.withoutBlocked(model.blockedGenres), onLastAppear: {
                         Task { await browse.loadMore() }
-                    }
+                    }, placeholders: browse.moreComing)
                 }
                 Spacer().frame(height: 48)
             }

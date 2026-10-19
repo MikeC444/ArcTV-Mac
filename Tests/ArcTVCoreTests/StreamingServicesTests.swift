@@ -70,3 +70,35 @@ final class StreamingServicesTests: XCTestCase {
         XCTAssertEqual(StreamingServices.inUserOrder(["netflix"], order: ["streaming:gone", "streaming:netflix"]), ["netflix"])
     }
 }
+
+final class StreamingTitlesTests: XCTestCase {
+    func testTheServersAnswerBecomesTitlesAnAddonWouldGive() {
+        let json = """
+        {"available": true, "page": 2, "totalPages": 5, "items": [
+          {"imdbId": "tt1", "type": "MOVIE", "title": "Alpha", "year": 2020, "rating": 7.46, "overview": "A", "poster": "https://p/a.jpg", "backdrop": null},
+          {"imdbId": "tt2", "type": "TV_SHOW", "title": "Beta", "year": null, "rating": null, "overview": "B", "poster": null, "backdrop": "https://b/b.jpg"},
+          {"imdbId": "tt3", "type": "OTHER", "title": "Gamma", "overview": "C"}
+        ]}
+        """
+        let page = StreamingTitles.decode(Data(json.utf8))
+        XCTAssertEqual(page?.available, true)
+        XCTAssertEqual(page?.totalPages, 5)
+        XCTAssertEqual(page?.items.map(\.id), ["tt1", "tt2"])
+        XCTAssertEqual(page?.items.map(\.type), ["movie", "series"])
+        XCTAssertEqual(page?.items.first?.releaseInfo, "2020")
+        XCTAssertEqual(page?.items.first?.imdbRating, "7.5")
+        XCTAssertEqual(page?.items.last?.background, "https://b/b.jpg")
+    }
+
+    func testNoSourceForAServiceIsNotAvailable() {
+        let page = StreamingTitles.decode(Data(#"{"available": false, "items": [], "page": 1, "totalPages": 0}"#.utf8))
+        XCTAssertEqual(page, StreamingTitlesPage(available: false, items: [], totalPages: 0))
+        XCTAssertNil(StreamingTitles.decode(Data("nope".utf8)))
+    }
+
+    func testTheRegionIsTheMacsCountryElseTheUS() {
+        XCTAssertEqual(StreamingTitles.region(Locale(identifier: "en_AU")), "AU")
+        XCTAssertEqual(StreamingTitles.region(Locale(identifier: "pt_BR")), "BR")
+        XCTAssertEqual(StreamingTitles.region(Locale(identifier: "en")), "US")
+    }
+}

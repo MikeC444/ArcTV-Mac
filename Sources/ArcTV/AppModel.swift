@@ -557,6 +557,15 @@ final class AppModel: ObservableObject {
 
     func openStreaming(_ service: String) { streamingService = service }
 
+    /// One page of TMDB's titles for a service in this Mac's country (see `StreamingTitles`); "not available" when signed out, offline or the server has none.
+    func streamingTitles(service: String, type: String, page: Int) async -> StreamingTitlesPage {
+        let region = StreamingTitles.region()
+        let answer = try? await authorized { client, token in
+            await client.streamingTitles(accessToken: token, service: service, type: type, page: page, region: region)
+        }
+        return answer ?? .notAvailable
+    }
+
     // MARK: My List, Watched and Continue Watching
 
     /// Loads everything the account keeps: My List and Continue Watching.

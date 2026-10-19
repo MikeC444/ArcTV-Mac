@@ -136,6 +136,9 @@ enum CardHover {
 struct PosterGrid: View {
     let items: [MetaPreview]
     var onLastAppear: (() -> Void)? = nil
+    /// Grey poster shapes after the last title while more are still to come, so the page can be scrolled ahead of what has loaded; the first one
+    /// coming into view asks for the next page.
+    var placeholders = false
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 210), spacing: 16, alignment: .top)], alignment: .leading, spacing: 22) {
@@ -144,6 +147,13 @@ struct PosterGrid: View {
                     .onAppear {
                         if item.id == items.last?.id { onLastAppear?() }
                     }
+            }
+            if placeholders {
+                // new ids each time more titles arrive, so the first shape is a new view that asks again when it is reached
+                ForEach(items.count..<(items.count + 12), id: \.self) { index in
+                    Shimmer().aspectRatio(2.0 / 3.0, contentMode: .fit)
+                        .onAppear { if index == items.count { onLastAppear?() } }
+                }
             }
         }
         .padding(.horizontal, 44)

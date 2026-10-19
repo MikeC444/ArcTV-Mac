@@ -52,7 +52,7 @@ struct MainView: View {
                 switch model.selected {
                 case .home:
                     if let id = model.streamingService, let service = StreamingServices.service(id) {
-                        StreamingServiceView(service: service).id(id)
+                        StreamingServiceView(service: service, model: model).id(id)
                     } else {
                         HomeView()
                     }
