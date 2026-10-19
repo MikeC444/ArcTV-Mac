@@ -18,12 +18,7 @@ struct SourcesView: View {
 
     /// Is a source going to be picked without asking (the next episode of a binge, a source used before, or Smart source picking)? Then the list
     /// is not shown while the addons answer: the player's own loading picture is, so there is no flash of "Select a source" on the way in.
-    private var willAutoPick: Bool {
-        if target.chooseSource { return false }
-        if target.autoPick { return true }
-        if let user = model.scope, LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode) != nil { return true }
-        return model.plus.active && model.smartPicking
-    }
+    private var willAutoPick: Bool { model.picksSourceWithoutAsking(target) }
 
     var body: some View {
         ZStack(alignment: .topLeading) {

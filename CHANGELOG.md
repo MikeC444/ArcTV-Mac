@@ -865,3 +865,19 @@ app's look, and talks to the same backend and Stremio addons.
 **Follow-up (same unshipped work): which torrent Smart source picking takes.** With no web-link source, Smart source picking (and Next Episode) now takes the torrent with the most seeders, then the biggest file, then the best quality, then the addon's own order (`SourceListing.bestTorrent`; a torrent that does not say its seeders or size counts as having none), instead of simply the best quality. Sources with a web link still come first, by quality. The list's own order and its Recommended mark are unchanged. Test in `SourcesTests`. Not compiled or tried on a Mac: seeders and size are read from the "👤 12" and "💾 14.2 GB" text addons write, so an addon that writes them another way counts as having none.
 
 **Follow-up (same unshipped work): quality before size.** The torrent ranking is now seeders, then quality, then size (then the addon's order), so a bigger 720p file no longer beats a 1080p one with the same seeders. Test updated. Not compiled or tried on a Mac.
+
+## 47 -- The player's Sources button works with Smart source picking
+
+**Status:** Done, on main. Not compiled here (see below).
+
+**Context:** With Smart source picking on, the player's Sources button went back to the source page, which picked a source again and started it, so the list never showed. The player's Back arrow had the same loop (the list page was skipped over by the pick and the player came straight back).
+
+**Changes:**
+- `AppModel.showSourceList()`: the Sources button (and "Other sources" on the failure panel) open the list for what is playing with `chooseSource` set, so nothing is picked for the person.
+- `AppModel.picksSourceWithoutAsking(_:)` (the rule `SourcesView.willAutoPick` had, now shared): `goBack()` from the player goes to the title's page, not the source page, when a source was picked without asking, since the list was never shown on the way in.
+
+**Tests performed:** None run here (no Swift or Xcode in this sandbox). Code re-read. Not tried on a Mac.
+
+**Issues discovered:** the Back arrow's loop was not reported but follows from the same code; fixing it changes where Back lands for people with Smart source picking (the title's page instead of a list they never saw).
+
+**Issues fixed:** the Sources button; the Back loop.

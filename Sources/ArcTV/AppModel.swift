@@ -411,9 +411,31 @@ final class AppModel: ObservableObject {
         TorrentEngine.shared.stop()
     }
 
-    /// Back one step: player, then sources, then the title's page.
+    /// Would a source be picked for this title without asking (the next episode of a binge, one used before, or Smart source picking)? Then the
+    /// source list is not shown on the way in, and Back from the player must not land on it (it would pick the same source and start it again).
+    func picksSourceWithoutAsking(_ target: PlayTarget) -> Bool {
+        if target.chooseSource { return false }
+        if target.autoPick { return true }
+        if let user = scope, LastSourceStore(userID: user).get(titleID: target.title.id, season: target.season, episode: target.episode) != nil { return true }
+        return plus.active && smartPicking
+    }
+
+    /// Back one step: player, then sources, then the title's page. When a source was picked for the person, the list was never shown, so Back from
+    /// the player goes to the title's page.
     func goBack() {
-        if playing != nil { playing = nil } else if sourcesFor != nil { cancelTorrent(); sourcesFor = nil } else { detail = nil }
+        if let item = playing {
+            playing = nil
+            if picksSourceWithoutAsking(item.target) { cancelTorrent(); sourcesFor = nil }
+        } else if sourcesFor != nil { cancelTorrent(); sourcesFor = nil } else { detail = nil }
+    }
+
+    /// The player's Sources button: the source list for what is playing, shown even with Smart source picking on (which would pick again).
+    func showSourceList() {
+        guard var target = playing?.target ?? sourcesFor else { return }
+        target.chooseSource = true
+        target.autoPick = false
+        playing = nil
+        sourcesFor = target
     }
 
     /// The account's installed addons: where streams come from. Loaded once after sign-in.

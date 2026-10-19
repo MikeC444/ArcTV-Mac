@@ -241,7 +241,7 @@ struct MPVPlayerScreen: View {
             pill(.speed, model.speed == model.speed.rounded() ? "\(Int(model.speed))x" : "\(model.speed)x", "speedometer")
             if !item.target.title.seasonNumbers.isEmpty { pill(.episodes, "Episodes", "rectangle.stack.fill") }
             pill(.player, "Player", "square.and.arrow.up")
-            Button { appModel.goBack() } label: { PillLabel(text: "Sources", symbol: "arrow.left.arrow.right") }
+            Button { appModel.showSourceList() } label: { PillLabel(text: "Sources", symbol: "arrow.left.arrow.right") }
                 .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
@@ -477,7 +477,7 @@ struct MPVPlayerScreen: View {
                     Label("Copy link", systemImage: "doc.on.doc")
                 }
                 .buttonStyle(GlassButtonStyle())
-                Button { appModel.goBack() } label: { Label("Other sources", systemImage: "list.bullet") }
+                Button { appModel.showSourceList() } label: { Label("Other sources", systemImage: "list.bullet") }
                     .buttonStyle(BrandButtonStyle())
             }
         }
