@@ -179,6 +179,9 @@ final class StreamingModel: ObservableObject {
         self.tmdbPage = tmdbPage
         self.genresOf = genresOf
         self.blockedGenres = blockedGenres
+        // Netflix's page starts with the Top 10's grey posters showing (not nothing until the load begins), so the grey cells below do not appear first
+        // and the page jump down when the row arrives.
+        topTen = service == TopTen.service ? .loading : .none
     }
 
     /// The Top 10's titles, which the list under it leaves out so nothing shows twice.
