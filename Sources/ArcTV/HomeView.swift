@@ -50,11 +50,11 @@ struct HomeView: View {
                     .padding(.top, model.heroTitles.isEmpty && model.homeComplete ? 8 : -70)
                     .padding(.bottom, 40)
                 }
-                // the light sits just below the banner's bottom edge and scrolls away with the page
+                // the light sits centred on the banner's bottom edge, behind its fading picture, and scrolls away with the page
                 .background(alignment: .top) {
                     HeroWashLayer(color: wash)
                         .frame(height: geo.size.height * 0.78)
-                        .offset(y: max(geo.size.height * 0.62, 500) + geo.size.height * 0.05 - geo.size.height * 0.39)
+                        .offset(y: max(geo.size.height * 0.62, 500) - geo.size.height * 0.39)
                 }
             }
             .ignoresSafeArea(.container, edges: .top)
@@ -147,14 +147,16 @@ private struct HeroSlide: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Theme.surface
-                if let background = item.background, let url = URL(string: background) {
-                    CachedImage(url: url)
-                        .frame(width: geo.size.width, height: height)
-                        .clipped()
+                // The picture melts away at the bottom (rather than being painted over with the page colour) so the coloured light behind it shows through.
+                ZStack {
+                    Theme.surface
+                    if let background = item.background, let url = URL(string: background) {
+                        CachedImage(url: url)
+                            .frame(width: geo.size.width, height: height)
+                            .clipped()
+                    }
                 }
-                // Fades into the page at the bottom and darkens the left so the text can be read, like the web app's hero.
-                LinearGradient(colors: [.clear, Theme.background], startPoint: .center, endPoint: .bottom)
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.5), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
                 LinearGradient(colors: [Theme.background.opacity(0.85), .clear], startPoint: .leading, endPoint: .center)
 
                 details

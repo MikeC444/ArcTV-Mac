@@ -710,3 +710,5 @@ app's look, and talks to the same backend and Stremio addons.
 **Issues discovered:** the light is placed from the banner height and window height, so it may sit differently from the web on a very tall or short window. A saved banner still shows from the last launch's rows, as before.
 
 **Issues fixed:** none.
+
+**Follow-up (same unshipped work): the light had a hard edge.** A first look at it showed the banner's bottom painted over with the page colour and the light starting in a hard line below it. The banner's picture now fades out with a mask (not a coat of page colour), and the light is centred on the banner's bottom edge so it shows through the fade. Not compiled or seen again on a Mac.
